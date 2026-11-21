@@ -44,6 +44,7 @@ export class GameRenderer {
     this.canvas.width = Math.floor(this.cssWidth * dpr);
     this.canvas.height = Math.floor(this.cssHeight * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    this.ctx.imageSmoothingEnabled = false;
     camera.setViewport(this.cssWidth, this.cssHeight);
   }
 
@@ -62,10 +63,11 @@ export class GameRenderer {
     const viewportW = this.cssWidth / Math.max(0.01, scale);
 
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
     ctx.scale(scale, scale);
-    ctx.translate(camera.shakeX, camera.shakeY);
+    ctx.translate(Math.round(camera.shakeX), Math.round(camera.shakeY));
 
-    // 1. Parallax Background & Textured Battlefield Floor
+    // 1. Parallax Pixel Background & Pixel Tile Battlefield Floor
     renderBackground(
       ctx,
       snapshot.player.eraIndex,
@@ -80,12 +82,13 @@ export class GameRenderer {
 
     // 3. World Space Entities
     ctx.save();
-    ctx.translate(-camera.x, 0);
+    ctx.imageSmoothingEnabled = false;
+    ctx.translate(-Math.round(camera.x), 0);
 
     // Persistent ground blast craters / scorch marks on the road
     renderScorchMarks(ctx, snapshot.scorchMarks);
 
-    // Monumental Fortresses & Turrets (each displays its own era independently)
+    // Monumental Pixel Fortresses & Turrets (each displays its own era independently)
     renderBase(ctx, snapshot.player, wallTime, highlightSellMode);
     renderBase(ctx, snapshot.enemy, wallTime, false);
 
@@ -110,7 +113,7 @@ export class GameRenderer {
 
     ctx.restore();
 
-    // 4. Foreground Parallax Grass / Rocks / Barbed Wire / Pylons along bottom ground lip
+    // 4. Foreground Parallax Pixel Props along bottom ground lip
     renderForegroundParallax(ctx, snapshot.player.eraIndex, camera.x, viewportW, wallTime);
 
     ctx.restore();
@@ -124,6 +127,7 @@ export function renderMinimap(
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
+  ctx.imageSmoothingEnabled = false;
   const w = canvas.width;
   const h = canvas.height;
   const era = getEra(snapshot.player.eraIndex);

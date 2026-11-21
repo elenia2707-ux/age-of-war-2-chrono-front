@@ -1,5 +1,67 @@
 import { getEra } from '../data/eras';
 import { GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../game/constants';
+import { PIXEL_WORLD_SCALE, drawSprite, getSpriteFrame } from './spriteAtlas';
+
+const PX = PIXEL_WORLD_SCALE; // 2 logical world units per pixel block
+const snap = (v: number): number => Math.floor(v / PX) * PX;
+
+/** Parse #rrggbb to [r, g, b] */
+function parseHex(hex: string): [number, number, number] {
+  const clean = hex.replace('#', '');
+  return [
+    parseInt(clean.slice(0, 2), 16),
+    parseInt(clean.slice(2, 4), 16),
+    parseInt(clean.slice(4, 6), 16),
+  ];
+}
+
+function mixHex(a: string, b: string, t: number): string {
+  const [ar, ag, ab] = parseHex(a);
+  const [br, bg, bb] = parseHex(b);
+  const r = Math.round(ar + (br - ar) * t);
+  const g = Math.round(ag + (bg - ag) * t);
+  const bl = Math.round(ab + (bb - ab) * t);
+  return `rgb(${r},${g},${bl})`;
+}
+
+/** Draw a classic 16-bit checkerboard pixel dither band across the viewport */
+function drawDitherStrip(
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  viewportW: number,
+  colA: string,
+  colB: string,
+): void {
+  const sy = snap(y);
+  ctx.fillStyle = colA;
+  ctx.fillRect(0, sy, viewportW + PX, PX * 2);
+  ctx.fillStyle = colB;
+  const step = PX * 2;
+  for (let x = 0; x < viewportW + step; x += step) {
+    ctx.fillRect(x, sy, PX, PX);
+    ctx.fillRect(x + PX, sy + PX, PX, PX);
+  }
+}
+
+/** Draw a stepped pixel disc (no smooth anti-aliased arc edges) */
+function drawPixelDisc(
+  ctx: CanvasRenderingContext2D,
+  cx: number,
+  cy: number,
+  radius: number,
+  color: string,
+): void {
+  const scx = snap(cx);
+  const scy = snap(cy);
+  const r = snap(radius);
+  ctx.fillStyle = color;
+  for (let dy = -r; dy <= r; dy += PX) {
+    const half = snap(Math.sqrt(Math.max(0, r * r - dy * dy)));
+    if (half > 0) {
+      ctx.fillRect(scx - half, scy + dy, half * 2, PX);
+    }
+  }
+}
 
 export function renderBackground(
   ctx: CanvasRenderingContext2D,
@@ -9,6 +71,9 @@ export function renderBackground(
   time: number,
   transition?: { active: boolean; fromEra: number; toEra: number; progress: number },
 ): void {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
   if (transition && transition.active) {
     renderSingleEraBackground(ctx, transition.fromEra, cameraX, viewportW, time);
     ctx.save();
@@ -18,20 +83,20 @@ export function renderBackground(
 
     const glowAlpha = Math.sin(transition.progress * Math.PI) * 0.28;
     if (glowAlpha > 0.01) {
-      ctx.save();
       ctx.fillStyle = `rgba(255, 224, 130, ${glowAlpha.toFixed(3)})`;
       ctx.fillRect(0, 0, viewportW, WORLD_HEIGHT);
-      ctx.restore();
     }
+    ctx.restore();
     return;
   }
 
   renderSingleEraBackground(ctx, eraIndex, cameraX, viewportW, time);
+  ctx.restore();
 }
 
 /**
- * Foreground parallax grass / rocks / barbed wire / neon pylons drawn subtly
- * along the bottom lip of the battlefield road (1.18x parallax) for rich 2.5D depth.
+ * Foreground parallax pixel-art props (ferns, sandstone ruins, grass tufts,
+ * shrubs, sandbags, concrete barriers, sci-fi pylons) along the bottom ground lip.
  */
 export function renderForegroundParallax(
   ctx: CanvasRenderingContext2D,
@@ -41,103 +106,29 @@ export function renderForegroundParallax(
   time: number,
 ): void {
   const offset = -(cameraX * 1.18);
-  const spacing = 175;
+  const spacing = 190;
   const startIdx = Math.floor((-offset - 100) / spacing);
   const endIdx = Math.ceil((viewportW - offset + 100) / spacing);
+  const key = `prop/fore_${Math.max(0, Math.min(6, eraIndex))}`;
 
   ctx.save();
-  for (let i = startIdx; i <= endIdx; i++) {
-    const px = i * spacing + offset + (((i * 53) & 31) - 16);
-    const py = GROUND_Y + 26;
+  ctx.imageSmoothingEnabled = false;
 
-    if (eraIndex === 0) {
-      // Prehistoric silhouetted foreground ferns & mossy rock
-      ctx.fillStyle = '#1b2112';
-      ctx.beginPath();
-      ctx.ellipse(px, py + 4, 24, 11, 0, Math.PI, 0);
-      ctx.fill();
-      ctx.fillStyle = '#263318';
-      for (let b = -2; b <= 2; b++) {
-        const sway = Math.sin(time * 2.2 + i + b) * 2.2;
-        ctx.beginPath();
-        ctx.moveTo(px + b * 7, py + 3);
-        ctx.quadraticCurveTo(px + b * 11 + sway, py - 14, px + b * 16 + sway, py - 21);
-        ctx.quadraticCurveTo(px + b * 9, py - 9, px + b * 7 + 4, py + 3);
-        ctx.closePath();
-        ctx.fill();
-      }
-    } else if (eraIndex === 1) {
-      // Ancient broken sandstone chunks & desert reeds
-      ctx.fillStyle = '#3d2d1a';
-      ctx.beginPath();
-      ctx.moveTo(px - 18, py + 6);
-      ctx.lineTo(px - 10, py - 10);
-      ctx.lineTo(px + 8, py - 12);
-      ctx.lineTo(px + 20, py + 6);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = '#5c462a';
-      ctx.fillRect(px - 8, py - 10, 14, 4);
-    } else if (eraIndex === 2) {
-      // Lush dark-emerald grass tufts & fallen arrow shaft
-      ctx.fillStyle = '#1e3018';
-      for (let g = -3; g <= 3; g++) {
-        const sway = Math.sin(time * 2.5 + i + g) * 1.8;
-        ctx.beginPath();
-        ctx.moveTo(px + g * 5, py + 4);
-        ctx.lineTo(px + g * 6.5 + sway, py - 14 - (Math.abs(g) % 2) * 5);
-        ctx.lineTo(px + g * 5 + 4, py + 4);
-        ctx.closePath();
-        ctx.fill();
-      }
-    } else if (eraIndex === 3) {
-      // Muddy parapet stones & shrub
-      ctx.fillStyle = '#24231a';
-      ctx.beginPath();
-      ctx.arc(px, py - 2, 14, Math.PI, 0);
-      ctx.arc(px + 14, py, 10, Math.PI, 0);
-      ctx.fill();
-    } else if (eraIndex === 4) {
-      // Coiled foreground barbed wire & sandbag silhouette
-      ctx.fillStyle = '#242019';
-      ctx.beginPath();
-      ctx.ellipse(px - 10, py, 16, 8, 0, Math.PI, 0);
-      ctx.ellipse(px + 10, py + 1, 14, 7, 0, Math.PI, 0);
-      ctx.fill();
-      ctx.strokeStyle = '#181a1c';
-      ctx.lineWidth = 1.8;
-      for (let c = -1; c <= 1; c++) {
-        ctx.beginPath();
-        ctx.arc(px + c * 11, py - 7, 7, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (eraIndex === 5) {
-      // Concrete road barrier silhouette
-      ctx.fillStyle = '#192028';
-      ctx.beginPath();
-      ctx.moveTo(px - 22, py + 5);
-      ctx.lineTo(px - 15, py - 12);
-      ctx.lineTo(px + 15, py - 12);
-      ctx.lineTo(px + 22, py + 5);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.35)';
-      ctx.fillRect(px - 11, py - 9, 22, 3);
-    } else {
-      // Era 7: Low metallic deck pylon with pulsing cyan LED strip
-      ctx.fillStyle = '#0c1622';
-      ctx.beginPath();
-      ctx.moveTo(px - 16, py + 6);
-      ctx.lineTo(px - 10, py - 15);
-      ctx.lineTo(px + 10, py - 15);
-      ctx.lineTo(px + 16, py + 6);
-      ctx.closePath();
-      ctx.fill();
-      const glow = 0.45 + Math.sin(time * 4 + i) * 0.25;
-      ctx.fillStyle = `rgba(34, 211, 238, ${glow.toFixed(2)})`;
-      ctx.fillRect(px - 7, py - 11, 14, 2.5);
+  for (let i = startIdx; i <= endIdx; i++) {
+    const px = snap(i * spacing + offset + (((i * 53) & 31) - 16));
+    const sway = eraIndex === 0 || eraIndex === 2 ? Math.round(Math.sin(time * 2.2 + i)) * 2 : 0;
+    const py = GROUND_Y + 34;
+
+    const drawn = drawSprite(ctx, key, px + sway, py, {
+      scale: PIXEL_WORLD_SCALE,
+      flipX: (i & 1) === 1,
+    });
+    if (!drawn) {
+      ctx.fillStyle = '#182026';
+      ctx.fillRect(px - 18, py - 12, 36, 12);
     }
   }
+
   ctx.restore();
 }
 
@@ -155,32 +146,50 @@ function renderSingleEraBackground(
   const era = getEra(eraIndex);
   const p = era.palette;
 
-  // 1. Rich Multi-Stop Sky Gradient
-  const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y);
-  skyGrad.addColorStop(0, p.skyTop);
-  skyGrad.addColorStop(0.55, p.skyMid);
-  skyGrad.addColorStop(1, p.skyBottom);
-  ctx.fillStyle = skyGrad;
-  ctx.fillRect(0, 0, viewportW, GROUND_Y + 4);
+  // 1. Stepped 16-Bit Pixel Sky with Dithered Horizon Bands
+  drawPixelSky(ctx, p.skyTop, p.skyMid, p.skyBottom, viewportW);
 
-  // Celestial body, clouds & sky atmosphere
+  // 2. Pixel Celestial Body, Dithered Halo, Pixel Clouds & Sky Details
   drawSkyAtmosphere(ctx, eraIndex, cameraX, viewportW, time, p.sunColor);
 
-  // 2. Far Horizon Silhouettes (parallax 0.16)
+  // 3. Pixel-Stepped Far Horizon Landmarks (parallax 0.16)
   drawFarLayer(ctx, eraIndex, cameraX, viewportW, time, p.farHill, p.skyBottom);
 
-  // Atmospheric distance mist separating Far from Mid layer
-  const farMist = ctx.createLinearGradient(0, GROUND_Y - 120, 0, GROUND_Y);
-  farMist.addColorStop(0, p.skyBottom + '00');
-  farMist.addColorStop(1, p.skyBottom + '42');
-  ctx.fillStyle = farMist;
-  ctx.fillRect(0, GROUND_Y - 120, viewportW, 120);
+  // 4. Stepped Midground Hills + Pixel-Art Era Landmarks (parallax 0.38)
+  drawMidLayer(ctx, eraIndex, cameraX, viewportW, time, p.midHill);
 
-  // 3. Midground Scenic Landmarks (parallax 0.38)
-  drawMidLayer(ctx, eraIndex, cameraX, viewportW, time, p.midHill, p.nearProp, p.accent);
+  // 5. Seamless 64x64px Pixel-Art Ground Tiles & Road (parallax 1.0)
+  drawPixelGround(ctx, eraIndex, cameraX, viewportW, p.groundTop, p.groundMid, p.groundDark, p.accent);
+}
 
-  // 4. High-Detail Era Ground & Battlefield Road (parallax 1.0)
-  drawGround(ctx, eraIndex, cameraX, viewportW, time, p.groundTop, p.groundMid, p.groundDark, p.accent);
+function drawPixelSky(
+  ctx: CanvasRenderingContext2D,
+  skyTop: string,
+  skyMid: string,
+  skyBottom: string,
+  viewportW: number,
+): void {
+  // 8 crisp stepped sky color bands with 16-bit checkerboard dithering seams
+  const stops = [
+    skyTop,
+    mixHex(skyTop, skyMid, 0.35),
+    mixHex(skyTop, skyMid, 0.72),
+    skyMid,
+    mixHex(skyMid, skyBottom, 0.35),
+    mixHex(skyMid, skyBottom, 0.68),
+    skyBottom,
+  ];
+  const bandH = snap(Math.ceil((GROUND_Y + 6) / stops.length));
+
+  for (let i = 0; i < stops.length; i++) {
+    const y0 = i * bandH;
+    const h = i === stops.length - 1 ? GROUND_Y + 6 - y0 : bandH;
+    ctx.fillStyle = stops[i];
+    ctx.fillRect(0, y0, viewportW + 4, h);
+    if (i > 0) {
+      drawDitherStrip(ctx, y0 - PX, viewportW, stops[i - 1], stops[i]);
+    }
+  }
 }
 
 function drawSkyAtmosphere(
@@ -191,110 +200,114 @@ function drawSkyAtmosphere(
   time: number,
   sunColor: string,
 ): void {
-  const sunX = viewportW * 0.62 - cameraX * 0.05;
-  const sunY = eraIndex === 6 ? 95 : 108;
+  const sunX = snap(viewportW * 0.62 - cameraX * 0.05);
+  const sunY = eraIndex === 6 ? 94 : 106;
 
   ctx.save();
-  // Warm/electric god-ray glow halo
-  const halo = ctx.createRadialGradient(sunX, sunY, 10, sunX, sunY, 130);
-  halo.addColorStop(0, sunColor);
-  halo.addColorStop(0.28, sunColor + '70');
-  halo.addColorStop(0.65, sunColor + '1c');
-  halo.addColorStop(1, sunColor + '00');
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, 130, 0, Math.PI * 2);
-  ctx.fill();
-
-  ctx.fillStyle = sunColor;
-  ctx.beginPath();
-  ctx.arc(sunX, sunY, eraIndex === 6 ? 28 : 24, 0, Math.PI * 2);
-  ctx.fill();
+  // Stepped pixel sun halo rings
+  ctx.globalAlpha = 0.14;
+  drawPixelDisc(ctx, sunX, sunY, 72, sunColor);
+  ctx.globalAlpha = 0.24;
+  drawPixelDisc(ctx, sunX, sunY, 44, sunColor);
+  ctx.globalAlpha = 1;
+  drawPixelDisc(ctx, sunX, sunY, eraIndex === 6 ? 26 : 22, sunColor);
+  // Crisp highlight crescent inside pixel sun
+  drawPixelDisc(ctx, sunX - 6, sunY - 6, 8, '#ffffff');
 
   if (eraIndex === 0) {
-    // Gliding pterodactyl flock
-    ctx.strokeStyle = 'rgba(42, 20, 14, 0.62)';
-    ctx.lineWidth = 2.2;
+    // Gliding pixel pterodactyl silhouettes
+    ctx.fillStyle = 'rgba(42, 20, 14, 0.72)';
     for (let i = 0; i < 4; i++) {
-      const bx = ((i * 290 + time * 24 - cameraX * 0.12) % (viewportW + 180) + (viewportW + 180)) % (viewportW + 180) - 90;
-      const by = 68 + (i % 3) * 26 + Math.sin(time * 2.5 + i) * 5;
-      const flap = Math.sin(time * 5.2 + i * 2) * 5.5;
-      ctx.beginPath();
-      ctx.moveTo(bx - 13, by + flap);
-      ctx.quadraticCurveTo(bx - 4, by - 6, bx, by);
-      ctx.quadraticCurveTo(bx + 4, by - 6, bx + 13, by + flap);
-      ctx.stroke();
+      const bx = snap(
+        ((i * 290 + time * 24 - cameraX * 0.12) % (viewportW + 180) + (viewportW + 180)) %
+          (viewportW + 180) -
+          90,
+      );
+      const by = snap(66 + (i % 3) * 26 + Math.sin(time * 2.4 + i) * 6);
+      const flap = Math.sin(time * 5.2 + i * 2) > 0 ? -4 : 4;
+      ctx.fillRect(bx - 12, by + flap, 8, 4);
+      ctx.fillRect(bx - 6, by, 12, 4);
+      ctx.fillRect(bx + 4, by + flap, 8, 4);
+      ctx.fillRect(bx + 2, by - 4, 4, 4);
     }
   } else if (eraIndex === 4) {
-    // Sweeping wartime anti-aircraft searchlights + distant zeppelin
+    // Stepped wartime anti-aircraft searchlights + pixel zeppelin
     ctx.fillStyle = 'rgba(245, 236, 198, 0.08)';
     for (let i = 0; i < 4; i++) {
-      const lx = ((i * 290 - cameraX * 0.18) % (viewportW + 300) + (viewportW + 300)) % (viewportW + 300) - 100;
-      const sway = Math.sin(time * 0.75 + i * 2.1) * 85;
-      ctx.beginPath();
-      ctx.moveTo(lx, GROUND_Y - 20);
-      ctx.lineTo(lx - 28 + sway, 0);
-      ctx.lineTo(lx + 28 + sway, 0);
-      ctx.closePath();
-      ctx.fill();
+      const lx = snap(
+        ((i * 290 - cameraX * 0.18) % (viewportW + 300) + (viewportW + 300)) % (viewportW + 300) -
+          100,
+      );
+      const sway = Math.sin(time * 0.75 + i * 2.1) * 78;
+      for (let sy = 0; sy < GROUND_Y - 20; sy += 12) {
+        const t = 1 - sy / (GROUND_Y - 20);
+        const cx = snap(lx + sway * t);
+        const hw = snap(6 + t * 24);
+        ctx.fillRect(cx - hw, sy, hw * 2, 12);
+      }
     }
-    const zx = ((time * 9 + 240 - cameraX * 0.09) % (viewportW + 260) + (viewportW + 260)) % (viewportW + 260) - 130;
-    ctx.fillStyle = 'rgba(28, 30, 32, 0.56)';
-    ctx.beginPath();
-    ctx.ellipse(zx, 74, 36, 11, 0, 0, Math.PI * 2);
-    ctx.fill();
-    ctx.fillRect(zx - 11, 84, 22, 4.5);
+    const zx = snap(
+      ((time * 9 + 240 - cameraX * 0.09) % (viewportW + 260) + (viewportW + 260)) %
+        (viewportW + 260) -
+        130,
+    );
+    ctx.fillStyle = 'rgba(28, 30, 34, 0.72)';
+    ctx.fillRect(zx - 30, 68, 60, 14);
+    ctx.fillRect(zx - 22, 64, 44, 22);
+    ctx.fillRect(zx - 10, 86, 20, 6);
+    ctx.fillRect(zx - 34, 64, 8, 22);
   } else if (eraIndex === 5) {
-    ctx.strokeStyle = 'rgba(226, 241, 255, 0.24)';
-    ctx.lineWidth = 2;
-    ctx.beginPath();
-    ctx.moveTo(-20, 96);
-    ctx.lineTo(viewportW + 20, 56);
-    ctx.moveTo(-20, 128);
-    ctx.lineTo(viewportW + 20, 82);
-    ctx.stroke();
-  } else if (eraIndex === 6) {
-    // Deep starfield, nebula streaks, and dual planetary orbital rings
-    ctx.fillStyle = 'rgba(186, 245, 255, 0.72)';
-    for (let i = 0; i < 48; i++) {
-      const sx = ((i * 97.3 - cameraX * 0.04) % viewportW + viewportW) % viewportW;
-      const sy = (i * 37.7) % (GROUND_Y * 0.58);
-      const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(time * 1.9 + i));
-      ctx.globalAlpha = twinkle * 0.8;
-      ctx.fillRect(sx, sy, i % 4 === 0 ? 2.4 : 1.4, i % 4 === 0 ? 2.4 : 1.4);
+    // Stepped jet contrails across modern dusk sky
+    ctx.fillStyle = 'rgba(226, 241, 255, 0.24)';
+    for (let x = 0; x < viewportW; x += 16) {
+      const y1 = snap(96 - (x / viewportW) * 40);
+      const y2 = snap(128 - (x / viewportW) * 44);
+      ctx.fillRect(x, y1, 16, 2);
+      ctx.fillRect(x, y2, 16, 2);
     }
-    ctx.globalAlpha = 0.42;
-    ctx.strokeStyle = '#38bdf8';
-    ctx.lineWidth = 2.4;
-    ctx.beginPath();
-    ctx.ellipse(sunX, sunY, 68, 16, -0.22, 0, Math.PI * 2);
-    ctx.stroke();
-    ctx.strokeStyle = 'rgba(165, 243, 252, 0.35)';
-    ctx.lineWidth = 1.2;
-    ctx.beginPath();
-    ctx.ellipse(sunX, sunY, 82, 20, -0.22, 0, Math.PI * 2);
-    ctx.stroke();
+  } else if (eraIndex === 6) {
+    // Crisp 2px pixel starfield & pixel orbital ring around sci-fi planet
+    ctx.fillStyle = '#baf5ff';
+    for (let i = 0; i < 52; i++) {
+      const sx = snap(((i * 97.3 - cameraX * 0.04) % viewportW + viewportW) % viewportW);
+      const sy = snap((i * 37.7) % (GROUND_Y * 0.58));
+      const twinkle = 0.35 + 0.65 * Math.abs(Math.sin(time * 2.1 + i));
+      ctx.globalAlpha = twinkle * 0.85;
+      const sz = i % 5 === 0 ? 4 : 2;
+      ctx.fillRect(sx, sy, sz, sz);
+    }
+    // Stepped pixel orbital planet ring
+    ctx.globalAlpha = 0.52;
+    ctx.fillStyle = '#38bdf8';
+    for (let deg = 0; deg < 360; deg += 9) {
+      const rad = (deg * Math.PI) / 180;
+      const rx = Math.cos(rad) * 66;
+      const ry = Math.sin(rad) * 14;
+      const rotX = rx * 0.97 - ry * -0.22;
+      const rotY = rx * -0.22 + ry * 0.97;
+      ctx.fillRect(snap(sunX + rotX), snap(sunY + rotY), 4, 2);
+    }
     ctx.globalAlpha = 1;
   }
 
-  // Clean fluffy drifting clouds for eras 1..5
+  // Classic 16-bit blocky pixel clouds for eras 1..5
   if (eraIndex >= 1 && eraIndex <= 5) {
-    ctx.fillStyle = eraIndex === 4 ? 'rgba(62, 58, 52, 0.38)' : 'rgba(255, 250, 240, 0.18)';
+    const cloudMain = eraIndex === 4 ? 'rgba(66, 62, 56, 0.45)' : 'rgba(255, 250, 240, 0.24)';
+    const cloudHi = eraIndex === 4 ? 'rgba(98, 92, 82, 0.35)' : 'rgba(255, 255, 255, 0.22)';
     for (let i = 0; i < 5; i++) {
-      const cx =
+      const cx = snap(
         ((i * 270 + time * (6 + i * 1.2) - cameraX * 0.08) % (viewportW + 240) + (viewportW + 240)) %
           (viewportW + 240) -
-        120;
-      const cy = 62 + (i % 3) * 34;
-      ctx.beginPath();
-      ctx.ellipse(cx, cy, 52, 14, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx + 28, cy - 6, 36, 12, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.beginPath();
-      ctx.ellipse(cx - 24, cy + 2, 32, 10, 0, 0, Math.PI * 2);
-      ctx.fill();
+          120,
+      );
+      const cy = snap(58 + (i % 3) * 32);
+      ctx.fillStyle = cloudMain;
+      ctx.fillRect(cx - 44, cy, 88, 12);
+      ctx.fillRect(cx - 32, cy - 8, 64, 10);
+      ctx.fillRect(cx - 12, cy - 14, 34, 8);
+      ctx.fillStyle = cloudHi;
+      ctx.fillRect(cx - 28, cy - 8, 52, 4);
+      ctx.fillRect(cx - 10, cy - 14, 26, 4);
     }
   }
 
@@ -311,222 +324,186 @@ function drawFarLayer(
   skyBottom: string,
 ): void {
   const offset = -(cameraX * 0.16);
+  const colStep = 8; // crisp 4-pixel-block horizon stepping
   ctx.save();
   ctx.fillStyle = color;
 
   if (eraIndex === 0) {
-    // Jagged volcanic ridges with sunlit rim highlights
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    for (let wx = -100; wx <= viewportW + 200; wx += 80) {
-      const worldSample = wx - offset;
-      const ridge =
-        Math.sin(worldSample * 0.0055) * 44 +
-        Math.cos(worldSample * 0.013) * 24 +
-        78;
-      ctx.lineTo(wx, GROUND_Y - ridge);
+    // Pixel-stepped volcanic ridges
+    for (let wx = -colStep; wx <= viewportW + colStep; wx += colStep) {
+      const ws = wx - offset;
+      const ridge = snap(Math.sin(ws * 0.0055) * 42 + Math.cos(ws * 0.013) * 22 + 76);
+      ctx.fillRect(wx, GROUND_Y - ridge, colStep, ridge);
     }
-    ctx.lineTo(viewportW + 200, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
 
-    // Twin dramatic smoking volcanoes with glowing lava fissures
+    // Twin pixel-stepped smoking volcanoes with glowing lava fissures
     for (const vxBase of [340, 1040]) {
-      const vx = vxBase + offset;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(vx - 118, GROUND_Y - 18);
-      ctx.lineTo(vx - 24, GROUND_Y - 172);
-      ctx.lineTo(vx + 24, GROUND_Y - 172);
-      ctx.lineTo(vx + 122, GROUND_Y - 18);
-      ctx.closePath();
-      ctx.fill();
+      const vx = snap(vxBase + offset);
+      for (let row = 0; row < 156; row += 6) {
+        const half = snap(20 + row * 0.66);
+        const y = GROUND_Y - 172 + row;
+        ctx.fillStyle = color;
+        ctx.fillRect(vx - half, y, half * 2, 6);
+        // Sunlit right volcanic slope facet
+        ctx.fillStyle = 'rgba(255, 168, 92, 0.18)';
+        ctx.fillRect(vx + 4, y, Math.max(4, half - 4), 6);
+      }
+      // Glowing pixel lava crater & fissure
+      ctx.fillStyle = '#fb923c';
+      ctx.fillRect(vx - 18, GROUND_Y - 174, 36, 6);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(vx - 10, GROUND_Y - 174, 20, 4);
+      ctx.fillStyle = '#f97316';
+      ctx.fillRect(vx - 8, GROUND_Y - 168, 4, 14);
+      ctx.fillRect(vx - 12, GROUND_Y - 154, 4, 16);
+      ctx.fillRect(vx - 18, GROUND_Y - 138, 4, 14);
 
-      // Lit right ridge facet
-      ctx.fillStyle = 'rgba(255, 168, 92, 0.16)';
-      ctx.beginPath();
-      ctx.moveTo(vx + 2, GROUND_Y - 172);
-      ctx.lineTo(vx + 24, GROUND_Y - 172);
-      ctx.lineTo(vx + 122, GROUND_Y - 18);
-      ctx.lineTo(vx + 36, GROUND_Y - 18);
-      ctx.closePath();
-      ctx.fill();
-
-      // Crater glow + lava trickle
-      ctx.fillStyle = 'rgba(255, 118, 42, 0.72)';
-      ctx.beginPath();
-      ctx.ellipse(vx, GROUND_Y - 172, 24, 6.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = 'rgba(251, 146, 60, 0.55)';
-      ctx.lineWidth = 3;
-      ctx.beginPath();
-      ctx.moveTo(vx - 6, GROUND_Y - 170);
-      ctx.quadraticCurveTo(vx - 14, GROUND_Y - 142, vx - 28, GROUND_Y - 115);
-      ctx.stroke();
-
-      // Rising volcanic ash plumes
-      ctx.fillStyle = 'rgba(72, 46, 40, 0.4)';
+      // Rising pixel ash puffs
+      ctx.fillStyle = 'rgba(68, 46, 40, 0.5)';
       for (let s = 0; s < 5; s++) {
-        const sy = GROUND_Y - 184 - s * 17 - ((time * 12 + s * 10) % 24);
-        const sx = vx + Math.sin(time + s) * 10 + s * 8;
-        ctx.beginPath();
-        ctx.arc(sx, sy, 14 + s * 5.5, 0, Math.PI * 2);
-        ctx.fill();
+        const sy = snap(GROUND_Y - 188 - s * 18 - ((time * 12 + s * 10) % 24));
+        const sx = snap(vx + Math.sin(time + s) * 10 + s * 8);
+        const sz = snap(14 + s * 6);
+        ctx.fillRect(sx - sz / 2, sy - sz / 2, sz, sz);
       }
     }
   } else if (eraIndex === 1) {
-    // Golden desert dunes + monumental pyramids + Roman aqueduct silhouettes
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    for (let x = 0; x <= viewportW + 80; x += 60) {
+    // Pixel-stepped desert dunes + monumental stepped pixel pyramids
+    for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
-      ctx.lineTo(x, GROUND_Y - (48 + Math.sin(ws * 0.006) * 22));
+      const h = snap(48 + Math.sin(ws * 0.006) * 20);
+      ctx.fillRect(x, GROUND_Y - h, colStep, h);
     }
-    ctx.lineTo(viewportW + 80, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
 
     for (const [pxBase, ph] of [
-      [250, 134],
+      [250, 132],
       [420, 96],
-      [980, 122],
+      [980, 120],
     ]) {
-      const px = pxBase + offset;
-      ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(px - ph, GROUND_Y - 30);
-      ctx.lineTo(px, GROUND_Y - 30 - ph);
-      ctx.lineTo(px + ph, GROUND_Y - 30);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillStyle = 'rgba(0,0,0,0.22)';
-      ctx.beginPath();
-      ctx.moveTo(px, GROUND_Y - 30 - ph);
-      ctx.lineTo(px + ph, GROUND_Y - 30);
-      ctx.lineTo(px + ph * 0.16, GROUND_Y - 30);
-      ctx.closePath();
-      ctx.fill();
+      const px = snap(pxBase + offset);
+      for (let row = 0; row < ph; row += 6) {
+        const half = snap(row + 4);
+        const y = GROUND_Y - 30 - ph + row;
+        ctx.fillStyle = color;
+        ctx.fillRect(px - half, y, half * 2, 6);
+        // Shaded right face of pyramid
+        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillRect(px + Math.round(half * 0.14), y, Math.max(4, Math.round(half * 0.86)), 6);
+      }
     }
   } else if (eraIndex === 2) {
-    // Dramatic alpine peaks with sunlit snow caps + distant castle keep silhouette
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    for (let x = -40; x <= viewportW + 100; x += 65) {
+    // Jagged pixel-stepped alpine peaks + distant gothic hill fortress
+    for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
-      const h = 76 + Math.abs(Math.sin(ws * 0.0045)) * 84 + Math.cos(ws * 0.011) * 18;
-      ctx.lineTo(x, GROUND_Y - h);
-    }
-    ctx.lineTo(viewportW + 100, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
-
-    // Distant gothic hill fortress silhouette
-    const cx = 620 + offset;
-    ctx.fillStyle = '#303b4a';
-    ctx.fillRect(cx - 26, GROUND_Y - 148, 52, 48);
-    ctx.fillRect(cx - 32, GROUND_Y - 166, 14, 66);
-    ctx.fillRect(cx + 18, GROUND_Y - 162, 14, 62);
-    ctx.beginPath();
-    ctx.moveTo(cx - 34, GROUND_Y - 166);
-    ctx.lineTo(cx - 25, GROUND_Y - 186);
-    ctx.lineTo(cx - 16, GROUND_Y - 166);
-    ctx.fill();
-  } else if (eraIndex === 3) {
-    // Sea horizon with shimmering reflections & sailing frigates
-    ctx.fillStyle = 'rgba(38, 62, 84, 0.72)';
-    ctx.fillRect(0, GROUND_Y - 82, viewportW, 82);
-    ctx.fillStyle = color;
-    for (const sxBase of [280, 690, 1120]) {
-      const sx = sxBase + offset;
-      const bob = Math.sin(time * 1.4 + sxBase) * 2;
-      ctx.beginPath();
-      ctx.moveTo(sx - 36, GROUND_Y - 78 + bob);
-      ctx.lineTo(sx + 36, GROUND_Y - 78 + bob);
-      ctx.lineTo(sx + 25, GROUND_Y - 62 + bob);
-      ctx.lineTo(sx - 25, GROUND_Y - 62 + bob);
-      ctx.closePath();
-      ctx.fill();
-      ctx.fillRect(sx - 12, GROUND_Y - 130 + bob, 2.5, 52);
-      ctx.fillRect(sx + 9, GROUND_Y - 120 + bob, 2.5, 42);
-      ctx.fillStyle = 'rgba(242, 232, 208, 0.5)';
-      ctx.beginPath();
-      ctx.moveTo(sx - 10, GROUND_Y - 126 + bob);
-      ctx.quadraticCurveTo(sx + 6, GROUND_Y - 106 + bob, sx - 10, GROUND_Y - 86 + bob);
-      ctx.fill();
+      const h = snap(74 + Math.abs(Math.sin(ws * 0.0045)) * 84 + Math.cos(ws * 0.011) * 16);
       ctx.fillStyle = color;
+      ctx.fillRect(x, GROUND_Y - h, colStep, h);
+      if (h > 134) {
+        // Crisp snowcap pixel rim
+        ctx.fillStyle = 'rgba(241, 245, 249, 0.32)';
+        ctx.fillRect(x, GROUND_Y - h, colStep, 10);
+      }
+    }
+    const cx = snap(620 + offset);
+    ctx.fillStyle = '#2d3748';
+    ctx.fillRect(cx - 28, GROUND_Y - 148, 56, 52);
+    ctx.fillRect(cx - 34, GROUND_Y - 168, 16, 72);
+    ctx.fillRect(cx + 18, GROUND_Y - 164, 16, 68);
+    ctx.fillRect(cx - 30, GROUND_Y - 178, 8, 10);
+    ctx.fillRect(cx - 28, GROUND_Y - 186, 4, 8);
+  } else if (eraIndex === 3) {
+    // Pixel shimmering ocean horizon + pixel sailing frigates
+    ctx.fillStyle = 'rgba(38, 62, 84, 0.78)';
+    ctx.fillRect(0, GROUND_Y - 82, viewportW, 82);
+    // Shimmering pixel water highlights
+    ctx.fillStyle = 'rgba(255, 232, 185, 0.25)';
+    for (let wy = GROUND_Y - 76; wy < GROUND_Y - 14; wy += 12) {
+      for (let wx = 0; wx < viewportW; wx += 48) {
+        const shift = snap(((wx + wy * 3 + Math.floor(time * 8) * 4) % 24));
+        ctx.fillRect(wx + shift, wy, 14, 2);
+      }
+    }
+    for (const sxBase of [280, 690, 1120]) {
+      const sx = snap(sxBase + offset);
+      const bob = Math.round(Math.sin(time * 1.4 + sxBase)) * 2;
+      ctx.fillStyle = color;
+      ctx.fillRect(sx - 34, GROUND_Y - 78 + bob, 68, 10);
+      ctx.fillRect(sx - 24, GROUND_Y - 68 + bob, 48, 8);
+      ctx.fillRect(sx - 12, GROUND_Y - 130 + bob, 4, 52);
+      ctx.fillRect(sx + 8, GROUND_Y - 120 + bob, 4, 42);
+      ctx.fillStyle = 'rgba(242, 232, 208, 0.62)';
+      ctx.fillRect(sx - 8, GROUND_Y - 124 + bob, 14, 34);
+      ctx.fillRect(sx + 12, GROUND_Y - 114 + bob, 10, 26);
     }
   } else if (eraIndex === 4) {
-    // Shell-blasted hills & ruined factories with glowing ember horizon
-    ctx.beginPath();
-    ctx.moveTo(0, GROUND_Y);
-    for (let x = 0; x <= viewportW + 80; x += 65) {
+    // Pixel-stepped shell-blasted hills & ruined WW factories with smokestacks
+    for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
-      ctx.lineTo(x, GROUND_Y - (58 + Math.sin(ws * 0.008) * 26));
+      const h = snap(56 + Math.sin(ws * 0.008) * 24);
+      ctx.fillRect(x, GROUND_Y - h, colStep, h);
     }
-    ctx.lineTo(viewportW + 80, GROUND_Y);
-    ctx.closePath();
-    ctx.fill();
-
     for (const fxBase of [240, 620, 960]) {
-      const fx = fxBase + offset;
-      ctx.fillRect(fx, GROUND_Y - 128, 48, 72);
-      ctx.fillRect(fx + 8, GROUND_Y - 170, 9, 46);
-      ctx.fillRect(fx + 26, GROUND_Y - 156, 8, 36);
+      const fx = snap(fxBase + offset);
+      ctx.fillRect(fx, GROUND_Y - 128, 52, 74);
+      ctx.fillRect(fx + 8, GROUND_Y - 170, 10, 46);
+      ctx.fillRect(fx + 28, GROUND_Y - 156, 8, 36);
+      // Warm glowing factory furnace window pixels
+      ctx.fillStyle = 'rgba(251, 146, 60, 0.42)';
+      ctx.fillRect(fx + 10, GROUND_Y - 110, 8, 8);
+      ctx.fillRect(fx + 26, GROUND_Y - 110, 8, 8);
+      ctx.fillStyle = color;
     }
   } else if (eraIndex === 5) {
-    // Layered modern metropolitan skyline with lit office grids & red tower beacons
-    for (let i = 0; i < 22; i++) {
-      const bx = i * 68 + offset;
-      const bw = 38 + ((i * 19) % 26);
-      const bh = 80 + ((i * 47) % 112);
+    // Crisp pixel metropolitan skyline with lit office pixel grids & red tower beacons
+    for (let i = 0; i < 24; i++) {
+      const bx = snap(i * 68 + offset);
+      const bw = snap(38 + ((i * 19) % 26));
+      const bh = snap(82 + ((i * 47) % 112));
       ctx.fillStyle = color;
       ctx.fillRect(bx, GROUND_Y - bh, bw, bh);
-      ctx.fillStyle = 'rgba(255,255,255,0.06)';
-      ctx.fillRect(bx, GROUND_Y - bh, 5, bh);
-      ctx.fillStyle = 'rgba(255, 232, 165, 0.36)';
+      ctx.fillStyle = 'rgba(255,255,255,0.07)';
+      ctx.fillRect(bx, GROUND_Y - bh, 6, bh);
+      ctx.fillStyle = 'rgba(255, 232, 165, 0.44)';
       for (let wy = GROUND_Y - bh + 10; wy < GROUND_Y - 40; wy += 12) {
-        for (let wx = bx + 5; wx < bx + bw - 8; wx += 9) {
+        for (let wx = bx + 6; wx < bx + bw - 8; wx += 8) {
           if (((wx + wy + i) & 3) !== 0) {
-            ctx.fillRect(wx, wy, 4, 5);
+            ctx.fillRect(wx, wy, 4, 6);
           }
         }
       }
-      if (bh > 155) {
+      if (bh > 152) {
         ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.arc(bx + bw * 0.5, GROUND_Y - bh - 3, 2, 0, Math.PI * 2);
-        ctx.fill();
+        ctx.fillRect(bx + snap(bw * 0.5) - 2, GROUND_Y - bh - 6, 4, 4);
       }
     }
   } else {
-    // Era 7: Layered cyberpunk megastructure arcologies + holographic sky bridges
-    for (let i = 0; i < 16; i++) {
-      const bx = i * 95 + offset;
-      const bw = 48 + ((i * 23) % 34);
-      const bh = 100 + ((i * 53) % 132);
+    // Era 7: Crisp cyberpunk megastructure pixel arcologies + cyan neon conduits
+    for (let i = 0; i < 18; i++) {
+      const bx = snap(i * 96 + offset);
+      const bw = snap(48 + ((i * 23) % 34));
+      const bh = snap(102 + ((i * 53) % 130));
       ctx.fillStyle = color;
-      ctx.beginPath();
-      ctx.moveTo(bx, GROUND_Y);
-      ctx.lineTo(bx + 8, GROUND_Y - bh);
-      ctx.lineTo(bx + bw - 8, GROUND_Y - bh - 12);
-      ctx.lineTo(bx + bw, GROUND_Y);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(bx, GROUND_Y - bh, bw, bh);
+      ctx.fillRect(bx + 8, GROUND_Y - bh - 12, Math.max(12, bw - 16), 12);
 
-      // Illuminated bevel edge & vertical cyan conduit
-      ctx.fillStyle = 'rgba(56, 189, 248, 0.14)';
-      ctx.fillRect(bx + 9, GROUND_Y - bh + 4, 6, bh - 26);
-      ctx.fillStyle = 'rgba(34, 211, 238, 0.52)';
-      ctx.fillRect(bx + bw * 0.48, GROUND_Y - bh + 6, 3, bh - 36);
-      // Horizontal floor light bands
-      ctx.fillStyle = 'rgba(125, 211, 252, 0.25)';
-      for (let fy = GROUND_Y - bh + 22; fy < GROUND_Y - 50; fy += 24) {
-        ctx.fillRect(bx + 12, fy, bw - 24, 2);
+      // Lit bevel strip & vertical neon cyan energy spine
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
+      ctx.fillRect(bx + 4, GROUND_Y - bh + 4, 6, bh - 24);
+      ctx.fillStyle = 'rgba(34, 211, 238, 0.6)';
+      ctx.fillRect(bx + snap(bw * 0.5) - 2, GROUND_Y - bh, 4, bh - 34);
+      ctx.fillStyle = 'rgba(125, 211, 252, 0.32)';
+      for (let fy = GROUND_Y - bh + 20; fy < GROUND_Y - 48; fy += 22) {
+        ctx.fillRect(bx + 10, fy, bw - 20, 2);
       }
     }
   }
 
-  void skyBottom;
+  // Subtle stepped pixel atmospheric horizon mist strip
+  ctx.fillStyle = skyBottom;
+  ctx.globalAlpha = 0.16;
+  ctx.fillRect(0, GROUND_Y - 64, viewportW, 64);
+  ctx.globalAlpha = 0.22;
+  ctx.fillRect(0, GROUND_Y - 28, viewportW, 28);
   ctx.restore();
 }
 
@@ -537,315 +514,89 @@ function drawMidLayer(
   viewportW: number,
   time: number,
   midColor: string,
-  propColor: string,
-  accent: string,
 ): void {
   const offset = -(cameraX * 0.38);
+  const colStep = 8;
+
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
 
-  // Rolling midground hill ridge with soft rim highlight
+  // Rolling pixel-stepped midground hill ridge
   ctx.fillStyle = midColor;
-  ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y);
-  for (let x = -40; x <= viewportW + 80; x += 48) {
+  for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
     const ws = x - offset;
-    const h = 36 + Math.sin(ws * 0.0085) * 20 + Math.cos(ws * 0.019) * 8;
-    ctx.lineTo(x, GROUND_Y - h);
+    const h = snap(36 + Math.sin(ws * 0.0085) * 18 + Math.cos(ws * 0.019) * 8);
+    ctx.fillRect(x, GROUND_Y - h, colStep, h);
   }
-  ctx.lineTo(viewportW + 80, GROUND_Y);
-  ctx.closePath();
-  ctx.fill();
 
-  ctx.fillStyle = propColor;
-  const spacing = 185;
+  // Blit crisp pixel-art era midground landmarks from sprites_sheet.png!
+  const spacing = 190;
   const startIdx = Math.floor((-offset - 120) / spacing);
   const endIdx = Math.ceil((viewportW - offset + 120) / spacing);
+  const propKey = `prop/mid_${Math.max(0, Math.min(6, eraIndex))}`;
 
   for (let i = startIdx; i <= endIdx; i++) {
-    const px = i * spacing + offset;
-    const py = GROUND_Y - 16;
+    const px = snap(i * spacing + offset);
+    const py = GROUND_Y - 12;
+    const sway = eraIndex === 0 || eraIndex === 2 ? Math.round(Math.sin(time * 2.0 + i)) * 2 : 0;
 
-    if (eraIndex === 0) {
-      // Prehistoric palm trees + mossy monolith boulders
-      ctx.fillStyle = '#382a1c';
-      ctx.fillRect(px - 3.5, py - 52, 7, 54);
-      ctx.fillStyle = propColor;
-      for (let f = -2; f <= 2; f++) {
-        const sway = Math.sin(time * 1.8 + i + f) * 1.5;
-        ctx.beginPath();
-        ctx.ellipse(px + f * 13 + sway, py - 52 + Math.abs(f) * 4.5, 20, 5, f * 0.34, 0, Math.PI * 2);
-        ctx.fill();
-      }
-      ctx.fillStyle = '#473c32';
-      ctx.beginPath();
-      ctx.ellipse(px + 42, py + 4, 22, 12, 0, Math.PI, 0);
-      ctx.fill();
-    } else if (eraIndex === 1) {
-      // Cypress trees & classical marble columns
-      if (i % 2 === 0) {
-        ctx.fillStyle = propColor;
-        ctx.beginPath();
-        ctx.ellipse(px, py - 32, 11, 36, 0, 0, Math.PI * 2);
-        ctx.fill();
-      } else {
-        ctx.fillStyle = '#b49a74';
-        ctx.fillRect(px - 7, py - 42, 14, 44);
-        ctx.fillStyle = '#d4be98';
-        ctx.fillRect(px - 11, py - 46, 22, 5.5);
-        ctx.fillRect(px - 5, py - 40, 3, 38);
-      }
-    } else if (eraIndex === 2) {
-      // Multi-tier conifer trees & fluttering medieval war flags
-      ctx.fillStyle = propColor;
-      ctx.beginPath();
-      ctx.moveTo(px, py - 66);
-      ctx.lineTo(px - 17, py - 28);
-      ctx.lineTo(px + 17, py - 28);
-      ctx.closePath();
-      ctx.fill();
-      ctx.beginPath();
-      ctx.moveTo(px, py - 46);
-      ctx.lineTo(px - 22, py + 2);
-      ctx.lineTo(px + 22, py + 2);
-      ctx.closePath();
-      ctx.fill();
-
-      // Medieval fluttering pennant banner
-      const flagX = px + 44;
-      ctx.fillStyle = '#3f3023';
-      ctx.fillRect(flagX, py - 52, 3.2, 54);
-      const wave = Math.sin(time * 4.5 + i) * 3.5;
-      ctx.fillStyle = i % 2 === 0 ? '#2563eb' : accent;
-      ctx.beginPath();
-      ctx.moveTo(flagX + 3, py - 50);
-      ctx.lineTo(flagX + 26, py - 44 + wave);
-      ctx.lineTo(flagX + 20, py - 38 + wave * 0.6);
-      ctx.lineTo(flagX + 26, py - 32 + wave);
-      ctx.lineTo(flagX + 3, py - 34);
-      ctx.closePath();
-      ctx.fill();
-    } else if (eraIndex === 3) {
-      // Brick bastion parapet + colonial trees
-      ctx.fillStyle = '#4f3a2e';
-      ctx.fillRect(px - 28, py - 16, 56, 18);
-      ctx.fillStyle = '#735b4c';
-      ctx.fillRect(px - 28, py - 16, 56, 3.5);
-      ctx.fillStyle = propColor;
-      ctx.beginPath();
-      ctx.arc(px + 44, py - 38, 21, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.fillRect(px + 41, py - 22, 6, 24);
-    } else if (eraIndex === 4) {
-      // Wartime trench wooden stakes, barbed wire coils & broken trees
-      ctx.strokeStyle = '#1f1d18';
-      ctx.lineWidth = 3.2;
-      ctx.beginPath();
-      ctx.moveTo(px - 12, py + 2);
-      ctx.lineTo(px + 12, py - 26);
-      ctx.moveTo(px + 12, py + 2);
-      ctx.lineTo(px - 12, py - 26);
-      ctx.stroke();
-      ctx.strokeStyle = '#474c45';
-      ctx.lineWidth = 1.4;
-      for (let w = -18; w <= 18; w += 9) {
-        ctx.beginPath();
-        ctx.arc(px + w, py - 10, 6.5, 0, Math.PI * 2);
-        ctx.stroke();
-      }
-    } else if (eraIndex === 5) {
-      // Highway overhead lights & comms dish
-      ctx.fillStyle = propColor;
-      ctx.fillRect(px - 2.5, py - 58, 5, 60);
-      ctx.fillRect(px - 2.5, py - 58, 18, 3.5);
-      ctx.fillStyle = 'rgba(255, 242, 188, 0.72)';
-      ctx.fillRect(px + 10, py - 54.5, 6, 3.2);
-    } else {
-      // Glowing futuristic energy pylons with hovering holo ring
-      ctx.fillStyle = propColor;
-      ctx.beginPath();
-      ctx.moveTo(px - 12, py + 4);
-      ctx.lineTo(px - 5, py - 64);
-      ctx.lineTo(px + 5, py - 64);
-      ctx.lineTo(px + 12, py + 4);
-      ctx.closePath();
-      ctx.fill();
-      const pulse = 0.55 + Math.sin(time * 3.4 + i) * 0.25;
-      ctx.fillStyle = `rgba(34, 211, 238, ${pulse.toFixed(2)})`;
-      ctx.fillRect(px - 1.8, py - 58, 3.6, 52);
-    }
+    drawSprite(ctx, propKey, px + sway, py, {
+      scale: PIXEL_WORLD_SCALE,
+      flipX: (i & 1) === 1,
+    });
   }
 
   ctx.restore();
 }
 
-function drawGround(
+function drawPixelGround(
   ctx: CanvasRenderingContext2D,
   eraIndex: number,
   cameraX: number,
   viewportW: number,
-  time: number,
   topCol: string,
   midCol: string,
   darkCol: string,
   accent: string,
 ): void {
   const groundH = WORLD_HEIGHT - GROUND_Y;
-
-  // Base earth / deck gradient
-  const grad = ctx.createLinearGradient(0, GROUND_Y, 0, WORLD_HEIGHT);
-  grad.addColorStop(0, topCol);
-  grad.addColorStop(0.18, midCol);
-  grad.addColorStop(0.68, darkCol);
-  grad.addColorStop(1, '#090d14');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0, GROUND_Y, viewportW, groundH);
-
-  // Subtle recessed top track border
-  ctx.fillStyle = eraIndex === 6 ? 'rgba(34, 211, 238, 0.75)' : 'rgba(18, 22, 32, 0.45)';
-  ctx.fillRect(0, GROUND_Y - 1.5, viewportW, 3);
-  ctx.fillStyle = eraIndex === 6 ? 'rgba(165, 243, 252, 0.55)' : 'rgba(255, 255, 255, 0.16)';
-  ctx.fillRect(0, GROUND_Y + 1.5, viewportW, 2);
-
-  // Era-specific world-locked road & surface textures!
-  const tile = 72;
-  const firstTile = Math.floor(cameraX / tile) - 1;
-  const lastTile = Math.ceil((cameraX + viewportW) / tile) + 1;
+  const tileKey = `tile/ground_era_${Math.max(0, Math.min(6, eraIndex))}`;
+  const frame = getSpriteFrame(tileKey);
+  const tileWorldSize = frame ? frame.w * PIXEL_WORLD_SCALE : 128;
 
   ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
+  // Base fallback pixel strata (ensures 100% coverage even before sprite sheet finishes loading)
+  ctx.fillStyle = topCol;
+  ctx.fillRect(0, GROUND_Y, viewportW + 4, 16);
+  ctx.fillStyle = midCol;
+  ctx.fillRect(0, GROUND_Y + 16, viewportW + 4, 42);
+  ctx.fillStyle = darkCol;
+  ctx.fillRect(0, GROUND_Y + 58, viewportW + 4, Math.max(0, groundH - 58));
+
+  // Seamless repeating 64x64px pixel ground tiles blitted at 2x (128x128 world units)
+  const firstTile = Math.floor(cameraX / tileWorldSize) - 1;
+  const lastTile = Math.ceil((cameraX + viewportW) / tileWorldSize) + 1;
   for (let i = firstTile; i <= lastTile; i++) {
-    const sx = i * tile - cameraX;
-    const h = Math.abs((i * 73) % 17);
-
-    if (eraIndex === 0) {
-      // ERA 1: Prehistoric packed dirt road, rocks, mossy grass blades & fossil bones
-      ctx.fillStyle = '#4a351f';
-      ctx.beginPath();
-      ctx.ellipse(sx + 20, GROUND_Y + 12, 16, 4.2, 0, 0, Math.PI * 2);
-      ctx.fill();
-      // Embedded river pebbles & mossy rock
-      ctx.fillStyle = '#78716c';
-      ctx.strokeStyle = '#292524';
-      ctx.lineWidth = 1.2;
-      ctx.beginPath();
-      ctx.ellipse(sx + 50, GROUND_Y + 15, 8 + (h % 4), 4.5, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = '#a8a29e';
-      ctx.fillRect(sx + 47, GROUND_Y + 12.5, 5, 1.8);
-      // Grass tufts along upper ground lip
-      ctx.fillStyle = '#7b943f';
-      for (let g = 0; g < 3; g++) {
-        const gx = sx + 8 + g * 24;
-        ctx.beginPath();
-        ctx.moveTo(gx - 4, GROUND_Y + 1);
-        ctx.lineTo(gx, GROUND_Y - 7 - (g % 2) * 3);
-        ctx.lineTo(gx + 4, GROUND_Y + 1);
-        ctx.fill();
-      }
-      if (i % 4 === 0) {
-        // Half-buried ancient bone in soil stratum
-        ctx.fillStyle = '#d6cbb8';
-        ctx.fillRect(sx + 16, GROUND_Y + 26, 18, 3.2);
-        ctx.beginPath();
-        ctx.arc(sx + 16, GROUND_Y + 27.5, 2.8, 0, Math.PI * 2);
-        ctx.arc(sx + 34, GROUND_Y + 27.5, 2.8, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (eraIndex === 1) {
-      // ERA 2: Travertine stone flagstones with beveled mortar seams
-      ctx.fillStyle = i % 2 === 0 ? '#c4a46b' : '#b8965d';
-      ctx.strokeStyle = '#5c4628';
-      ctx.lineWidth = 1.3;
-      ctx.beginPath();
-      ctx.roundRect(sx + 2, GROUND_Y + 4, tile - 5, 14, 2);
-      ctx.fill();
-      ctx.stroke();
-      ctx.fillStyle = 'rgba(255, 244, 214, 0.22)';
-      ctx.fillRect(sx + 5, GROUND_Y + 5.5, tile - 12, 2.4);
-      // Lower sandstone block layer
-      ctx.fillStyle = '#7c5e37';
-      ctx.fillRect(sx + 14, GROUND_Y + 22, 42, 9);
-    } else if (eraIndex === 2) {
-      // ERA 3: Interlocking medieval cobblestone war-road + lush emerald turf lip
-      for (let c = 0; c < 3; c++) {
-        const cx = sx + c * 24 + 2;
-        ctx.fillStyle = (i + c) % 2 === 0 ? '#78756e' : '#65625c';
-        ctx.strokeStyle = '#292724';
-        ctx.lineWidth = 1.2;
-        ctx.beginPath();
-        ctx.roundRect(cx, GROUND_Y + 5, 21, 11, 3.5);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = 'rgba(255,255,255,0.16)';
-        ctx.fillRect(cx + 3, GROUND_Y + 6.5, 13, 2);
-      }
-      // Lush emerald grass clusters poking up behind cobbles
-      ctx.fillStyle = '#5a7d42';
-      for (let g = 0; g < 3; g++) {
-        const gx = sx + 6 + g * 24;
-        ctx.beginPath();
-        ctx.moveTo(gx - 5, GROUND_Y + 2);
-        ctx.lineTo(gx - 1, GROUND_Y - 8 - (g % 2) * 3);
-        ctx.lineTo(gx + 4, GROUND_Y + 2);
-        ctx.fill();
-      }
-    } else if (eraIndex === 3) {
-      // ERA 4: Rutted mud & timber artillery highway
-      ctx.fillStyle = '#473a2c';
-      ctx.fillRect(sx + 4, GROUND_Y + 7, tile - 8, 5);
-      ctx.fillStyle = '#6b4f34';
-      ctx.strokeStyle = '#2b2016';
-      ctx.lineWidth = 1.2;
-      ctx.fillRect(sx + 12, GROUND_Y + 15, 28, 7);
-      ctx.strokeRect(sx + 12, GROUND_Y + 15, 28, 7);
-    } else if (eraIndex === 4) {
-      // ERA 5: World War muddy trench duckboard planks + crater puddles
-      ctx.fillStyle = '#5c4b34';
-      ctx.strokeStyle = '#1f1a13';
-      ctx.lineWidth = 1.2;
-      for (let p = 0; p < 4; p++) {
-        ctx.fillRect(sx + p * 18 + 2, GROUND_Y + 5, 14, 9);
-        ctx.strokeRect(sx + p * 18 + 2, GROUND_Y + 5, 14, 9);
-      }
-      if (i % 3 === 0) {
-        // Muddy water puddle
-        ctx.fillStyle = 'rgba(84, 102, 114, 0.45)';
-        ctx.beginPath();
-        ctx.ellipse(sx + 32, GROUND_Y + 21, 18, 4.2, 0, 0, Math.PI * 2);
-        ctx.fill();
-      }
-    } else if (eraIndex === 5) {
-      // ERA 6: Weathered asphalt highway + tactical lane stripes + curb blocks
-      ctx.fillStyle = '#333a42';
-      ctx.fillRect(sx, GROUND_Y + 3, tile, 18);
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.55)';
-      ctx.fillRect(sx + 12, GROUND_Y + 10.5, 34, 3);
-      ctx.fillStyle = 'rgba(255,255,255,0.08)';
-      ctx.fillRect(sx + h * 3, GROUND_Y + 6, 4, 2);
-      ctx.fillRect(sx + 52 - h, GROUND_Y + 16, 3, 2);
-    } else {
-      // ERA 7: Beveled dark titanium alloy deck plates + pulsing cyan circuit conduits
-      ctx.fillStyle = '#1a2f42';
-      ctx.strokeStyle = '#09111c';
-      ctx.lineWidth = 1.5;
-      ctx.fillRect(sx + 1, GROUND_Y + 3, tile - 2, 22);
-      ctx.strokeRect(sx + 1, GROUND_Y + 3, tile - 2, 22);
-      // Bolted deck corners
-      ctx.fillStyle = '#475569';
-      ctx.fillRect(sx + 5, GROUND_Y + 6, 3, 3);
-      ctx.fillRect(sx + tile - 9, GROUND_Y + 6, 3, 3);
-      // Glowing cyan neon strip conduit
-      const glow = 0.52 + Math.sin(time * 3 + i * 0.7) * 0.22;
-      ctx.fillStyle = `rgba(34, 211, 238, ${glow.toFixed(2)})`;
-      ctx.fillRect(sx + 12, GROUND_Y + 13, tile - 24, 3);
-    }
+    const sx = Math.round(i * tileWorldSize - cameraX);
+    drawSprite(ctx, tileKey, sx, GROUND_Y, {
+      scale: PIXEL_WORLD_SCALE,
+    });
   }
 
-  // Distinct Midfield Landmark Pillar / Line at WORLD_WIDTH / 2
-  const midX = WORLD_WIDTH * 0.5 - cameraX;
+  // Crisp 2px dark road border top highlight
+  ctx.fillStyle = eraIndex === 6 ? 'rgba(56, 232, 255, 0.78)' : 'rgba(17, 19, 29, 0.65)';
+  ctx.fillRect(0, GROUND_Y - 2, viewportW + 4, 2);
+
+  // Distinct Pixel Midfield Marker at WORLD_WIDTH / 2
+  const midX = snap(WORLD_WIDTH * 0.5 - cameraX);
   if (midX > -40 && midX < viewportW + 40) {
-    ctx.fillStyle = accent + '88';
-    ctx.fillRect(midX - 2.5, GROUND_Y + 2, 5, 22);
+    ctx.fillStyle = '#11131d';
+    ctx.fillRect(midX - 4, GROUND_Y, 8, 26);
+    ctx.fillStyle = accent;
+    ctx.fillRect(midX - 2, GROUND_Y + 2, 4, 22);
   }
+
   ctx.restore();
 }

@@ -327,6 +327,7 @@ export interface ScorchMark {
 export interface DamagePopup {
   x: number;
   y: number;
+  vx?: number;
   vy: number;
   text: string;
   color: string;

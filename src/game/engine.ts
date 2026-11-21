@@ -1340,8 +1340,12 @@ export class GameEngine {
     for (let i = this.popups.length - 1; i >= 0; i--) {
       const pop = this.popups[i];
       pop.life -= dt;
+      if (pop.vx) {
+        pop.x += pop.vx * dt;
+        pop.vx *= Math.exp(-3.6 * dt);
+      }
       pop.y += pop.vy * dt;
-      pop.vy *= Math.exp(-3 * dt);
+      pop.vy *= Math.exp(-2.6 * dt);
       if (pop.life <= 0) this.popups.splice(i, 1);
     }
 
@@ -1361,15 +1365,49 @@ export class GameEngine {
   }
 
   private addPopup(x: number, y: number, text: string, color: string, scale: number): void {
+    // Spread simultaneous combat numbers horizontally and stagger vertically so none overlap
+    let px = x + (this.random() - 0.5) * 40;
+    let py = y + (this.random() - 0.5) * 10;
+    const minSepY = 20;
+
+    for (let attempt = 0; attempt < 9; attempt++) {
+      let crowded: DamagePopup | null = null;
+      let requiredX = 36;
+      for (const existing of this.popups) {
+        // Account for actual label width (e.g., 4-5 digit Future era damage numbers & +G popups)
+        const needX = Math.max(36, (text.length + existing.text.length) * 5.2 + 12);
+        if (Math.abs(existing.x - px) < needX && Math.abs(existing.y - py) < minSepY) {
+          crowded = existing;
+          requiredX = needX;
+          break;
+        }
+      }
+      if (!crowded) break;
+      // Push upward cleanly and fan left/right away from the crowded popup
+      py -= minSepY + 2;
+      const side = px >= crowded.x ? 1 : -1;
+      const fanDir = attempt % 2 === 0 ? side : -side;
+      px += fanDir * Math.min(46, Math.round(requiredX * 0.45) + attempt * 4);
+    }
+
+    // Keep popups legible within world bounds and safely below the top HUD strip
+    px = Math.max(52, Math.min(WORLD_WIDTH - 52, px));
+    py = Math.max(70, py);
+
+    const driftDir = px >= x ? 1 : -1;
+    const vx = driftDir * (12 + this.random() * 18);
+    const vy = -(54 + this.random() * 20) * (scale > 1.1 ? 1.1 : 1);
+
     this.popups.push({
-      x,
-      y,
-      vy: -54,
+      x: px,
+      y: py,
+      vx,
+      vy,
       text,
       color,
       scale,
-      life: 0.78,
-      maxLife: 0.78,
+      life: 0.84,
+      maxLife: 0.84,
     });
   }
 

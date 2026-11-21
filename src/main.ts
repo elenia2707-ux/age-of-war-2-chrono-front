@@ -5,11 +5,14 @@ import type { DifficultyId } from './data/types';
 import { BattleCamera } from './game/camera';
 import { WORLD_HEIGHT } from './game/constants';
 import { GameEngine } from './game/engine';
+import { clearIconCache } from './render/iconRenderer';
 import { GameRenderer } from './render/renderer';
+import { loadSpriteAtlas, onSpriteAtlasReady } from './render/spriteAtlas';
 import { loadRecords, recordMatchResult, saveRecords } from './storage/records';
 import { HudController } from './ui/hudController';
 import { OverlayController } from './ui/overlayController';
 
+const spritesReady = loadSpriteAtlas('./sprites/');
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const initialRecords = loadRecords();
 const sound = new SoundEngine(initialRecords.muted);
@@ -238,11 +241,27 @@ function frame(now: number): void {
 
 requestAnimationFrame(frame);
 
+// Rebuild HUD card & queue sprites immediately once pixel sprite sheet finishes decoding
+onSpriteAtlasReady(() => {
+  clearIconCache();
+  hud.forceRebuildCards();
+});
+
 // Expose clean debug hook on window for automated E2E visual verification
-(window as unknown as { __CHRONO_FRONT__?: { engine: GameEngine; camera: BattleCamera; hud: HudController } }).__CHRONO_FRONT__ = {
+(
+  window as unknown as {
+    __CHRONO_FRONT__?: {
+      engine: GameEngine;
+      camera: BattleCamera;
+      hud: HudController;
+      spritesReady: Promise<void>;
+    };
+  }
+).__CHRONO_FRONT__ = {
   engine,
   camera,
   hud,
+  spritesReady,
 };
 
 // Register offline PWA Service Worker cleanly under any relative GitHub Pages base path

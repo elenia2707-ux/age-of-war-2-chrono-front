@@ -65,6 +65,8 @@ body {
   height: 100%;
   touch-action: none;
   cursor: grab;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 #game-canvas:active {
@@ -400,6 +402,8 @@ body {
   height: 22px;
   object-fit: contain;
   pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .queue-progress {
@@ -530,6 +534,8 @@ body {
   height: 30px;
   object-fit: contain;
   pointer-events: none;
+  image-rendering: pixelated;
+  image-rendering: crisp-edges;
 }
 
 .card-glyph {

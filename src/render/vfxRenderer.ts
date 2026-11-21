@@ -8,6 +8,9 @@ import type {
   SlashEffect,
 } from '../data/types';
 import { GROUND_Y, WORLD_HEIGHT } from '../game/constants';
+import { PIXEL_WORLD_SCALE, drawSprite } from './spriteAtlas';
+
+const snap = (v: number): number => Math.round(v / 2) * 2;
 
 export function renderUltimateAtmosphere(
   ctx: CanvasRenderingContext2D,
@@ -34,571 +37,396 @@ export function renderUltimateAtmosphere(
   }
 }
 
-/** Persistent dark crater scorches + cooling embers on the battlefield floor */
+/** Persistent pixel-stepped dark crater scorches + cooling embers on the battlefield floor */
 export function renderScorchMarks(ctx: CanvasRenderingContext2D, scorches: ScorchMark[]): void {
   for (const s of scorches) {
     const lifeFrac = Math.max(0, s.life / s.maxLife);
     const alpha = Math.min(1, lifeFrac * 2.5);
+    const cx = snap(s.x);
+    const rx = Math.max(12, snap(s.radius * 1.05));
+    const ry = Math.max(4, snap(s.radius * 0.16));
 
     ctx.save();
-    // Charred outer blast soot
-    ctx.globalAlpha = alpha * 0.58;
+    // Outer charred blast soot (stepped pixel oval)
+    ctx.globalAlpha = alpha * 0.56;
     ctx.fillStyle = '#090b0f';
-    ctx.beginPath();
-    ctx.ellipse(s.x, GROUND_Y + 4, s.radius * 1.1, Math.max(5, s.radius * 0.2), 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(cx - rx, GROUND_Y + 2, rx * 2, ry * 2);
+    ctx.fillRect(cx - rx + 6, GROUND_Y, Math.max(4, (rx - 6) * 2), ry * 2 + 4);
 
     // Inner crater rim
+    const irx = Math.max(6, snap(rx * 0.65));
     ctx.globalAlpha = alpha * 0.78;
     ctx.fillStyle = '#181412';
-    ctx.beginPath();
-    ctx.ellipse(s.x, GROUND_Y + 3.5, s.radius * 0.72, Math.max(3.5, s.radius * 0.13), 0, 0, Math.PI * 2);
-    ctx.fill();
+    ctx.fillRect(cx - irx, GROUND_Y + 2, irx * 2, Math.max(4, ry));
 
-    // Hot cooling ember/plasma glow during first 35% of lifetime
+    // Cooling pixel ember glow during first 45% of lifetime
     const heat = Math.max(0, (lifeFrac - 0.55) / 0.45);
-    if (heat > 0.01) {
-      ctx.globalAlpha = heat * 0.72;
+    if (heat > 0.02) {
+      const hrx = Math.max(4, snap(rx * 0.38));
+      ctx.globalAlpha = heat * 0.78;
       ctx.fillStyle = s.glowColor;
-      ctx.beginPath();
-      ctx.ellipse(s.x, GROUND_Y + 3, s.radius * 0.45, Math.max(2.2, s.radius * 0.08), 0, 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(cx - hrx, GROUND_Y + 2, hrx * 2, 4);
     }
     ctx.restore();
   }
 }
 
-/** Stylized curved melee slash crescents & spear thrust streaks */
+/** Crisp pixel-stepped melee slash arcs & spear thrust streaks */
 export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffect[]): void {
   for (const sl of slashes) {
     const frac = Math.max(0, sl.life / sl.maxLife);
     const prog = 1 - frac;
 
     ctx.save();
-    ctx.translate(sl.x, sl.y);
+    ctx.translate(snap(sl.x), snap(sl.y));
     ctx.scale(sl.dir, 1);
-    ctx.rotate(sl.angleOffset);
     ctx.globalAlpha = Math.min(1, frac * 1.6);
 
     if (sl.style === 'thrust') {
-      // Sharp piercing thrust cone & speed lines
-      const len = sl.radius * (0.7 + prog * 0.55);
+      const len = snap(sl.radius * (0.7 + prog * 0.55));
+      const h = Math.max(2, snap(6 * frac));
       ctx.fillStyle = sl.color;
-      ctx.beginPath();
-      ctx.moveTo(-6, -5 * frac);
-      ctx.lineTo(len, 0);
-      ctx.lineTo(-6, 5 * frac);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(-4, -h, len, h * 2);
+      ctx.fillRect(len - 4, -Math.max(2, h - 2), 8, Math.max(4, (h - 2) * 2));
       ctx.fillStyle = sl.coreColor;
-      ctx.beginPath();
-      ctx.moveTo(-2, -2.2 * frac);
-      ctx.lineTo(len * 0.92, 0);
-      ctx.lineTo(-2, 2.2 * frac);
-      ctx.closePath();
-      ctx.fill();
+      ctx.fillRect(0, -2, Math.max(6, len - 2), 4);
     } else {
-      // Sweeping curved crescent slash arc (blade / heavy / plasma)
+      // Stepped pixel crescent slash ribbon
       const r = sl.radius * (0.85 + prog * 0.25);
-      const startA = -1.35 + prog * 0.45;
-      const endA = 1.15;
-
-      if (sl.style === 'plasma') {
-        ctx.shadowColor = sl.color;
-        ctx.shadowBlur = 12;
+      const steps = 11;
+      const startA = -1.3 + prog * 0.45 + sl.angleOffset;
+      const endA = 1.1 + sl.angleOffset;
+      for (let i = 0; i <= steps; i++) {
+        const t = i / steps;
+        const a = startA + (endA - startA) * t;
+        const px = snap(Math.cos(a) * r);
+        const py = snap(Math.sin(a) * r);
+        const thick = i > 1 && i < steps - 1 ? 6 : 4;
+        ctx.fillStyle = sl.color;
+        ctx.fillRect(px - thick / 2, py - thick / 2, thick, thick);
+        if (i >= 2 && i <= steps - 2) {
+          ctx.fillStyle = sl.coreColor;
+          ctx.fillRect(px - 2, py - 2, 4, 4);
+        }
       }
-
-      // Outer tapered crescent ribbon
-      ctx.fillStyle = sl.color;
-      ctx.beginPath();
-      ctx.arc(0, 0, r, startA, endA);
-      ctx.arc(-6, 1, r * 0.72, endA, startA, true);
-      ctx.closePath();
-      ctx.fill();
-
-      // White-hot leading razor edge
-      ctx.strokeStyle = sl.coreColor;
-      ctx.lineWidth = sl.style === 'heavy' ? 3.2 * frac : 2.6 * frac;
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.arc(0, 0, r * 0.94, startA + 0.15, endA - 0.05);
-      ctx.stroke();
     }
 
     ctx.restore();
   }
 }
 
+/** Pixel-art sprite projectiles with crisp pixel trails */
 export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: ProjectileEntity[]): void {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
   for (const p of projectiles) {
     const angle = Math.atan2(p.vy, p.vx);
 
-    ctx.save();
-    switch (p.style) {
-      case 'stone':
-        ctx.fillStyle = '#a8a29e';
-        ctx.strokeStyle = '#1c1917';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4.4, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        break;
-
-      case 'boulder':
-        ctx.strokeStyle = 'rgba(214, 211, 209, 0.4)';
-        ctx.lineWidth = 7.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.prevX - p.vx * 0.02, p.prevY - p.vy * 0.02);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-        ctx.fillStyle = '#78716c';
-        ctx.strokeStyle = '#1c1917';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 8.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#d6d3d1';
-        ctx.beginPath();
-        ctx.arc(p.x - 2.5, p.y - 2.5, 2.8, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-
-      case 'arrow':
-      case 'fire_arrow':
-      case 'bolt':
-        ctx.translate(p.x, p.y);
-        ctx.rotate(angle);
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-        ctx.lineWidth = 1.4;
-        ctx.beginPath();
-        ctx.moveTo(-22, 0);
-        ctx.lineTo(-10, 0);
-        ctx.stroke();
-
-        ctx.strokeStyle = p.style === 'bolt' ? '#e2e8f0' : '#d97706';
-        ctx.lineWidth = p.style === 'bolt' ? 2.8 : 2.2;
-        ctx.beginPath();
-        ctx.moveTo(-14, 0);
-        ctx.lineTo(7, 0);
-        ctx.stroke();
-        // Fletching
-        ctx.fillStyle = '#f8fafc';
-        ctx.fillRect(-14, -2.5, 4, 5);
-        // Steel arrowhead
-        ctx.fillStyle = '#f8fafc';
-        ctx.strokeStyle = '#121622';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        ctx.moveTo(6, -3);
-        ctx.lineTo(13, 0);
-        ctx.lineTo(6, 3);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        if (p.style === 'fire_arrow') {
-          ctx.fillStyle = '#f97316';
-          ctx.beginPath();
-          ctx.arc(8, 0, 4.8, 0, Math.PI * 2);
-          ctx.fill();
-        }
-        break;
-
-      case 'bullet':
-        ctx.strokeStyle = 'rgba(253, 224, 71, 0.35)';
-        ctx.lineWidth = 4.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.prevX - p.vx * 0.022, p.prevY - p.vy * 0.022);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-        ctx.strokeStyle = '#fef9c3';
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        break;
-
-      case 'cannonball':
-      case 'shell':
-        ctx.strokeStyle = 'rgba(251, 191, 36, 0.5)';
-        ctx.lineWidth = 6.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.prevX - p.vx * 0.02, p.prevY - p.vy * 0.02);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-        ctx.fillStyle = p.style === 'shell' ? '#d97706' : '#1f2937';
-        ctx.strokeStyle = '#090d14';
-        ctx.lineWidth = 1.6;
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, p.style === 'shell' ? 6 : 7, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        break;
-
-      case 'rocket':
-        ctx.translate(p.x, p.y);
-        ctx.rotate(angle);
-        ctx.fillStyle = '#475569';
-        ctx.strokeStyle = '#121622';
-        ctx.lineWidth = 1.5;
-        ctx.fillRect(-11, -3.2, 18, 6.4);
-        ctx.strokeRect(-11, -3.2, 18, 6.4);
-        ctx.fillStyle = '#ef4444';
-        ctx.beginPath();
-        ctx.moveTo(7, -3.6);
-        ctx.lineTo(15, 0);
-        ctx.lineTo(7, 3.6);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#fde047';
-        ctx.beginPath();
-        ctx.arc(-13, 0, 5.2, 0, Math.PI * 2);
-        ctx.fill();
-        break;
-
-      case 'plasma': {
-        const col = p.team === 'player' ? '#22d3ee' : '#fb7185';
-        ctx.shadowColor = col;
-        ctx.shadowBlur = 12;
-        ctx.strokeStyle = col;
-        ctx.lineWidth = 6.5;
-        ctx.lineCap = 'round';
-        ctx.beginPath();
-        ctx.moveTo(p.prevX - p.vx * 0.022, p.prevY - p.vy * 0.022);
-        ctx.lineTo(p.x, p.y);
-        ctx.stroke();
-        ctx.fillStyle = '#ffffff';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4.2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.shadowBlur = 0;
-        break;
+    // Crisp pixel trail behind fast/heavy projectiles
+    if (p.style === 'bullet' || p.style === 'plasma' || p.style === 'rocket' || p.style === 'shell' || p.style === 'boulder') {
+      const trailCol =
+        p.style === 'plasma'
+          ? p.team === 'player'
+            ? 'rgba(56, 232, 255, 0.55)'
+            : 'rgba(255, 77, 125, 0.55)'
+          : p.style === 'bullet'
+            ? 'rgba(254, 240, 138, 0.52)'
+            : 'rgba(226, 232, 240, 0.36)';
+      ctx.fillStyle = trailCol;
+      for (let s = 1; s <= 3; s++) {
+        const tx = snap(p.x - p.vx * 0.008 * s);
+        const ty = snap(p.y - p.vy * 0.008 * s);
+        const sz = Math.max(2, 6 - s * 2);
+        ctx.fillRect(tx - sz / 2, ty - sz / 2, sz, sz);
       }
-
-      default:
-        ctx.fillStyle = '#fde047';
-        ctx.beginPath();
-        ctx.arc(p.x, p.y, 4.5, 0, Math.PI * 2);
-        ctx.fill();
-        break;
     }
-    ctx.restore();
+
+    let spriteKey = `proj/${p.style}`;
+    if (p.style === 'plasma') {
+      spriteKey = `proj/plasma/${p.team}`;
+    } else if (p.style === 'flame' || p.style === 'railgun' || p.style === 'ion_beam') {
+      spriteKey = 'proj/bullet';
+    }
+
+    const spinAngle =
+      p.style === 'stone' || p.style === 'boulder' || p.style === 'cannonball'
+        ? p.life * 8 * (p.vx >= 0 ? 1 : -1)
+        : angle;
+
+    const drawn = drawSprite(ctx, spriteKey, p.x, p.y, {
+      scale: PIXEL_WORLD_SCALE,
+      rotation: spinAngle,
+    });
+
+    if (!drawn) {
+      ctx.fillStyle = '#fde047';
+      ctx.fillRect(snap(p.x) - 4, snap(p.y) - 4, 8, 8);
+    }
   }
+
+  ctx.restore();
 }
 
+/** Crisp pixel-stepped lightning, orbital laser, flamethrower cone & railgun/ion beams */
 export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]): void {
   for (const b of beams) {
     const ratio = Math.max(0, b.life / b.maxLife);
     ctx.save();
+    ctx.imageSmoothingEnabled = false;
 
     if (b.style === 'lightning') {
-      ctx.shadowColor = '#38bdf8';
-      ctx.shadowBlur = 18;
-      const segments = 10;
-      const pts: { x: number; y: number }[] = [{ x: b.x1, y: b.y1 }];
-      for (let s = 1; s < segments; s++) {
+      const segments = 12;
+      let prevX = snap(b.x1);
+      let prevY = snap(b.y1);
+      const outerW = Math.max(6, snap(b.width * ratio + 6));
+      const innerW = Math.max(4, snap(b.width * 0.45 * ratio));
+
+      for (let s = 1; s <= segments; s++) {
         const t = s / segments;
-        pts.push({
-          x: b.x1 + (b.x2 - b.x1) * t + Math.sin(b.seed + s * 7.3) * 26,
-          y: b.y1 + (b.y2 - b.y1) * t,
-        });
+        const nx =
+          s === segments
+            ? snap(b.x2)
+            : snap(b.x1 + (b.x2 - b.x1) * t + Math.sin(b.seed + s * 7.3) * 26);
+        const ny = snap(b.y1 + (b.y2 - b.y1) * t);
+
+        // Stepped horizontal + vertical pixel lightning bolt
+        const midY = snap((prevY + ny) * 0.5);
+        ctx.fillStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
+        ctx.fillRect(prevX - outerW / 2, Math.min(prevY, midY), outerW, Math.abs(midY - prevY) + outerW / 2);
+        ctx.fillRect(Math.min(prevX, nx) - outerW / 2, midY - outerW / 2, Math.abs(nx - prevX) + outerW, outerW);
+        ctx.fillRect(nx - outerW / 2, Math.min(midY, ny), outerW, Math.abs(ny - midY) + outerW / 2);
+
+        ctx.fillStyle = `rgba(255, 255, 255, ${ratio.toFixed(2)})`;
+        ctx.fillRect(prevX - innerW / 2, Math.min(prevY, midY), innerW, Math.abs(midY - prevY) + innerW / 2);
+        ctx.fillRect(Math.min(prevX, nx) - innerW / 2, midY - innerW / 2, Math.abs(nx - prevX) + innerW, innerW);
+        ctx.fillRect(nx - innerW / 2, Math.min(midY, ny), innerW, Math.abs(ny - midY) + innerW / 2);
+
+        prevX = nx;
+        prevY = ny;
       }
-      pts.push({ x: b.x2, y: b.y2 });
-
-      ctx.beginPath();
-      pts.forEach((pt, idx) => (idx === 0 ? ctx.moveTo(pt.x, pt.y) : ctx.lineTo(pt.x, pt.y)));
-      ctx.strokeStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
-      ctx.lineWidth = b.width * ratio + 5;
-      ctx.stroke();
-      ctx.strokeStyle = `rgba(255, 255, 255, ${ratio.toFixed(2)})`;
-      ctx.lineWidth = Math.max(2.5, b.width * 0.4 * ratio);
-      ctx.stroke();
-
-      // Secondary jagged lightning side forks
-      const forkPt = pts[4];
-      ctx.beginPath();
-      ctx.moveTo(forkPt.x, forkPt.y);
-      ctx.lineTo(forkPt.x + 28, forkPt.y + 34);
-      ctx.lineTo(forkPt.x + 42, forkPt.y + 72);
-      ctx.strokeStyle = `rgba(125, 211, 252, ${(ratio * 0.7).toFixed(2)})`;
-      ctx.lineWidth = 2.4 * ratio;
-      ctx.stroke();
     } else if (b.style === 'orbital_laser') {
-      const w = b.width * (0.48 + ratio * 0.8);
-      const grad = ctx.createLinearGradient(b.x1 - w, 0, b.x1 + w, 0);
-      grad.addColorStop(0, 'rgba(34, 211, 238, 0)');
-      grad.addColorStop(0.24, `rgba(6, 182, 212, ${(ratio * 0.78).toFixed(2)})`);
-      grad.addColorStop(0.5, `rgba(255, 255, 255, ${Math.min(1, ratio * 1.25).toFixed(2)})`);
-      grad.addColorStop(0.76, `rgba(6, 182, 212, ${(ratio * 0.78).toFixed(2)})`);
-      grad.addColorStop(1, 'rgba(34, 211, 238, 0)');
-      ctx.fillStyle = grad;
-      ctx.fillRect(b.x1 - w, b.y1, w * 2, b.y2 - b.y1);
+      const cx = snap(b.x1);
+      const w = Math.max(8, snap(b.width * (0.48 + ratio * 0.8)));
+      const h = snap(b.y2 - b.y1);
+      // 4-band stepped pixel orbital beam
+      ctx.fillStyle = `rgba(6, 182, 212, ${(ratio * 0.42).toFixed(2)})`;
+      ctx.fillRect(cx - w, b.y1, w * 2, h);
+      ctx.fillStyle = `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
+      ctx.fillRect(cx - Math.round(w * 0.65), b.y1, Math.round(w * 1.3), h);
+      ctx.fillStyle = `rgba(224, 242, 254, ${Math.min(1, ratio * 1.15).toFixed(2)})`;
+      ctx.fillRect(cx - Math.round(w * 0.35), b.y1, Math.round(w * 0.7), h);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(cx - Math.max(4, Math.round(w * 0.16)), b.y1, Math.max(8, Math.round(w * 0.32)), h);
 
-      // Blinding ground impact shock dome & elliptical plasma ring
-      ctx.fillStyle = `rgba(224, 242, 254, ${(ratio * 0.95).toFixed(2)})`;
-      ctx.beginPath();
-      ctx.ellipse(b.x2, GROUND_Y, w * 1.45, 16, 0, 0, Math.PI * 2);
-      ctx.fill();
-      ctx.strokeStyle = `rgba(34, 211, 238, ${(ratio * 0.9).toFixed(2)})`;
-      ctx.lineWidth = 4;
-      ctx.beginPath();
-      ctx.ellipse(b.x2, GROUND_Y, w * 1.8 + (1 - ratio) * 52, 22, 0, 0, Math.PI * 2);
-      ctx.stroke();
+      // Pixel shockwave impact blast dome on ground
+      const domeW = snap(w * 1.55);
+      ctx.fillStyle = `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
+      ctx.fillRect(cx - domeW, GROUND_Y - 10, domeW * 2, 16);
+      ctx.fillStyle = `rgba(255, 255, 255, ${(ratio * 0.95).toFixed(2)})`;
+      ctx.fillRect(cx - Math.round(domeW * 0.6), GROUND_Y - 14, Math.round(domeW * 1.2), 14);
     } else if (b.style === 'flame_jet') {
-      const grad = ctx.createLinearGradient(b.x1, b.y1, b.x2, b.y2);
-      grad.addColorStop(0, `rgba(254, 249, 195, ${(ratio * 0.98).toFixed(2)})`);
-      grad.addColorStop(0.45, `rgba(249, 115, 22, ${(ratio * 0.88).toFixed(2)})`);
-      grad.addColorStop(1, 'rgba(220, 38, 38, 0)');
-      ctx.fillStyle = grad;
-      ctx.beginPath();
-      ctx.moveTo(b.x1, b.y1 - 4);
-      ctx.lineTo(b.x2, b.y2 - b.width * 1.25);
-      ctx.lineTo(b.x2, b.y2 + b.width * 1.25);
-      ctx.lineTo(b.x1, b.y1 + 4);
-      ctx.closePath();
-      ctx.fill();
+      const steps = 7;
+      for (let i = 0; i < steps; i++) {
+        const t = i / (steps - 1);
+        const fx = snap(b.x1 + (b.x2 - b.x1) * t);
+        const fy = snap(b.y1 + (b.y2 - b.y1) * t + Math.sin(b.seed * 12 + i * 2) * 4);
+        const sz = snap(6 + t * b.width * 1.35);
+        ctx.globalAlpha = ratio * (1 - t * 0.45);
+        ctx.fillStyle = t < 0.28 ? '#fef08a' : t < 0.68 ? '#f97316' : '#dc2626';
+        ctx.fillRect(fx - sz / 2, fy - sz / 2, sz, sz);
+        if (t < 0.45) {
+          ctx.fillStyle = '#ffffff';
+          ctx.fillRect(fx - 2, fy - 2, 4, 4);
+        }
+      }
     } else {
-      // Railgun or Ion beam
-      ctx.shadowColor = b.color;
-      ctx.shadowBlur = 14;
-      ctx.strokeStyle = b.color;
-      ctx.globalAlpha = ratio;
-      ctx.lineWidth = b.width * ratio + 3;
-      ctx.beginPath();
-      ctx.moveTo(b.x1, b.y1);
-      ctx.lineTo(b.x2, b.y2);
-      ctx.stroke();
+      // Crisp stepped railgun or ion beam
+      const dx = b.x2 - b.x1;
+      const dy = b.y2 - b.y1;
+      const dist = Math.max(1, Math.hypot(dx, dy));
+      const stepCount = Math.max(2, Math.ceil(dist / 6));
+      const outer = Math.max(4, snap(b.width * ratio + 4));
+      const inner = Math.max(2, snap(b.width * 0.45 * ratio));
 
-      ctx.strokeStyle = '#ffffff';
-      ctx.lineWidth = Math.max(2, b.width * 0.45 * ratio);
-      ctx.beginPath();
-      ctx.moveTo(b.x1, b.y1);
-      ctx.lineTo(b.x2, b.y2);
-      ctx.stroke();
+      ctx.globalAlpha = ratio;
+      ctx.fillStyle = b.color;
+      for (let i = 0; i <= stepCount; i++) {
+        const t = i / stepCount;
+        const bx = snap(b.x1 + dx * t);
+        const by = snap(b.y1 + dy * t);
+        ctx.fillRect(bx - outer / 2, by - outer / 2, outer, outer);
+      }
+      ctx.fillStyle = '#ffffff';
+      for (let i = 0; i <= stepCount; i++) {
+        const t = i / stepCount;
+        const bx = snap(b.x1 + dx * t);
+        const by = snap(b.y1 + dy * t);
+        ctx.fillRect(bx - inner / 2, by - inner / 2, inner, inner);
+      }
     }
 
     ctx.restore();
   }
 }
 
+/** Pixel-art bombers & falling ultimate ordinance */
 export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: ActiveUltimate[]): void {
+  ctx.save();
+  ctx.imageSmoothingEnabled = false;
+
   for (const ult of ultimates) {
     if (ult.planes) {
       for (const plane of ult.planes) {
-        ctx.save();
-        ctx.translate(plane.x, plane.y);
-        ctx.scale(plane.dir, 1);
-        ctx.strokeStyle = '#121622';
-        ctx.lineWidth = 2;
-        ctx.fillStyle = '#4a5543';
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 38, 8.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#5c6953';
-        ctx.beginPath();
-        ctx.moveTo(-12, -2);
-        ctx.lineTo(14, -2);
-        ctx.lineTo(3, -18);
-        ctx.lineTo(-15, -16);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = ult.team === 'player' ? '#2563eb' : '#dc2626';
-        ctx.beginPath();
-        ctx.moveTo(-29, -3);
-        ctx.lineTo(-40, -17);
-        ctx.lineTo(-24, -15);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#bae6fd';
-        ctx.fillRect(15, -4.5, 10, 4.5);
-        ctx.fillStyle = 'rgba(226, 232, 240, 0.72)';
-        ctx.fillRect(36, -10, 3, 20);
-        ctx.restore();
+        drawSprite(ctx, `ult/bomber/${ult.team}`, plane.x, plane.y, {
+          scale: PIXEL_WORLD_SCALE,
+          flipX: plane.dir === -1,
+        });
       }
     }
 
     for (const ord of ult.fallingOrdinance) {
       if (ord.impacted) continue;
 
-      ctx.save();
       if (ord.kind === 'meteor') {
-        // Multi-layered roaring fiery comet tail
+        // Chunky pixel roaring comet tail
         for (let i = 0; i < ord.trail.length; i++) {
           const pt = ord.trail[i];
           const frac = (i + 1) / ord.trail.length;
-          ctx.fillStyle = `rgba(234, 88, 12, ${(frac * 0.65).toFixed(2)})`;
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 5 + frac * 14, 0, Math.PI * 2);
-          ctx.fill();
-          ctx.fillStyle = `rgba(253, 224, 71, ${(frac * 0.55).toFixed(2)})`;
-          ctx.beginPath();
-          ctx.arc(pt.x, pt.y, 2.5 + frac * 7, 0, Math.PI * 2);
-          ctx.fill();
+          const sz = snap(6 + frac * 18);
+          ctx.fillStyle = `rgba(234, 88, 12, ${(frac * 0.72).toFixed(2)})`;
+          ctx.fillRect(snap(pt.x) - sz / 2, snap(pt.y) - sz / 2, sz, sz);
+          const core = Math.max(4, snap(sz * 0.5));
+          ctx.fillStyle = `rgba(253, 224, 71, ${(frac * 0.65).toFixed(2)})`;
+          ctx.fillRect(snap(pt.x) - core / 2, snap(pt.y) - core / 2, core, core);
         }
-        // Craggy cel-shaded glowing lava boulder
-        ctx.fillStyle = '#3b1708';
-        ctx.strokeStyle = '#120804';
-        ctx.lineWidth = 2.4;
-        ctx.beginPath();
-        ctx.arc(ord.x, ord.y, 14.5, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f97316';
-        ctx.beginPath();
-        ctx.arc(ord.x + 2, ord.y + 3, 9, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.fillStyle = '#fef08a';
-        ctx.beginPath();
-        ctx.arc(ord.x + 3, ord.y + 4, 4.8, 0, Math.PI * 2);
-        ctx.fill();
+        drawSprite(ctx, 'proj/meteor', ord.x, ord.y, {
+          scale: PIXEL_WORLD_SCALE,
+          rotation: ord.y * 0.04,
+        });
       } else if (ord.kind === 'fire_arrows') {
         const a = Math.atan2(ord.vy, ord.vx);
-        ctx.translate(ord.x, ord.y);
-        ctx.rotate(a);
-        ctx.strokeStyle = '#fb923c';
-        ctx.lineWidth = 2.8;
-        ctx.beginPath();
-        ctx.moveTo(-18, 0);
-        ctx.lineTo(9, 0);
-        ctx.stroke();
-        ctx.fillStyle = '#fef08a';
-        ctx.beginPath();
-        ctx.arc(9, 0, 4.2, 0, Math.PI * 2);
-        ctx.fill();
+        drawSprite(ctx, 'proj/fire_arrow', ord.x, ord.y, {
+          scale: PIXEL_WORLD_SCALE,
+          rotation: a,
+        });
       } else if (ord.kind === 'tactical_missiles') {
-        ctx.strokeStyle = 'rgba(244, 63, 94, 0.85)';
-        ctx.lineWidth = 2.2;
-        ctx.beginPath();
-        ctx.ellipse(ord.targetX, GROUND_Y, 26, 7, 0, 0, Math.PI * 2);
-        ctx.stroke();
+        // Pixel target reticle on ground
+        const tx = snap(ord.targetX);
+        ctx.fillStyle = 'rgba(244, 63, 94, 0.88)';
+        ctx.fillRect(tx - 24, GROUND_Y - 2, 48, 4);
+        ctx.fillRect(tx - 2, GROUND_Y - 8, 4, 16);
 
-        if (ord.trail.length > 1) {
-          ctx.strokeStyle = 'rgba(241, 245, 249, 0.78)';
-          ctx.lineWidth = 6;
-          ctx.beginPath();
-          ctx.moveTo(ord.trail[0].x, ord.trail[0].y);
-          for (const pt of ord.trail) ctx.lineTo(pt.x, pt.y);
-          ctx.lineTo(ord.x, ord.y);
-          ctx.stroke();
+        for (let i = 0; i < ord.trail.length; i++) {
+          const pt = ord.trail[i];
+          const frac = (i + 1) / ord.trail.length;
+          const sz = snap(4 + frac * 6);
+          ctx.fillStyle = `rgba(241, 245, 249, ${(frac * 0.72).toFixed(2)})`;
+          ctx.fillRect(snap(pt.x) - sz / 2, snap(pt.y) - sz / 2, sz, sz);
         }
 
         const a = Math.atan2(ord.vy, ord.vx);
-        ctx.translate(ord.x, ord.y);
-        ctx.rotate(a);
-        ctx.fillStyle = '#e2e8f0';
-        ctx.strokeStyle = '#121622';
-        ctx.lineWidth = 1.8;
-        ctx.fillRect(-15, -4, 26, 8);
-        ctx.strokeRect(-15, -4, 26, 8);
-        ctx.fillStyle = '#f43f5e';
-        ctx.beginPath();
-        ctx.moveTo(11, -4.5);
-        ctx.lineTo(20, 0);
-        ctx.lineTo(11, 4.5);
-        ctx.closePath();
-        ctx.fill();
-        ctx.stroke();
+        drawSprite(ctx, 'proj/cruise_missile', ord.x, ord.y, {
+          scale: PIXEL_WORLD_SCALE,
+          rotation: a,
+        });
       } else {
-        const a = Math.atan2(ord.vy, ord.vx);
-        if (ord.trail.length > 1) {
-          ctx.strokeStyle = 'rgba(148, 163, 184, 0.6)';
-          ctx.lineWidth = 5;
-          ctx.beginPath();
-          ctx.moveTo(ord.trail[0].x, ord.trail[0].y);
-          for (const pt of ord.trail) ctx.lineTo(pt.x, pt.y);
-          ctx.stroke();
+        // Naval barrage shells & carpet bombs
+        for (let i = 0; i < ord.trail.length; i++) {
+          const pt = ord.trail[i];
+          const frac = (i + 1) / ord.trail.length;
+          const sz = snap(4 + frac * 4);
+          ctx.fillStyle = `rgba(148, 163, 184, ${(frac * 0.6).toFixed(2)})`;
+          ctx.fillRect(snap(pt.x) - sz / 2, snap(pt.y) - sz / 2, sz, sz);
         }
-        ctx.translate(ord.x, ord.y);
-        ctx.rotate(a);
-        ctx.fillStyle = '#1e293b';
-        ctx.strokeStyle = '#090d14';
-        ctx.lineWidth = 1.8;
-        ctx.beginPath();
-        ctx.ellipse(0, 0, 10, 5.5, 0, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-        ctx.fillStyle = '#f97316';
-        ctx.beginPath();
-        ctx.arc(-10, 0, 4.5, 0, Math.PI * 2);
-        ctx.fill();
+        const a = Math.atan2(ord.vy, ord.vx);
+        drawSprite(ctx, 'proj/bomb', ord.x, ord.y, {
+          scale: PIXEL_WORLD_SCALE,
+          rotation: a,
+        });
       }
-      ctx.restore();
     }
   }
+
+  ctx.restore();
 }
 
+/** Crisp pixel-art square sparks, chunky debris blocks, pixel smoke puffs, and stepped shockwave rings */
 export function renderParticles(ctx: CanvasRenderingContext2D, particles: ParticleEntity[]): void {
   for (const p of particles) {
     const frac = Math.max(0, p.life / p.maxLife);
+    const px = snap(p.x);
+    const py = snap(p.y);
+
     ctx.save();
     ctx.globalAlpha = frac * p.alpha;
 
     if (p.shape === 'ring') {
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(1.8, 5.5 * frac);
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size, 0, Math.PI * 2);
-      ctx.stroke();
+      // Stepped pixel shockwave octagon ring
+      const r = snap(p.size);
+      const pts = 16;
+      const dot = Math.max(4, snap(6 * frac));
+      ctx.fillStyle = p.color;
+      for (let i = 0; i < pts; i++) {
+        const a = (i / pts) * Math.PI * 2;
+        const rx = snap(px + Math.cos(a) * r);
+        const ry = snap(py + Math.sin(a) * r);
+        ctx.fillRect(rx - dot / 2, ry - dot / 2, dot, dot);
+      }
     } else if (p.shape === 'smoke') {
+      const sz = Math.max(4, snap(p.size * (1.45 - frac * 0.4)));
       ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (1.55 - frac * 0.45), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+      ctx.fillRect(px - sz / 2 + 2, py - sz / 2 - 2, Math.max(2, sz - 4), sz + 4);
     } else if (p.shape === 'debris') {
-      ctx.translate(p.x, p.y);
-      ctx.rotate(p.rotation ?? 0);
-      const s = p.size;
+      const sz = Math.max(4, snap(p.size * 1.4));
+      ctx.fillStyle = '#11131d';
+      ctx.fillRect(px - sz / 2 - 2, py - sz / 2 - 2, sz + 4, sz + 4);
       ctx.fillStyle = p.color;
-      ctx.strokeStyle = '#121622';
-      ctx.lineWidth = 1.4;
-      ctx.beginPath();
-      ctx.moveTo(-s, -s * 0.6);
-      ctx.lineTo(s * 0.9, -s * 0.8);
-      ctx.lineTo(s, s * 0.7);
-      ctx.lineTo(-s * 0.6, s * 0.9);
-      ctx.closePath();
-      ctx.fill();
-      ctx.stroke();
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
     } else if (p.shape === 'spark') {
-      // Velocity-stretched glowing spark streak
-      ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(1.6, p.size * 0.65 * frac);
-      ctx.lineCap = 'round';
-      ctx.beginPath();
-      ctx.moveTo(p.x - p.vx * 0.025, p.y - p.vy * 0.025);
-      ctx.lineTo(p.x, p.y);
-      ctx.stroke();
-    } else {
+      const sz = Math.max(2, snap(p.size * frac + 2));
       ctx.fillStyle = p.color;
-      ctx.beginPath();
-      ctx.arc(p.x, p.y, p.size * (0.4 + frac * 0.6), 0, Math.PI * 2);
-      ctx.fill();
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+      const tailX = snap(p.x - p.vx * 0.018);
+      const tailY = snap(p.y - p.vy * 0.018);
+      ctx.fillRect(tailX - 1, tailY - 1, 2, 2);
+    } else {
+      const sz = Math.max(4, snap(p.size * (0.5 + frac * 0.6)));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
     }
+
     ctx.restore();
   }
 }
 
+/** Crisp arcade damage numbers with strong dark pixel border & integer alignment */
 export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[]): void {
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
+  ctx.lineJoin = 'round';
 
   for (const pop of popups) {
     const frac = Math.max(0, pop.life / pop.maxLife);
-    const fontSize = Math.round(14 * pop.scale);
-    ctx.globalAlpha = Math.min(1, frac * 1.45);
-    ctx.font = `900 ${fontSize}px system-ui, -apple-system, sans-serif`;
-    ctx.lineWidth = 3.8;
-    ctx.strokeStyle = 'rgba(10, 14, 22, 0.92)';
-    ctx.strokeText(pop.text, pop.x, pop.y);
+    const fontSize = Math.round(13.5 * pop.scale);
+    const px = Math.round(pop.x);
+    const py = Math.round(pop.y);
+
+    ctx.globalAlpha = Math.min(1, frac * 1.6);
+    ctx.font = `900 ${fontSize}px ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace`;
+
+    // Hard 2px arcade drop shadow for guaranteed contrast over busy pixel battles
+    ctx.fillStyle = 'rgba(8, 10, 18, 0.96)';
+    ctx.fillText(pop.text, px + 1.5, py + 2);
+
+    ctx.lineWidth = 3.6;
+    ctx.strokeStyle = '#0a0d16';
+    ctx.strokeText(pop.text, px, py);
+
     ctx.fillStyle = pop.color;
-    ctx.fillText(pop.text, pop.x, pop.y);
+    ctx.fillText(pop.text, px, py);
   }
 
   ctx.restore();

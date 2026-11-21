@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chrono-front-v2';
+const CACHE_NAME = 'chrono-front-v3';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -6,6 +6,8 @@ const CORE_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
+  './sprites/sprites_sheet.png',
+  './sprites/sprites_atlas.json',
 ];
 
 self.addEventListener('install', (event) => {
