@@ -1,0 +1,25 @@
+{
+  "name": "전쟁시대 2: 크로노 프론트",
+  "short_name": "전쟁시대 2",
+  "description": "원시 시대부터 미래 시대까지 7단 진화 2D 횡스크롤 전략 디펜스 게임",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "orientation": "landscape",
+  "background_color": "#11161f",
+  "theme_color": "#11161f",
+  "icons": [
+    {
+      "src": "./icons/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "./icons/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

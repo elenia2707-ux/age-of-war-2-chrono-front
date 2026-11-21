@@ -1,0 +1,217 @@
+<!doctype html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover"
+    />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+    <meta name="apple-mobile-web-app-title" content="전쟁시대 2" />
+    <meta name="theme-color" content="#11161f" />
+    <meta
+      name="description"
+      content="원시 시대부터 미래 시대까지 7단계 진화 2D 횡스크롤 전략 디펜스 웹 게임 — 아이폰 사파리 및 PWA 최적화"
+    />
+    <title>전쟁시대 2: 크로노 프론트 — 7시대 전략 디펜스</title>
+    <link rel="manifest" href="./manifest.webmanifest" />
+    <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
+    <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
+  </head>
+  <body>
+    <main id="app" aria-label="전쟁시대 2 게임 화면">
+      <canvas id="game-canvas"></canvas>
+
+      <!-- TOP HUD -->
+      <header id="top-hud" class="hud-layer hidden" aria-label="상단 전장 정보">
+        <div class="top-left glass-panel">
+          <div class="stat-chip gold-chip" title="골드">
+            <span class="chip-icon" aria-hidden="true">G</span>
+            <span id="hud-gold" class="num">175</span>
+          </div>
+          <div class="stat-chip xp-chip" title="경험치">
+            <span class="chip-icon" aria-hidden="true">XP</span>
+            <span id="hud-xp" class="num">0/450</span>
+          </div>
+          <div id="hud-era-badge" class="era-pill">I 원시</div>
+        </div>
+
+        <div class="minimap-shell glass-panel" id="minimap-shell" aria-label="전장 미니맵">
+          <div class="minimap-hp-strip">
+            <div class="hp-mini player">
+              <span class="hp-mini-label num" id="hud-player-hp">600</span>
+              <div class="hp-mini-track">
+                <div class="hp-mini-fill" id="hud-player-hp-bar"></div>
+              </div>
+            </div>
+            <span class="hp-vs" id="hud-timer">00:00</span>
+            <div class="hp-mini enemy">
+              <div class="hp-mini-track">
+                <div class="hp-mini-fill" id="hud-enemy-hp-bar"></div>
+              </div>
+              <span class="hp-mini-label num" id="hud-enemy-hp">600</span>
+            </div>
+          </div>
+          <canvas id="minimap-canvas" width="280" height="24"></canvas>
+        </div>
+
+        <div class="top-right glass-panel">
+          <button id="btn-speed" class="icon-btn speed-btn" type="button" aria-label="배속 전환">
+            1x
+          </button>
+          <button id="btn-mute" class="icon-btn" type="button" aria-label="사운드 음소거 전환">
+            <svg viewBox="0 0 24 24" class="svg-icon" aria-hidden="true">
+              <path
+                d="M11 5L6 9H2v6h4l5 4V5zM15.54 8.46a5 5 0 0 1 0 7.07M19.07 4.93a10 10 0 0 1 0 14.14"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+              />
+            </svg>
+          </button>
+          <button id="btn-pause" class="icon-btn" type="button" aria-label="일시정지">
+            <svg viewBox="0 0 24 24" class="svg-icon" aria-hidden="true">
+              <rect x="6" y="4" width="4" height="16" rx="1" fill="currentColor" />
+              <rect x="14" y="4" width="4" height="16" rx="1" fill="currentColor" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <!-- CINEMATIC EVENT BANNER -->
+      <div id="event-banner" class="event-banner hidden" role="status" aria-live="polite">
+        <div id="event-banner-title" class="banner-title"></div>
+        <div id="event-banner-sub" class="banner-sub"></div>
+      </div>
+
+      <!-- FLOATING PRODUCTION QUEUE -->
+      <div id="queue-bar" class="queue-bar hidden" aria-label="유닛 생산 대기열"></div>
+
+      <!-- BOTTOM THUMB DOCK -->
+      <footer id="bottom-hud" class="hud-layer hidden" aria-label="하단 명령 조작부">
+        <div class="dock-left glass-panel">
+          <div class="mode-tabs" role="tablist">
+            <button
+              id="tab-units"
+              class="mode-tab active"
+              type="button"
+              role="tab"
+              aria-selected="true"
+            >
+              <span>유닛</span>
+            </button>
+            <button
+              id="tab-turrets"
+              class="mode-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >
+              <span>포탑</span>
+              <small id="turret-slot-count" class="num">0/1</small>
+            </button>
+          </div>
+          <div id="action-cards" class="action-cards" data-cols="3"></div>
+        </div>
+
+        <div class="dock-right">
+          <button id="btn-evolve" class="power-btn evolve-btn" type="button">
+            <div class="power-fill" id="evolve-fill"></div>
+            <div class="power-content">
+              <span class="power-kicker" id="evolve-kicker">시대 진화</span>
+              <strong class="power-label" id="evolve-label">II 고대</strong>
+              <span class="power-sub num" id="evolve-sub">450 XP</span>
+            </div>
+          </button>
+
+          <button id="btn-ultimate" class="power-btn ult-btn" type="button">
+            <div class="power-fill" id="ult-fill"></div>
+            <div class="power-content">
+              <span class="power-kicker">필살기</span>
+              <strong class="power-label" id="ult-label">운석 낙하</strong>
+              <span class="power-sub num" id="ult-sub">8s</span>
+            </div>
+          </button>
+        </div>
+      </footer>
+
+      <!-- TITLE OVERLAY -->
+      <section id="overlay-title" class="overlay-backdrop" aria-label="시작 화면">
+        <div class="title-modal glass-modal">
+          <div class="title-left">
+            <span class="title-eyebrow">AGE OF WAR II · 7-ERA STRATEGY</span>
+            <h1>전쟁시대 2: 크로노 프론트</h1>
+            <p class="title-desc">
+              원시 시대부터 미래 시대까지 진화하며 적 기지를 파괴하는 횡스크롤 전략 디펜스
+            </p>
+            <div class="era-strip" aria-label="7시대 진화 단계">
+              <span>I 원시</span>
+              <span>II 고대</span>
+              <span>III 중세</span>
+              <span>IV 화약</span>
+              <span>V 대전</span>
+              <span>VI 현대</span>
+              <span>VII 미래</span>
+            </div>
+            <div class="records-box" id="title-records"></div>
+          </div>
+
+          <div class="title-right">
+            <div class="diff-heading">난이도 선택</div>
+            <div id="difficulty-selector" class="diff-list" role="radiogroup" aria-label="난이도"></div>
+            <button id="btn-start-game" class="primary-cta" type="button">전투 시작</button>
+            <div class="controls-hint">
+              화면 좌우 드래그 · 상단 미니맵 터치 이동 · 하단 엄지 조작
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- PAUSE OVERLAY -->
+      <section id="overlay-pause" class="overlay-backdrop hidden" aria-label="일시정지 메뉴">
+        <div class="compact-modal glass-modal">
+          <h2>일시정지</h2>
+          <p class="modal-sub">전장이 일시 정지되었습니다</p>
+          <div class="modal-actions">
+            <button id="btn-resume" class="primary-cta" type="button">계속하기</button>
+            <button id="btn-pause-restart" class="secondary-cta" type="button">다시 시작</button>
+            <button id="btn-pause-title" class="ghost-cta" type="button">타이틀 화면</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- RESULT OVERLAY -->
+      <section id="overlay-result" class="overlay-backdrop hidden" aria-label="전투 결과">
+        <div class="result-modal glass-modal">
+          <div id="result-badge" class="result-badge">VICTORY</div>
+          <h2 id="result-title">승리!</h2>
+          <p id="result-subtitle" class="modal-sub"></p>
+          <div id="result-stats" class="result-stats"></div>
+          <div class="modal-actions row-actions">
+            <button id="btn-result-retry" class="primary-cta" type="button">다시 도전</button>
+            <button id="btn-result-title" class="secondary-cta" type="button">타이틀 화면</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- PORTRAIT ROTATE OVERLAY -->
+      <section id="overlay-rotate" class="rotate-overlay hidden" aria-label="가로 화면 안내">
+        <div class="rotate-card">
+          <div class="phone-anim" aria-hidden="true">
+            <div class="phone-body">
+              <div class="phone-notch"></div>
+            </div>
+          </div>
+          <h2>가로 화면으로 돌려주세요</h2>
+          <p>아이폰 가로 모드에서 전장과 하단 엄지 조작부를 쾌적하게 플레이할 수 있습니다.</p>
+        </div>
+      </section>
+    </main>
+
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
