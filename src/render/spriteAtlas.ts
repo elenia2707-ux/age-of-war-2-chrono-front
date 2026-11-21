@@ -18,14 +18,18 @@ export interface SpriteAtlasData {
     width: number;
     height: number;
     pixelScale: number;
+    unitScale?: number;
     frameCount: number;
     version: number;
   };
   frames: Record<string, SpriteFrame>;
 }
 
-/** 1 sprite pixel = 2 logical world units across units, bases, turrets, projectiles, and ground tiles */
+/** 1 sprite pixel = 2 logical world units for bases, turrets, projectiles, and ground tiles */
 export const PIXEL_WORLD_SCALE = 2;
+
+/** HD 1:1 pixel density for all 31 detailed character & heavy war-machine sprites */
+export const UNIT_WORLD_SCALE = 1;
 
 let atlasData: SpriteAtlasData | null = null;
 let sheetImage: HTMLImageElement | null = null;
@@ -96,6 +100,8 @@ export function loadSpriteAtlas(basePath = './sprites/'): Promise<void> {
 
 export interface DrawSpriteOptions {
   scale?: number;
+  scaleX?: number;
+  scaleY?: number;
   flipX?: boolean;
   flipY?: boolean;
   rotation?: number;
@@ -117,9 +123,9 @@ export function drawSprite(
   const frame = atlasData.frames[key];
   if (!frame) return false;
 
-  const scale = opts.scale ?? PIXEL_WORLD_SCALE;
-  const flipX = opts.flipX ? -1 : 1;
-  const flipY = opts.flipY ? -1 : 1;
+  const baseScale = opts.scale ?? PIXEL_WORLD_SCALE;
+  const sxMult = (opts.scaleX ?? 1) * (opts.flipX ? -1 : 1);
+  const syMult = (opts.scaleY ?? 1) * (opts.flipY ? -1 : 1);
   const rot = opts.rotation ?? 0;
 
   ctx.save();
@@ -129,18 +135,17 @@ export function drawSprite(
   }
 
   if (rot === 0) {
-    // Snap unrotated sprites to whole world coordinates to eliminate pixel shimmer
     const sx = Math.round(worldX);
     const sy = Math.round(worldY);
     ctx.translate(sx, sy);
-    if (flipX !== 1 || flipY !== 1) {
-      ctx.scale(flipX, flipY);
+    if (sxMult !== 1 || syMult !== 1) {
+      ctx.scale(sxMult, syMult);
     }
   } else {
     ctx.translate(worldX, worldY);
     ctx.rotate(rot);
-    if (flipX !== 1 || flipY !== 1) {
-      ctx.scale(flipX, flipY);
+    if (sxMult !== 1 || syMult !== 1) {
+      ctx.scale(sxMult, syMult);
     }
   }
 
@@ -150,10 +155,10 @@ export function drawSprite(
     frame.y,
     frame.w,
     frame.h,
-    Math.round(-frame.anchorX * scale),
-    Math.round(-frame.anchorY * scale),
-    Math.round(frame.w * scale),
-    Math.round(frame.h * scale),
+    Math.round(-frame.anchorX * baseScale),
+    Math.round(-frame.anchorY * baseScale),
+    Math.round(frame.w * baseScale),
+    Math.round(frame.h * baseScale),
   );
 
   ctx.restore();
@@ -161,7 +166,7 @@ export function drawSprite(
 }
 
 /**
- * Render a sprite frame crisply centered into a PNG data URL (for HUD action cards & queue slots).
+ * Render a tight-cropped sprite frame crisply centered into a PNG data URL (for HUD cards & queue slots).
  */
 export function renderSpriteToDataUrl(
   key: string,
@@ -173,6 +178,51 @@ export function renderSpriteToDataUrl(
   const frame = atlasData.frames[key];
   if (!frame) return null;
 
+  // Measure tight non-transparent bounding box so HD sprites fill HUD action cards boldly
+  const probe = document.createElement('canvas');
+  probe.width = frame.w;
+  probe.height = frame.h;
+  const pCtx = probe.getContext('2d');
+  if (!pCtx) return null;
+  pCtx.imageSmoothingEnabled = false;
+  pCtx.drawImage(sheetImage, frame.x, frame.y, frame.w, frame.h, 0, 0, frame.w, frame.h);
+
+  let minX = 0;
+  let minY = 0;
+  let maxX = frame.w - 1;
+  let maxY = frame.h - 1;
+  try {
+    const imgData = pCtx.getImageData(0, 0, frame.w, frame.h).data;
+    let found = false;
+    let bx0 = frame.w;
+    let by0 = frame.h;
+    let bx1 = 0;
+    let by1 = 0;
+    for (let y = 0; y < frame.h; y++) {
+      const row = y * frame.w;
+      for (let x = 0; x < frame.w; x++) {
+        if (imgData[(row + x) * 4 + 3] > 20) {
+          found = true;
+          if (x < bx0) bx0 = x;
+          if (x > bx1) bx1 = x;
+          if (y < by0) by0 = y;
+          if (y > by1) by1 = y;
+        }
+      }
+    }
+    if (found) {
+      minX = bx0;
+      minY = by0;
+      maxX = bx1;
+      maxY = by1;
+    }
+  } catch {
+    // Fallback to full frame
+  }
+
+  const cropW = Math.max(1, maxX - minX + 1);
+  const cropH = Math.max(1, maxY - minY + 1);
+
   const canvas = document.createElement('canvas');
   canvas.width = canvasW;
   canvas.height = canvasH;
@@ -181,17 +231,16 @@ export function renderSpriteToDataUrl(
 
   ctx.imageSmoothingEnabled = false;
 
-  // Prefer crisp integer scaling when possible so HUD icons look ultra-sharp
   const maxW = Math.max(1, canvasW - padding * 2);
   const maxH = Math.max(1, canvasH - padding * 2);
-  const rawScale = Math.min(maxW / frame.w, maxH / frame.h);
+  const rawScale = Math.min(maxW / cropW, maxH / cropH);
   const scale = rawScale >= 1 ? Math.max(1, Math.floor(rawScale * 2) / 2) : rawScale;
 
-  const drawW = Math.round(frame.w * scale);
-  const drawH = Math.round(frame.h * scale);
+  const drawW = Math.round(cropW * scale);
+  const drawH = Math.round(cropH * scale);
   const dx = Math.round((canvasW - drawW) / 2);
   const dy = Math.round((canvasH - drawH) / 2);
 
-  ctx.drawImage(sheetImage, frame.x, frame.y, frame.w, frame.h, dx, dy, drawW, drawH);
+  ctx.drawImage(sheetImage, frame.x + minX, frame.y + minY, cropW, cropH, dx, dy, drawW, drawH);
   return canvas.toDataURL('image/png');
 }

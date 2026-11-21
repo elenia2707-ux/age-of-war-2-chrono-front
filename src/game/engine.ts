@@ -234,6 +234,7 @@ export class GameEngine {
 
     faction.gold -= cost;
     faction.upgrades[id] += 1;
+    faction.upgradeFlash = 1;
     const newLevel = faction.upgrades[id];
 
     const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
@@ -248,9 +249,11 @@ export class GameEngine {
           const oldMax = u.maxHp;
           u.maxHp = Math.round(u.def.maxHp * newArmorMult);
           u.hp = Math.min(u.maxHp, Math.round(u.hp * ratio + Math.max(0, u.maxHp - oldMax) * 0.5));
+          u.displayHp = Math.max(u.displayHp, u.hp);
+          u.upgradeFlash = 1;
         }
       }
-      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#60a5fa', 1.15);
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#60a5fa', 1.18, 'heal');
     } else if (id === 'fortress') {
       const era = getEra(faction.eraIndex);
       const nextBaseMaxHp = Math.round(era.baseMaxHp * getBaseMaxHpMult(faction.upgrades));
@@ -259,15 +262,23 @@ export class GameEngine {
       faction.baseMaxHp = nextBaseMaxHp;
       const beforeHp = faction.baseHp;
       faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + maxGain + repair);
+      faction.displayBaseHp = Math.max(faction.displayBaseHp, faction.baseHp);
       const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
-      this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.24);
+      this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.26, 'heal');
     } else if (id === 'weapons') {
-      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#fb923c', 1.15);
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          u.upgradeFlash = 1;
+        }
+      }
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#fb923c', 1.18, 'crit');
     } else {
-      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.15);
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.18, 'gold');
     }
 
-    this.spawnRing(baseX, GROUND_Y - 76, '#facc15', 75);
+    this.spawnRing(baseX, GROUND_Y - 76, '#facc15', 85);
+    this.spawnFlashStar(baseX, GROUND_Y - 82, '#fde047', 22);
+    this.spawnBurst(baseX, GROUND_Y - 76, '#fef08a', 12, 160);
     if (team === 'player') {
       this.callbacks.onSound?.('turret_build');
     }
@@ -401,14 +412,16 @@ export class GameEngine {
     const hpBonus = nextScaledMax - prevScaledMax;
     faction.baseMaxHp = nextScaledMax;
     faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + hpBonus);
+    faction.displayBaseHp = faction.baseHp;
     faction.ultimateMaxCooldown = nextEra.ultimate.cooldown;
     // Reset ultimate cooldown on evolution so the player can unleash the new era's power right away
     faction.ultimateCooldown = 0;
     faction.evolveFlash = 1;
 
     const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
-    this.addPopup(baseX, GROUND_Y - 140, `+${hpBonus} HP`, '#4ade80', 1.3);
+    this.addPopup(baseX, GROUND_Y - 140, `+${hpBonus} HP`, '#4ade80', 1.32, 'heal');
     this.spawnRing(baseX, GROUND_Y - 60, nextEra.palette.accent, 110);
+    this.spawnFlashStar(baseX, GROUND_Y - 84, '#fef08a', 32);
     this.spawnBurst(baseX, GROUND_Y - 70, '#fde047', 26, 220);
 
     if (team === 'player') {
@@ -525,6 +538,7 @@ export class GameEngine {
       totalXp: 0,
       baseHp: era.baseMaxHp,
       baseMaxHp: era.baseMaxHp,
+      displayBaseHp: era.baseMaxHp,
       turretSlots: 1,
       turrets: [null, null, null, null],
       queue: [],
@@ -533,6 +547,7 @@ export class GameEngine {
       ultimateMaxCooldown: era.ultimate.cooldown,
       baseHitFlash: 0,
       evolveFlash: 0,
+      upgradeFlash: 0,
       kills: 0,
       unitsSpawned: 0,
     };
@@ -605,6 +620,16 @@ export class GameEngine {
     if (f.evolveFlash > 0) {
       f.evolveFlash = Math.max(0, f.evolveFlash - dt * 1.5);
     }
+    if (f.upgradeFlash > 0) {
+      f.upgradeFlash = Math.max(0, f.upgradeFlash - dt * 1.8);
+    }
+    // Smooth fighting-game trailing damage drain bar on fortresses
+    if (f.displayBaseHp > f.baseHp) {
+      const drainSpeed = Math.max(f.baseMaxHp * 0.28, (f.displayBaseHp - f.baseHp) * 4.5);
+      f.displayBaseHp = Math.max(f.baseHp, f.displayBaseHp - drainSpeed * dt);
+    } else if (f.displayBaseHp < f.baseHp) {
+      f.displayBaseHp = f.baseHp;
+    }
   }
 
   private updateQueue(f: FactionState, dt: number): void {
@@ -630,11 +655,15 @@ export class GameEngine {
       y: GROUND_Y,
       hp: scaledMaxHp,
       maxHp: scaledMaxHp,
+      displayHp: scaledMaxHp,
+      displayHpHold: 0,
       state: 'walk',
       attackCooldown: 0.15,
       attackAnim: 0,
       walkPhase: this.random() * Math.PI * 2,
       hitFlash: 0,
+      lastHitCrit: false,
+      upgradeFlash: 0,
       knockbackVel: 0,
       deathTimer: 0,
     };
@@ -658,9 +687,20 @@ export class GameEngine {
 
       for (let i = 0; i < allies.length; i++) {
         const u = allies[i];
-        if (u.hitFlash > 0) u.hitFlash = Math.max(0, u.hitFlash - dt * 7);
+        if (u.hitFlash > 0) u.hitFlash = Math.max(0, u.hitFlash - dt * 6.5);
+        if (u.upgradeFlash > 0) u.upgradeFlash = Math.max(0, u.upgradeFlash - dt * 1.9);
         if (u.attackCooldown > 0) u.attackCooldown = Math.max(0, u.attackCooldown - dt);
         if (u.attackAnim > 0) u.attackAnim = Math.max(0, u.attackAnim - dt * 3.4);
+
+        // Fighting-game delayed white/gold HP drain bar on units
+        if (u.displayHpHold > 0) {
+          u.displayHpHold = Math.max(0, u.displayHpHold - dt);
+        } else if (u.displayHp > u.hp) {
+          const drainRate = Math.max(u.maxHp * 0.45, (u.displayHp - u.hp) * 5.2);
+          u.displayHp = Math.max(u.hp, u.displayHp - drainRate * dt);
+        } else if (u.displayHp < u.hp) {
+          u.displayHp = u.hp;
+        }
 
         // Apply knockback decay
         if (Math.abs(u.knockbackVel) > 1) {
@@ -721,7 +761,12 @@ export class GameEngine {
             const baseStop = enemyBaseFront - dir * (u.def.width * 0.5 + 4);
             nextX = dir === 1 ? Math.min(nextX, baseStop) : Math.max(nextX, baseStop);
             u.x = nextX;
+            const prevStep = Math.floor(u.walkPhase / Math.PI);
             u.walkPhase += dt * (u.def.speed * 0.16);
+            // Heavy war-machines & cavalry kick up subtle pixel road dust as they stride!
+            if ((u.def.role === 'heavy' || u.def.role === 'siege') && Math.floor(u.walkPhase / Math.PI) !== prevStep) {
+              this.spawnDustWave(u.x - dir * 16, GROUND_Y, -dir * 38, 10, '#a8a29e');
+            }
           }
         }
       }
@@ -1388,14 +1433,56 @@ export class GameEngine {
     const finalDamage = Math.max(1, Math.round(rawDamage * (1 - effectiveArmor)));
     victim.hp -= finalDamage;
     victim.hitFlash = 1;
-    victim.knockbackVel += knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.85);
+    victim.lastHitCrit = isCrit;
+    victim.displayHpHold = Math.max(victim.displayHpHold, isCrit ? 0.24 : 0.16);
+    victim.knockbackVel += knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88);
+
+    const hitDir = attackerTeam === 'player' ? 1 : -1;
+    const impactX = victim.x - hitDir * Math.min(14, victim.def.width * 0.3);
+    const impactY = GROUND_Y - victim.def.height * 0.72;
+
+    // Instant arcade hit-impact starburst & directional sparks on EVERY hit!
+    const sparkColor = isCrit
+      ? '#fde047'
+      : victim.def.isMechanical
+        ? '#fef08a'
+        : armorPierce
+          ? '#67e8f9'
+          : '#ffedd5';
+    this.spawnFlashStar(impactX, impactY, sparkColor, isCrit ? 24 : 14);
+    this.spawnDirectionalSparks(impactX, impactY, hitDir, sparkColor, isCrit ? 9 : 4, isCrit ? 220 : 145);
+
+    if (isCrit) {
+      this.spawnRing(impactX, impactY, '#fde047', 28);
+      if (finalDamage >= victim.maxHp * 0.22 || victim.def.role === 'heavy' || victim.def.role === 'siege') {
+        this.callbacks.onShake?.(0.14);
+      }
+    }
+
+    // Distinct readable color-coded popup styling by hit type & victim team
+    const popupKind: DamagePopup['kind'] = isCrit
+      ? 'crit'
+      : victim.team === 'player'
+        ? 'player_hit'
+        : armorPierce
+          ? 'elemental'
+          : 'normal';
+    const popupColor =
+      popupKind === 'crit'
+        ? '#fde047'
+        : popupKind === 'player_hit'
+          ? '#fca5a5'
+          : popupKind === 'elemental'
+            ? '#67e8f9'
+            : '#ffffff';
 
     this.addPopup(
       victim.x + (this.random() - 0.5) * 16,
       GROUND_Y - victim.def.height * 1.48 - 10,
       isCrit ? `${finalDamage}!` : `${finalDamage}`,
-      isCrit ? '#fde047' : '#ffffff',
-      isCrit ? 1.28 : 0.98,
+      popupColor,
+      isCrit ? 1.32 : 1.0,
+      popupKind,
     );
 
     if (victim.hp <= 0) {
@@ -1424,15 +1511,18 @@ export class GameEngine {
       loser.totalXp += consolationXp;
 
       if (attackerTeam === 'player') {
-        this.addPopup(victim.x, GROUND_Y - victim.def.height * 1.48 - 28, `+${rewardGold}G`, '#facc15', 0.96);
+        this.addPopup(victim.x, GROUND_Y - victim.def.height * 1.48 - 30, `+${rewardGold}G`, '#facc15', 0.98, 'gold');
       }
 
       if (victim.def.isMechanical) {
-        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 52, '#f97316');
+        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 58, '#f97316');
         this.callbacks.onSound?.('explosion');
+        this.callbacks.onShake?.(0.24);
       } else {
-        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 10, 145);
-        this.spawnDebris(victim.x, GROUND_Y - victim.def.height * 0.45, '#52525b', 4, 130);
+        this.spawnFlashStar(victim.x, impactY, victim.team === 'player' ? '#93c5fd' : '#fca5a5', 18);
+        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 12, 165);
+        this.spawnDebris(victim.x, GROUND_Y - victim.def.height * 0.45, '#52525b', 5, 145);
+        this.spawnDustWave(victim.x, GROUND_Y, hitDir * 55, 14, '#78716c');
       }
     }
   }
@@ -1449,10 +1539,21 @@ export class GameEngine {
     attacker.totalXp += xpGain;
 
     const baseX = targetTeam === 'player' ? PLAYER_BASE_X + 55 : ENEMY_BASE_X - 55;
-    this.addPopup(baseX + (this.random() - 0.5) * 24, GROUND_Y - 125, `-${dmg}`, isCrit ? '#fbbf24' : '#f87171', isCrit ? 1.3 : 1.08);
-    this.spawnDebris(baseX, GROUND_Y - 64, '#78716c', 4, 150);
+    const bounceDir: 1 | -1 = attackerTeam === 'player' ? -1 : 1;
+    this.addPopup(
+      baseX + (this.random() - 0.5) * 24,
+      GROUND_Y - 128,
+      isCrit ? `-${dmg}!` : `-${dmg}`,
+      isCrit ? '#fde047' : '#fb7185',
+      isCrit ? 1.38 : 1.14,
+      'base',
+    );
+    this.spawnFlashStar(baseX, GROUND_Y - 72, isCrit ? '#fde047' : '#fb923c', isCrit ? 28 : 18);
+    this.spawnDirectionalSparks(baseX, GROUND_Y - 70, bounceDir, '#fde68a', isCrit ? 10 : 6, 175);
+    this.spawnDebris(baseX, GROUND_Y - 64, '#78716c', isCrit ? 8 : 5, 170);
+    this.spawnDustWave(baseX, GROUND_Y, bounceDir * 60, 18, '#a8a29e');
     this.callbacks.onSound?.('hit_base');
-    this.callbacks.onShake?.(isCrit ? 0.25 : 0.12);
+    this.callbacks.onShake?.(isCrit ? 0.28 : 0.14);
   }
 
   private updateEffects(dt: number): void {
@@ -1506,8 +1607,8 @@ export class GameEngine {
     }
 
     // Cap VFX budgets for locked 60fps on iPhone Safari
-    if (this.particles.length > 340) {
-      this.particles.splice(0, this.particles.length - 340);
+    if (this.particles.length > 420) {
+      this.particles.splice(0, this.particles.length - 420);
     }
     if (this.scorchMarks.length > 36) {
       this.scorchMarks.splice(0, this.scorchMarks.length - 36);
@@ -1520,7 +1621,14 @@ export class GameEngine {
     }
   }
 
-  private addPopup(x: number, y: number, text: string, color: string, scale: number): void {
+  private addPopup(
+    x: number,
+    y: number,
+    text: string,
+    color: string,
+    scale: number,
+    kind: DamagePopup['kind'] = 'normal',
+  ): void {
     // Spread simultaneous combat numbers horizontally and stagger vertically so none overlap
     let px = x + (this.random() - 0.5) * 40;
     let py = y + (this.random() - 0.5) * 10;
@@ -1530,7 +1638,7 @@ export class GameEngine {
       let crowded: DamagePopup | null = null;
       let requiredX = 36;
       for (const existing of this.popups) {
-        // Account for actual label width (e.g., 4-5 digit Future era damage numbers & +G popups)
+        // Account for actual label width (e.g., 4-5 digit Future/Interstellar damage numbers & +G popups)
         const needX = Math.max(36, (text.length + existing.text.length) * 5.2 + 12);
         if (Math.abs(existing.x - px) < needX && Math.abs(existing.y - py) < minSepY) {
           crowded = existing;
@@ -1552,7 +1660,7 @@ export class GameEngine {
 
     const driftDir = px >= x ? 1 : -1;
     const vx = driftDir * (12 + this.random() * 18);
-    const vy = -(54 + this.random() * 20) * (scale > 1.1 ? 1.1 : 1);
+    const vy = -(56 + this.random() * 20) * (scale > 1.1 ? 1.12 : 1);
 
     this.popups.push({
       x: px,
@@ -1562,8 +1670,9 @@ export class GameEngine {
       text,
       color,
       scale,
-      life: 0.84,
-      maxLife: 0.84,
+      life: kind === 'crit' ? 0.96 : 0.84,
+      maxLife: kind === 'crit' ? 0.96 : 0.84,
+      kind,
     });
   }
 
@@ -1618,6 +1727,67 @@ export class GameEngine {
       maxLife: 0.28,
       angleOffset: (this.random() - 0.5) * 0.28,
       style,
+    });
+  }
+
+  private spawnFlashStar(x: number, y: number, color: string, size: number): void {
+    this.particles.push({
+      x,
+      y,
+      vx: 0,
+      vy: 0,
+      size,
+      color,
+      alpha: 1,
+      life: 0.14,
+      maxLife: 0.14,
+      gravity: 0,
+      shape: 'flash_star',
+    });
+  }
+
+  private spawnDirectionalSparks(
+    x: number,
+    y: number,
+    dir: 1 | -1,
+    color: string,
+    count: number,
+    speed: number,
+  ): void {
+    for (let i = 0; i < count; i++) {
+      const spread = (this.random() - 0.5) * 1.45;
+      const baseAngle = dir === 1 ? 0 : Math.PI;
+      const angle = baseAngle + spread;
+      const spd = speed * (0.45 + this.random() * 0.85);
+      this.particles.push({
+        x,
+        y,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd - 55,
+        size: 3.0 + this.random() * 3.5,
+        color,
+        alpha: 1,
+        life: 0.2 + this.random() * 0.2,
+        maxLife: 0.4,
+        gravity: 390,
+        shape: 'spark',
+      });
+    }
+  }
+
+  private spawnDustWave(x: number, y: number, vx: number, size: number, color: string): void {
+    this.particles.push({
+      x,
+      y,
+      vx,
+      vy: -8,
+      size,
+      color,
+      alpha: 0.65,
+      life: 0.34,
+      maxLife: 0.34,
+      gravity: 0,
+      shape: 'dust_wave',
     });
   }
 
@@ -1708,19 +1878,51 @@ export class GameEngine {
   }
 
   private spawnExplosion(x: number, y: number, radius: number, accentColor: string): void {
-    // Dual shockwave rings (outer colored + inner hot core)
+    // 1. Instant blinding arcade flash starburst at blast core
+    this.spawnFlashStar(x, y, accentColor, Math.min(46, Math.max(20, radius * 0.62)));
+
+    // 2. Layered Metal-Slug stepped pixel fireballs blooming outward!
+    const fireballCount = radius >= 64 ? 5 : 3;
+    for (let f = 0; f < fireballCount; f++) {
+      const ox = f === 0 ? 0 : (this.random() - 0.5) * radius * 0.65;
+      const oy = f === 0 ? -4 : -this.random() * radius * 0.45;
+      const sz = Math.max(12, Math.min(28, radius * (f === 0 ? 0.34 : 0.24)));
+      this.particles.push({
+        x: x + ox,
+        y: y + oy,
+        vx: ox * 1.4,
+        vy: -28 - this.random() * 44,
+        size: sz,
+        color: accentColor,
+        alpha: 0.96,
+        life: 0.3 + this.random() * 0.16,
+        maxLife: 0.46,
+        gravity: -25,
+        shape: 'fireball',
+      });
+    }
+
+    // 3. Dual expanding shockwave rings + skimming ground blast dust waves
     this.spawnRing(x, y, accentColor, radius);
     this.spawnRing(x, y, '#fef9c3', radius * 0.45);
-    // Sparks + fiery core + flying debris shards + billowing dark & light smoke
-    this.spawnBurst(x, y, accentColor, 14, Math.min(290, radius * 3.5));
-    this.spawnBurst(x, y, '#fef08a', 9, Math.min(220, radius * 2.5));
-    this.spawnDebris(x, y, accentColor === '#22d3ee' ? '#334155' : '#44403c', Math.min(10, Math.max(5, Math.round(radius / 11))), Math.min(280, radius * 3.1));
-    this.spawnSmoke(x, y - 8, 5, true);
-    this.spawnSmoke(x, y - 14, 3, false);
-    // Ground scorch crater mark when impact is close to the ground
-    if (y >= GROUND_Y - 75) {
+    if (y >= GROUND_Y - 80) {
+      this.spawnDustWave(x - 10, GROUND_Y, -120, Math.min(30, radius * 0.38), '#d6d3d1');
+      this.spawnDustWave(x + 10, GROUND_Y, 120, Math.min(30, radius * 0.38), '#d6d3d1');
       this.spawnScorch(x, radius, accentColor);
     }
+
+    // 4. Streaking velocity sparks, flying outlined debris & billowing smoke clouds
+    this.spawnBurst(x, y, accentColor, 14, Math.min(300, radius * 3.6));
+    this.spawnBurst(x, y, '#fef08a', 10, Math.min(240, radius * 2.7));
+    this.spawnDebris(
+      x,
+      y,
+      accentColor === '#22d3ee' ? '#334155' : '#44403c',
+      Math.min(10, Math.max(5, Math.round(radius / 11))),
+      Math.min(290, radius * 3.2),
+    );
+    this.spawnSmoke(x, y - 10, 5, true);
+    this.spawnSmoke(x, y - 18, 3, false);
   }
 
   private spawnBaseDestruction(baseX: number): void {

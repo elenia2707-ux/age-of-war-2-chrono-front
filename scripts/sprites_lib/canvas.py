@@ -341,42 +341,187 @@ class PixelCanvas:
         self.ellipse(cx, cy, max(1, radius // 3), max(1, radius // 3), rim_ramp[3])
         self.px(cx, cy, rim_ramp[0])
 
+    def shaded_capsule(
+        self,
+        x0: float,
+        y0: float,
+        x1: float,
+        y1: float,
+        radius: float,
+        ramp: Sequence[RGBA],
+        light_x: float = -0.35,
+        light_y: float = -0.55,
+    ) -> None:
+        """Draw a smooth 4-tone directionally shaded organic/armored capsule limb between two points."""
+        dx = x1 - x0
+        dy = y1 - y0
+        len2 = dx * dx + dy * dy
+        r = max(0.75, radius)
+        min_x = max(0, int(math.floor(min(x0, x1) - r - 1)))
+        max_x = min(self.w - 1, int(math.ceil(max(x0, x1) + r + 1)))
+        min_y = max(0, int(math.floor(min(y0, y1) - r - 1)))
+        max_y = min(self.h - 1, int(math.ceil(max(y0, y1) + r + 1)))
+        inv_r = 1.0 / r
+        has_spec = len(ramp) > 4
+        for y in range(min_y, max_y + 1):
+            for x in range(min_x, max_x + 1):
+                if len2 > 1e-6:
+                    t = max(0.0, min(1.0, ((x - x0) * dx + (y - y0) * dy) / len2))
+                    cx = x0 + t * dx
+                    cy = y0 + t * dy
+                else:
+                    cx, cy = x0, y0
+                nx = (x - cx) * inv_r
+                ny = (y - cy) * inv_r
+                dist2 = nx * nx + ny * ny
+                if dist2 <= 1.04:
+                    nd = (nx - light_x) ** 2 + (ny - light_y) ** 2
+                    if has_spec and nd < 0.16:
+                        col = ramp[4]
+                    elif nd < 0.62:
+                        col = ramp[3]
+                    elif nd < 1.38:
+                        col = ramp[2]
+                    elif nd < 2.02:
+                        col = ramp[1]
+                    else:
+                        col = ramp[0]
+                    self.px(x, y, col)
+
+    def armor_plate(
+        self,
+        x: int,
+        y: int,
+        w: int,
+        h: int,
+        ramp: Sequence[RGBA],
+        *,
+        rivets: bool = False,
+        sheen: bool = True,
+        outline: RGBA | None = None,
+    ) -> None:
+        """Draw a rich metallic/armored pixel panel with diagonal specular sheen and optional rivets."""
+        x0, y0 = int(round(x)), int(round(y))
+        iw, ih = int(round(w)), int(round(h))
+        if iw <= 0 or ih <= 0:
+            return
+        self.box(x0, y0, iw, ih, ramp, outline=None)
+        if sheen and iw >= 5 and ih >= 5:
+            spec = ramp[4] if len(ramp) > 4 else ramp[3]
+            for sy in range(1, ih - 2):
+                sx = x0 + 1 + (sy // 2)
+                if sx < x0 + iw - 1:
+                    self.px(sx, y0 + sy, ramp[3])
+                    if sy < ih // 2 and sx + 1 < x0 + iw - 1:
+                        self.px(sx + 1, y0 + sy, spec)
+        if rivets and iw >= 6 and ih >= 6:
+            riv_dark = ramp[0]
+            riv_lit = ramp[4] if len(ramp) > 4 else ramp[3]
+            for rx, ry in (
+                (x0 + 2, y0 + 2),
+                (x0 + iw - 3, y0 + 2),
+                (x0 + 2, y0 + ih - 3),
+                (x0 + iw - 3, y0 + ih - 3),
+            ):
+                self.px(rx, ry, riv_lit)
+                self.px(rx, ry + 1, riv_dark)
+        if outline is not None:
+            self.rect_outline(x0, y0, iw, ih, outline)
+
+    def radial_glow(self, cx: float, cy: float, radius: float, col: RGBA) -> None:
+        """Crisp stepped dithered pixel glow halo around glowing weapons/cores."""
+        r = max(1, int(math.ceil(radius)))
+        icx, icy = int(round(cx)), int(round(cy))
+        r2 = radius * radius
+        for y in range(max(0, icy - r), min(self.h, icy + r + 1)):
+            dy = y - cy
+            for x in range(max(0, icx - r), min(self.w, icx + r + 1)):
+                dx = x - cx
+                d2 = dx * dx + dy * dy
+                if d2 <= r2:
+                    frac = 1.0 - math.sqrt(d2) / max(0.01, radius)
+                    if frac > 0.45 or ((x + y) & 1) == 0:
+                        a = int(col[3] * frac)
+                        if a > 12:
+                            self.px(x, y, (col[0], col[1], col[2], a))
+
+    def part(self) -> 'PixelCanvas':
+        """Create a transparent scratch layer of identical dimensions for outlined part compositing."""
+        return PixelCanvas(self.w, self.h)
+
+    def blit_part(
+        self,
+        layer: 'PixelCanvas',
+        crease: RGBA | None = INK,
+        ox: int = 0,
+        oy: int = 0,
+    ) -> None:
+        """Composite a drawn sub-part onto this canvas with an optional crisp 1px internal separation crease."""
+        if crease is not None:
+            layer.add_outline(crease)
+        self.blit(layer, ox, oy)
+
     def blit(self, src: 'PixelCanvas', ox: int = 0, oy: int = 0) -> None:
-        for y in range(src.h):
-            dy = y + oy
-            if not (0 <= dy < self.h):
-                continue
-            for x in range(src.w):
-                dx = x + ox
-                if not (0 <= dx < self.w):
+        sw, sh, sdata = src.w, src.h, src.data
+        dw, dh, ddata = self.w, self.h, self.data
+        y_start = max(0, -oy)
+        y_end = min(sh, dh - oy)
+        x_start = max(0, -ox)
+        x_end = min(sw, dw - ox)
+        for y in range(y_start, y_end):
+            srow = y * sw
+            drow = (y + oy) * dw
+            for x in range(x_start, x_end):
+                si = (srow + x) * 4
+                sa = sdata[si + 3]
+                if sa == 0:
                     continue
-                col = src.get(x, y)
-                if col[3] > 0:
-                    self.px(dx, dy, col)
+                di = (drow + x + ox) * 4
+                if sa == 255 or ddata[di + 3] == 0:
+                    ddata[di] = sdata[si]
+                    ddata[di + 1] = sdata[si + 1]
+                    ddata[di + 2] = sdata[si + 2]
+                    ddata[di + 3] = sa
+                else:
+                    self.px(x + ox, y + oy, (sdata[si], sdata[si + 1], sdata[si + 2], sa))
 
     def add_outline(self, color: RGBA = INK, skip_colors: Iterable[RGBA] = ()) -> None:
         """Add a crisp 1px 4-connected dark pixel outline around all opaque pixels."""
         skip = set(skip_colors)
         to_paint: list[tuple[int, int]] = []
         w, h, data = self.w, self.h, self.data
+        c0, c1, c2, c3 = color
         for y in range(h):
             row = y * w
             for x in range(w):
-                if data[(row + x) * 4 + 3] > 0:
+                idx0 = (row + x) * 4
+                if data[idx0 + 3] > 0:
                     continue
                 has_opaque = False
-                for nx, ny in ((x - 1, y), (x + 1, y), (x, y - 1), (x, y + 1)):
-                    if 0 <= nx < w and 0 <= ny < h:
-                        idx = (ny * w + nx) * 4
-                        if data[idx + 3] >= 180:
-                            c = (data[idx], data[idx + 1], data[idx + 2], data[idx + 3])
-                            if c not in skip:
-                                has_opaque = True
-                                break
+                if x > 0:
+                    i = idx0 - 4
+                    if data[i + 3] >= 180 and (not skip or (data[i], data[i + 1], data[i + 2], data[i + 3]) not in skip):
+                        has_opaque = True
+                if not has_opaque and x + 1 < w:
+                    i = idx0 + 4
+                    if data[i + 3] >= 180 and (not skip or (data[i], data[i + 1], data[i + 2], data[i + 3]) not in skip):
+                        has_opaque = True
+                if not has_opaque and y > 0:
+                    i = idx0 - w * 4
+                    if data[i + 3] >= 180 and (not skip or (data[i], data[i + 1], data[i + 2], data[i + 3]) not in skip):
+                        has_opaque = True
+                if not has_opaque and y + 1 < h:
+                    i = idx0 + w * 4
+                    if data[i + 3] >= 180 and (not skip or (data[i], data[i + 1], data[i + 2], data[i + 3]) not in skip):
+                        has_opaque = True
                 if has_opaque:
                     to_paint.append((x, y))
         for x, y in to_paint:
-            self.px(x, y, color)
+            i = (y * w + x) * 4
+            data[i] = c0
+            data[i + 1] = c1
+            data[i + 2] = c2
+            data[i + 3] = c3
 
     def shift(self, dx: int, dy: int) -> 'PixelCanvas':
         out = PixelCanvas(self.w, self.h)

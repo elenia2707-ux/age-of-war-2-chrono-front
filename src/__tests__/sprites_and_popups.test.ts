@@ -33,7 +33,11 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
     const anims = ['walk_0', 'walk_1', 'walk_2', 'walk_3', 'attack_0', 'attack_1', 'attack_2', 'hurt_0', 'death_0'];
     const teams = ['player', 'enemy'];
 
-    // 1. All 31 units x 2 teams x 9 frames + resolution criteria
+    // 1. All 31 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & texture safety
+    expect(sheetW).toBeLessThanOrEqual(4096);
+    expect(sheetH).toBeLessThanOrEqual(4096);
+    expect(atlas.meta.unitScale).toBe(1);
+
     for (const unitId of Object.keys(UNIT_BY_ID)) {
       for (const team of teams) {
         for (const anim of anims) {
@@ -46,15 +50,15 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
           expect(f.y + f.h).toBeLessThanOrEqual(sheetH);
 
           if (HEAVY_UNITS.has(unitId)) {
-            expect(f.w).toBeGreaterThanOrEqual(48);
-            expect(f.w).toBeLessThanOrEqual(72);
-            expect(f.h).toBeGreaterThanOrEqual(48);
-            expect(f.h).toBeLessThanOrEqual(72);
+            expect(f.w).toBeGreaterThanOrEqual(112);
+            expect(f.w).toBeLessThanOrEqual(160);
+            expect(f.h).toBeGreaterThanOrEqual(88);
+            expect(f.h).toBeLessThanOrEqual(148);
           } else {
-            expect(f.w).toBeGreaterThanOrEqual(32);
-            expect(f.w).toBeLessThanOrEqual(40);
-            expect(f.h).toBeGreaterThanOrEqual(32);
-            expect(f.h).toBeLessThanOrEqual(40);
+            expect(f.w).toBeGreaterThanOrEqual(68);
+            expect(f.w).toBeLessThanOrEqual(88);
+            expect(f.h).toBeGreaterThanOrEqual(68);
+            expect(f.h).toBeLessThanOrEqual(76);
           }
         }
       }
@@ -147,13 +151,14 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
     expect(selectUnitAnimFrame({ ...base, deathProgress: 0.5 })).toBe('death_0');
   });
 
-  it('spreads simultaneous combat damage popups horizontally and vertically so none overlap', () => {
+  it('spawns hit-impact starbursts, directional sparks, delayed HP drain trails, and non-overlapping popups', () => {
     const engine = new GameEngine();
     engine.startNewGame('normal', 2026);
-    engine.player.eraIndex = 2;
-    engine.enemy.eraIndex = 2;
+    engine.player.eraIndex = 3;
+    engine.enemy.eraIndex = 3;
 
     // Place a cluster of knights fighting in melee at the exact same frontline spot
+    const victims = [];
     for (let i = 0; i < 4; i++) {
       const p = engine.spawnUnit('player', UNIT_BY_ID.knight);
       p.x = 1180 + i * 2;
@@ -161,12 +166,17 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       const e = engine.spawnUnit('enemy', UNIT_BY_ID.knight);
       e.x = 1212 + i * 2;
       e.attackCooldown = 0;
+      victims.push(e);
     }
 
     // Step one tick so all 8 knights strike simultaneously at the same front line!
     engine.step(0.05);
 
     expect(engine.popups.length).toBeGreaterThanOrEqual(4);
+    expect(engine.particles.some((p) => p.shape === 'flash_star')).toBe(true);
+    expect(engine.particles.some((p) => p.shape === 'spark')).toBe(true);
+    // Struck knights should hold a fighting-game delayed displayHp trail above current hp
+    expect(victims.some((v) => v.hp < v.maxHp && v.displayHp > v.hp)).toBe(true);
 
     // Verify no two popups sit stacked on top of the exact same spot
     let overlappingPairs = 0;

@@ -30,16 +30,20 @@ export function renderBase(
   ctx.fillRect(-BASE_HALF_WIDTH - 10, -2, (BASE_HALF_WIDTH + 10) * 2, 6);
   ctx.fillRect(-BASE_HALF_WIDTH - 4, 4, (BASE_HALF_WIDTH + 4) * 2, 4);
 
-  // Pixel evolution golden flash aura
-  if (faction.evolveFlash > 0.02) {
-    const pulseR = Math.round(70 + (1 - faction.evolveFlash) * 60);
-    ctx.fillStyle = `rgba(254, 240, 138, ${(faction.evolveFlash * 0.32).toFixed(2)})`;
-    ctx.fillRect(-pulseR, -110 - pulseR, pulseR * 2, pulseR * 2);
+  // Pixel evolution & gold-upgrade golden flash aura
+  const auraFlash = Math.max(faction.evolveFlash, faction.upgradeFlash * 0.72);
+  if (auraFlash > 0.02) {
+    const pulseR = Math.round(74 + (1 - auraFlash) * 58);
+    ctx.fillStyle = `rgba(254, 240, 138, ${(auraFlash * 0.32).toFixed(2)})`;
+    ctx.fillRect(-pulseR, -116 - pulseR, pulseR * 2, pulseR * 2);
+    ctx.fillStyle = `rgba(250, 204, 21, ${(auraFlash * 0.48).toFixed(2)})`;
+    ctx.fillRect(-BASE_HALF_WIDTH - 6, -12, (BASE_HALF_WIDTH + 6) * 2, 12);
   }
 
   // Monumental 100x128px Pixel-Art Fortress Sprite (200x256 world units at 2x)
   const baseKey = `base/era_${faction.eraIndex}/${faction.team}/${dmgStage}`;
-  const drawn = drawSprite(ctx, baseKey, 0, 0, {
+  const hitJolt = faction.baseHitFlash > 0.45 ? -dir * Math.round((faction.baseHitFlash - 0.45) * 8) : 0;
+  const drawn = drawSprite(ctx, baseKey, hitJolt, 0, {
     scale: PIXEL_WORLD_SCALE,
     flipX: faction.team === 'enemy',
   });
@@ -54,13 +58,17 @@ export function renderBase(
     drawPixelDamageSmokeAndFire(ctx, hpRatio, time, dir);
   }
 
-  // Crisp pixel impact flash on fortress front wall when hit
+  // Crisp arcade impact flash & starburst on fortress front wall when hit
   if (faction.baseHitFlash > 0.08) {
-    ctx.fillStyle = `rgba(255, 248, 210, ${(faction.baseHitFlash * 0.55).toFixed(2)})`;
-    const fx = dir * 46;
-    ctx.fillRect(fx - 26, -116, 52, 86);
-    ctx.fillStyle = `rgba(255, 255, 255, ${(faction.baseHitFlash * 0.65).toFixed(2)})`;
-    ctx.fillRect(fx - 14, -98, 28, 50);
+    const f = faction.baseHitFlash;
+    const fx = dir * 48;
+    const fy = -74;
+    ctx.fillStyle = `rgba(255, 244, 184, ${(f * 0.55).toFixed(2)})`;
+    ctx.fillRect(fx - 28, -118, 56, 88);
+    ctx.fillStyle = `rgba(255, 255, 255, ${(f * 0.78).toFixed(2)})`;
+    const starR = Math.round(22 * f + 6);
+    ctx.fillRect(fx - starR, fy - 3, starR * 2, 6);
+    ctx.fillRect(fx - 3, fy - starR, 6, starR * 2);
   }
 
   // Render Pixel-Art Turret Platforms & Rotatable Pixel Turrets
@@ -98,19 +106,26 @@ export function renderBase(
     }
   }
 
-  // Crisp In-World Pixel-Framed Fortress HP Bar & Era Tag (cleanly above spires/flags)
+  // Crisp In-World Pixel-Framed Fortress HP Bar with Delayed White Damage Trail!
   const barW = 148;
   const barH = 14;
   const barY = -268;
   const hpFrac = Math.max(0, Math.min(1, hpRatio));
+  const trailFrac = Math.max(hpFrac, Math.min(1, faction.displayBaseHp / Math.max(1, faction.baseMaxHp)));
   const fillW = Math.round(barW * hpFrac);
+  const trailW = Math.max(fillW, Math.round(barW * trailFrac));
 
-  ctx.fillStyle = '#090d16';
+  ctx.fillStyle = faction.baseHitFlash > 0.5 ? '#fde047' : '#090d16';
   ctx.fillRect(-barW / 2 - 2, barY - 2, barW + 4, barH + 4);
   ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
   ctx.fillRect(-barW / 2 - 2, barY - 2, barW + 4, 2);
   ctx.fillStyle = '#141c2b';
   ctx.fillRect(-barW / 2, barY, barW, barH);
+
+  if (trailW > fillW) {
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(-barW / 2 + fillW, barY, trailW - fillW, barH);
+  }
 
   if (fillW > 0) {
     ctx.fillStyle = faction.team === 'player' ? '#1d4ed8' : '#b91c1c';

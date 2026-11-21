@@ -99,4 +99,11 @@ OBSIDIAN = (hx('#0f0c1a'), hx('#1e1833'), hx('#332952'), hx('#54467d'), hx('#857
 COSMIC_VIOLET = (hx('#2c0c4f'), hx('#5b1c99'), hx('#9b3be6'), hx('#d47aff'), hx('#fae3ff'))
 SOLAR_GOLD = (hx('#663406'), hx('#b3640c'), hx('#f2a51a'), hx('#ffdf59'), hx('#fffce0'))
 EGYPT_LINEN = (hx('#5e523e'), hx('#948468'), hx('#cfc1a5'), hx('#ede4d1'), hx('#fffdf5'))
+NVG_GREEN = (hx('#0a2e16'), hx('#156b2f'), hx('#22c55e'), hx('#86efac'), hx('#ecfdf5'))
+HAIR_BROWN = (hx('#1f120b'), hx('#3d2214'), hx('#633a22'), hx('#8c5636'), hx('#b57c56'))
+BRASS = (hx('#42290a'), hx('#7a4e14'), hx('#b87f24'), hx('#e3b448'), hx('#faea96'))
+SLATE_ARMOR = (hx('#161d29'), hx('#2a374a'), hx('#475c78'), hx('#7690b3'), hx('#b2c8e0'))
+CRIMSON_FUEL = (hx('#450a0a'), hx('#8c1616'), hx('#cc2929'), hx('#f25c5c'), hx('#ffb0b0'))
+PLASMA_PINK = (hx('#4a0a36'), hx('#91166b'), hx('#db2ea6'), hx('#ff75d8'), hx('#ffe0f7'))
+
 

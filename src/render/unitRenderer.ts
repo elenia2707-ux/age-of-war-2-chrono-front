@@ -1,8 +1,8 @@
 import type { Team, UnitEntity, UnitVisualKind } from '../data/types';
 import { GROUND_Y, UNIT_DEATH_DURATION } from '../game/constants';
-import { PIXEL_WORLD_SCALE, drawSprite, getSpriteFrame } from './spriteAtlas';
+import { UNIT_WORLD_SCALE, drawSprite, getSpriteFrame } from './spriteAtlas';
 
-export const UNIT_VISUAL_SCALE = PIXEL_WORLD_SCALE;
+export const UNIT_VISUAL_SCALE = UNIT_WORLD_SCALE;
 
 export interface UnitPoseParams {
   kind: UnitVisualKind;
@@ -28,7 +28,7 @@ export type UnitAnimFrame =
   | 'death_0';
 
 /**
- * Resolve the exact pixel-art animation frame for a unit's current combat & movement state:
+ * Resolve the exact HD pixel-art animation frame for a unit's current combat & movement state:
  * - Walk: 4 frames (walk_0..3)
  * - Attack: 3 frames (attack_0 windup -> attack_1 peak strike/muzzle flash -> attack_2 follow-through)
  * - Hurt / Death: 2 frames (hurt_0 knockback stagger / hit sparks -> death_0 fallen/wrecked)
@@ -73,31 +73,58 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
   const spriteKey = `unit/${unit.def.id}/${unit.team}/${anim}`;
   const frame = getSpriteFrame(spriteKey);
 
-  const visualW = frame ? frame.w * PIXEL_WORLD_SCALE : unit.def.width * 1.5;
-  const visualH = frame ? frame.h * PIXEL_WORLD_SCALE : unit.def.height * 1.5;
+  const visualW = frame ? frame.w * UNIT_WORLD_SCALE : unit.def.width * 1.5;
+  const visualH = frame ? frame.h * UNIT_WORLD_SCALE : unit.def.height * 1.5;
 
   const alpha = deathProgress > 0.62 ? Math.max(0, 1 - (deathProgress - 0.62) / 0.38) : 1;
   const drawX = Math.round(unit.x);
   const drawY = GROUND_Y;
+  const dir = unit.team === 'player' ? 1 : -1;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
 
   // Crisp stepped pixel-art contact shadow on the road
-  const shadowW = Math.max(24, Math.round(Math.min(visualW * 0.64, unit.def.width * 1.38) / 2) * 2);
-  const shadowAlpha = (1 - deathProgress * 0.8) * 0.42;
+  const shadowW = Math.max(26, Math.round(Math.min(visualW * 0.66, unit.def.width * 1.48) / 2) * 2);
+  const shadowAlpha = (1 - deathProgress * 0.8) * 0.46;
   ctx.fillStyle = `rgba(8, 12, 20, ${shadowAlpha.toFixed(2)})`;
   ctx.fillRect(drawX - Math.round(shadowW / 2), drawY - 1, shadowW, 4);
   ctx.fillRect(drawX - Math.round(shadowW / 2) + 4, drawY - 3, Math.max(8, shadowW - 8), 8);
 
-  // Subtle pixel knockback jolt on fresh hit
-  const recoilDx =
-    unit.state !== 'dead' && unit.hitFlash > 0.35
-      ? (unit.team === 'player' ? -3 : 3)
-      : 0;
+  // Arcade Hit-Reaction Squash-and-Stretch + Knockback Jolt + Attack Lunge Punch!
+  let recoilDx = 0;
+  let scaleX = 1;
+  let scaleY = 1;
+
+  if (unit.state !== 'dead' && unit.hitFlash > 0.3) {
+    const punch = (unit.hitFlash - 0.3) / 0.7;
+    const isBig = unit.lastHitCrit;
+    recoilDx = -dir * Math.round((isBig ? 8 : 5) * punch);
+    scaleX = 1 - (isBig ? 0.14 : 0.09) * punch;
+    scaleY = 1 + (isBig ? 0.13 : 0.08) * punch;
+  } else if (unit.state !== 'dead' && unit.attackAnim > 0.32 && unit.attackAnim <= 0.78) {
+    // Crisp forward lunge stretch during peak strike frame (attack_1)
+    const strikePeak = Math.sin(((unit.attackAnim - 0.32) / 0.46) * Math.PI);
+    recoilDx = dir * Math.round(3 * strikePeak);
+    scaleX = 1 + 0.06 * strikePeak;
+    scaleY = 1 - 0.04 * strikePeak;
+  }
+
+  // Golden upgrade power-up aura beneath/behind unit when weapons/armor upgraded
+  if (unit.state !== 'dead' && unit.upgradeFlash > 0.05) {
+    const f = unit.upgradeFlash;
+    const auraW = Math.round(shadowW * 0.9);
+    const auraH = Math.round(Math.min(visualH, unit.def.height * 1.35));
+    ctx.fillStyle = `rgba(250, 204, 21, ${(f * 0.28).toFixed(2)})`;
+    ctx.fillRect(drawX - Math.round(auraW / 2), drawY - auraH, auraW, auraH);
+    ctx.fillStyle = `rgba(254, 249, 195, ${(f * 0.65).toFixed(2)})`;
+    ctx.fillRect(drawX - Math.round(auraW / 2), drawY - 4, auraW, 4);
+  }
 
   const drawn = drawSprite(ctx, spriteKey, drawX + recoilDx, drawY, {
-    scale: PIXEL_WORLD_SCALE,
+    scale: UNIT_WORLD_SCALE,
+    scaleX,
+    scaleY,
     flipX: unit.team === 'enemy',
     alpha,
   });
@@ -108,36 +135,63 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
     ctx.fillRect(drawX - 10, drawY - 34, 20, 34);
   }
 
-  // Crisp pixel-framed overhead HP bar when damaged
-  if (unit.state !== 'dead' && unit.hp < unit.maxHp) {
-    const barW = Math.max(30, Math.min(72, Math.round((unit.def.width * 1.2) / 2) * 2));
-    const barH = 6;
-    const barY = drawY - Math.min(visualH, unit.def.height * 1.5 + 14) - 8;
-    const ratio = Math.max(0, Math.min(1, unit.hp / unit.maxHp));
-    const fillW = Math.max(2, Math.round(barW * ratio));
+  // Brief bright arcade impact ring/glint directly over torso on fresh critical hit
+  if (unit.state !== 'dead' && unit.hitFlash > 0.68) {
+    const f = (unit.hitFlash - 0.68) / 0.32;
+    const iy = Math.round(drawY - Math.min(visualH * 0.55, unit.def.height * 0.85));
+    const ix = drawX + recoilDx;
+    const arm = Math.round((unit.lastHitCrit ? 18 : 11) * f);
+    ctx.fillStyle = unit.lastHitCrit ? 'rgba(254, 240, 138, 0.95)' : 'rgba(255, 255, 255, 0.9)';
+    ctx.fillRect(ix - arm, iy - 2, arm * 2, 4);
+    ctx.fillRect(ix - 2, iy - arm, 4, arm * 2);
+    ctx.fillStyle = '#ffffff';
+    ctx.fillRect(ix - 4, iy - 4, 8, 8);
+  }
 
-    ctx.fillStyle = '#0c101a';
-    ctx.fillRect(drawX - Math.round(barW / 2) - 2, barY - 2, barW + 4, barH + 4);
-    ctx.fillStyle = '#1e293b';
-    ctx.fillRect(drawX - Math.round(barW / 2), barY, barW, barH);
-    ctx.fillStyle = unit.team === 'player' ? '#1d4ed8' : '#991b1b';
-    ctx.fillRect(drawX - Math.round(barW / 2), barY, fillW, barH);
-    ctx.fillStyle = unit.team === 'player' ? '#60a5fa' : '#f87171';
-    ctx.fillRect(drawX - Math.round(barW / 2), barY, fillW, 3);
+  // Crisp Fighting-Game Overhead HP Bar with Delayed White/Gold Damage Trail!
+  if (unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5)) {
+    const barW = Math.max(32, Math.min(76, Math.round((unit.def.width * 1.24) / 2) * 2));
+    const barH = 6;
+    const barY = drawY - Math.min(visualH, unit.def.height * 1.48 + 14) - 8;
+    const ratio = Math.max(0, Math.min(1, unit.hp / unit.maxHp));
+    const trailRatio = Math.max(ratio, Math.min(1, unit.displayHp / unit.maxHp));
+    const fillW = Math.max(0, Math.round(barW * ratio));
+    const trailW = Math.max(fillW, Math.round(barW * trailRatio));
+    const barLeft = drawX - Math.round(barW / 2);
+
+    // Outer frame (flashes bright white-gold on fresh hit!)
+    ctx.fillStyle = unit.hitFlash > 0.55 ? (unit.lastHitCrit ? '#fde047' : '#ffffff') : '#0a0e18';
+    ctx.fillRect(barLeft - 2, barY - 2, barW + 4, barH + 4);
+    ctx.fillStyle = '#141c2c';
+    ctx.fillRect(barLeft, barY, barW, barH);
+
+    // Delayed damage drain chunk (bright white/amber fighting-game trail!)
+    if (trailW > fillW) {
+      ctx.fillStyle = unit.lastHitCrit ? '#fde047' : '#f8fafc';
+      ctx.fillRect(barLeft + fillW, barY, trailW - fillW, barH);
+    }
+
+    // Live HP fill with bright top highlight
+    if (fillW > 0) {
+      ctx.fillStyle = unit.team === 'player' ? '#1d4ed8' : '#b91c1c';
+      ctx.fillRect(barLeft, barY, fillW, barH);
+      ctx.fillStyle = unit.team === 'player' ? '#60a5fa' : '#fb7185';
+      ctx.fillRect(barLeft, barY, fillW, 3);
+    }
   }
 
   ctx.restore();
 }
 
 /**
- * Draw a unit pose at the current canvas origin (0, 0) using its pixel-art sprite.
+ * Draw a unit pose at the current canvas origin (0, 0) using its HD pixel-art sprite.
  */
 export function renderUnitPose(ctx: CanvasRenderingContext2D, p: UnitPoseParams): void {
   const anim = selectUnitAnimFrame(p);
   const key = `unit/${p.kind}/${p.team}/${anim}`;
   const alpha = p.deathProgress > 0.62 ? Math.max(0, 1 - (p.deathProgress - 0.62) / 0.38) : 1;
   drawSprite(ctx, key, 0, 0, {
-    scale: 1,
+    scale: UNIT_WORLD_SCALE,
     flipX: p.team === 'enemy',
     alpha,
   });

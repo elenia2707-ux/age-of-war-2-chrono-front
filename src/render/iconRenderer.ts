@@ -16,7 +16,7 @@ export function getUnitIconUrl(unitId: UnitVisualKind): string {
   if (existing) return existing;
   if (typeof document === 'undefined' || !isSpriteAtlasReady()) return '';
 
-  const url = renderSpriteToDataUrl(`unit/${unitId}/player/walk_0`, 96, 72, 4);
+  const url = renderSpriteToDataUrl(`unit/${unitId}/player/walk_0`, 128, 96, 4);
   if (!url) return '';
   unitIconCache.set(unitId, url);
   return url;

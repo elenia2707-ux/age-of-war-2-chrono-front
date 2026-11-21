@@ -73,7 +73,7 @@ export function renderScorchMarks(ctx: CanvasRenderingContext2D, scorches: Scorc
   }
 }
 
-/** Crisp pixel-stepped melee slash arcs & spear thrust streaks */
+/** Dramatic layered pixel-art melee slash crescents & piercing thrust sonic cones */
 export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffect[]): void {
   for (const sl of slashes) {
     const frac = Math.max(0, sl.life / sl.maxLife);
@@ -82,34 +82,62 @@ export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffec
     ctx.save();
     ctx.translate(snap(sl.x), snap(sl.y));
     ctx.scale(sl.dir, 1);
-    ctx.globalAlpha = Math.min(1, frac * 1.6);
+    ctx.globalAlpha = Math.min(1, frac * 1.75);
 
     if (sl.style === 'thrust') {
-      const len = snap(sl.radius * (0.7 + prog * 0.55));
-      const h = Math.max(2, snap(6 * frac));
+      const len = snap(sl.radius * (0.85 + prog * 0.65));
+      const h = Math.max(2, snap(8 * frac));
+      // Sonic piercing lance streak
       ctx.fillStyle = sl.color;
-      ctx.fillRect(-4, -h, len, h * 2);
-      ctx.fillRect(len - 4, -Math.max(2, h - 2), 8, Math.max(4, (h - 2) * 2));
+      ctx.fillRect(-6, -h, len, h * 2);
+      ctx.fillRect(len - 6, -Math.max(2, h - 2), 12, Math.max(4, (h - 2) * 2));
       ctx.fillStyle = sl.coreColor;
-      ctx.fillRect(0, -2, Math.max(6, len - 2), 4);
+      ctx.fillRect(0, -2, Math.max(8, len + 2), 4);
+      // Expanding sonic ring around spear shaft
+      const ringX = snap(len * 0.45);
+      const ringH = snap(10 + prog * 14);
+      ctx.fillStyle = sl.color;
+      ctx.fillRect(ringX - 2, -ringH, 4, ringH * 2);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(ringX, -Math.round(ringH * 0.6), 2, Math.round(ringH * 1.2));
     } else {
-      // Stepped pixel crescent slash ribbon
-      const r = sl.radius * (0.85 + prog * 0.25);
-      const steps = 11;
-      const startA = -1.3 + prog * 0.45 + sl.angleOffset;
-      const endA = 1.1 + sl.angleOffset;
+      // Sweeping 3-layer tapered pixel crescent blade!
+      const r = sl.radius * (0.9 + prog * 0.28);
+      const steps = 20;
+      const startA = -1.45 + prog * 0.5 + sl.angleOffset;
+      const endA = 1.25 + sl.angleOffset;
+      const maxThick = sl.style === 'heavy' ? 12 : sl.style === 'plasma' ? 10 : 8;
+
       for (let i = 0; i <= steps; i++) {
         const t = i / steps;
         const a = startA + (endA - startA) * t;
+        const taper = Math.sin(t * Math.PI);
         const px = snap(Math.cos(a) * r);
         const py = snap(Math.sin(a) * r);
-        const thick = i > 1 && i < steps - 1 ? 6 : 4;
+        const outer = Math.max(4, snap(maxThick * taper * (0.55 + frac * 0.55)));
+        const inner = Math.max(2, snap(outer * 0.55));
+
         ctx.fillStyle = sl.color;
-        ctx.fillRect(px - thick / 2, py - thick / 2, thick, thick);
-        if (i >= 2 && i <= steps - 2) {
+        ctx.fillRect(px - outer / 2, py - outer / 2, outer, outer);
+
+        if (taper > 0.25) {
           ctx.fillStyle = sl.coreColor;
+          ctx.fillRect(px - inner / 2, py - inner / 2, inner, inner);
+        }
+        if (taper > 0.55 && frac > 0.35) {
+          ctx.fillStyle = '#ffffff';
           ctx.fillRect(px - 2, py - 2, 4, 4);
         }
+      }
+
+      // Crisp cross-star glint at leading tip of slash
+      if (frac > 0.4) {
+        const tipX = snap(Math.cos(endA) * r);
+        const tipY = snap(Math.sin(endA) * r);
+        const glint = snap(8 * frac);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(tipX - glint, tipY - 2, glint * 2, 4);
+        ctx.fillRect(tipX - 2, tipY - glint, 4, glint * 2);
       }
     }
 
@@ -426,21 +454,68 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
   ctx.restore();
 }
 
-/** Crisp pixel-art square sparks, chunky debris blocks, pixel smoke puffs, and stepped shockwave rings */
+/** High-impact Metal-Slug pixel fireballs, arcade impact starbursts, shockwaves, dust waves & streaking sparks */
 export function renderParticles(ctx: CanvasRenderingContext2D, particles: ParticleEntity[]): void {
   for (const p of particles) {
     const frac = Math.max(0, p.life / p.maxLife);
+    const prog = 1 - frac;
     const px = snap(p.x);
     const py = snap(p.y);
 
     ctx.save();
-    ctx.globalAlpha = frac * p.alpha;
+    ctx.globalAlpha = Math.min(1, frac * 1.35) * p.alpha;
 
-    if (p.shape === 'ring') {
-      // Stepped pixel shockwave octagon ring
+    if (p.shape === 'flash_star') {
+      // Blinding 4-point + diagonal arcade impact starburst!
+      const arm = Math.max(6, snap(p.size * (0.4 + frac * 0.9)));
+      const diag = Math.max(4, snap(arm * 0.55));
+      const core = Math.max(4, snap(arm * 0.34));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(px - arm, py - 2, arm * 2, 4);
+      ctx.fillRect(px - 2, py - arm, 4, arm * 2);
+      ctx.fillRect(px - diag, py - diag, 4, 4);
+      ctx.fillRect(px + diag - 4, py - diag, 4, 4);
+      ctx.fillRect(px - diag, py + diag - 4, 4, 4);
+      ctx.fillRect(px + diag - 4, py + diag - 4, 4, 4);
+      ctx.fillStyle = '#ffffff';
+      ctx.fillRect(px - core, py - core, core * 2, core * 2);
+      ctx.fillRect(px - Math.round(arm * 0.6), py - 1, Math.round(arm * 1.2), 2);
+      ctx.fillRect(px - 1, py - Math.round(arm * 0.6), 2, Math.round(arm * 1.2));
+    } else if (p.shape === 'fireball') {
+      // Multi-stage stepped circular Metal-Slug pixel explosion fireball (white -> gold -> orange -> charcoal)
+      const r = Math.max(8, snap(p.size * (0.58 + prog * 0.78)));
+      const outerCol = frac > 0.42 ? p.color : '#292524';
+      const drawDisc = (cx: number, cy: number, rad: number, col: string) => {
+        ctx.fillStyle = col;
+        for (let dy = -rad; dy <= rad; dy += 4) {
+          const hw = snap(Math.sqrt(Math.max(0, rad * rad - dy * dy)));
+          if (hw >= 2) ctx.fillRect(cx - hw, cy + dy - 2, hw * 2, 4);
+        }
+      };
+
+      drawDisc(px, py, r + 2, '#11131d');
+      drawDisc(px, py, r, outerCol);
+
+      if (frac > 0.25) {
+        const midR = Math.max(4, snap(r * 0.72));
+        drawDisc(px - 2, py - 2, midR, frac > 0.5 ? '#fde047' : '#f97316');
+      }
+      if (frac > 0.52) {
+        const coreR = Math.max(4, snap(r * 0.42));
+        drawDisc(px - 2, py - 2, coreR, '#ffffff');
+      }
+    } else if (p.shape === 'dust_wave') {
+      // Horizontal ground shock-dust cloud skimming along GROUND_Y
+      const w = Math.max(8, snap(p.size * (0.9 + prog * 1.2)));
+      const h = Math.max(4, snap(p.size * 0.42 * frac + 2));
+      ctx.fillStyle = p.color;
+      ctx.fillRect(px - w / 2, py - h, w, h);
+      ctx.fillRect(px - w / 2 + 4, py - h - 2, Math.max(4, w - 8), 2);
+    } else if (p.shape === 'ring') {
+      // Crisp dual-layer pixel shockwave octagon ring (outer accent + inner white glint)
       const r = snap(p.size);
-      const pts = 16;
-      const dot = Math.max(4, snap(6 * frac));
+      const pts = 20;
+      const dot = Math.max(4, snap(6 * frac + 2));
       ctx.fillStyle = p.color;
       for (let i = 0; i < pts; i++) {
         const a = (i / pts) * Math.PI * 2;
@@ -448,24 +523,45 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
         const ry = snap(py + Math.sin(a) * r);
         ctx.fillRect(rx - dot / 2, ry - dot / 2, dot, dot);
       }
+      if (frac > 0.45) {
+        const ir = Math.max(4, snap(r * 0.82));
+        ctx.fillStyle = '#ffffff';
+        for (let i = 0; i < pts; i += 2) {
+          const a = (i / pts) * Math.PI * 2;
+          const rx = snap(px + Math.cos(a) * ir);
+          const ry = snap(py + Math.sin(a) * ir);
+          ctx.fillRect(rx - 2, ry - 2, 4, 4);
+        }
+      }
     } else if (p.shape === 'smoke') {
-      const sz = Math.max(4, snap(p.size * (1.45 - frac * 0.4)));
+      const sz = Math.max(4, snap(p.size * (1.55 - frac * 0.45)));
       ctx.fillStyle = p.color;
       ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
       ctx.fillRect(px - sz / 2 + 2, py - sz / 2 - 2, Math.max(2, sz - 4), sz + 4);
+      if (frac > 0.55) {
+        ctx.fillStyle = 'rgba(226, 232, 240, 0.35)';
+        ctx.fillRect(px - sz / 2 + 2, py - sz / 2, Math.max(2, sz - 6), 4);
+      }
     } else if (p.shape === 'debris') {
-      const sz = Math.max(4, snap(p.size * 1.4));
-      ctx.fillStyle = '#11131d';
+      const sz = Math.max(4, snap(p.size * 1.45));
+      ctx.fillStyle = '#0c0f18';
       ctx.fillRect(px - sz / 2 - 2, py - sz / 2 - 2, sz + 4, sz + 4);
       ctx.fillStyle = p.color;
       ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+      ctx.fillRect(px - sz / 2, py - sz / 2, Math.max(2, sz - 2), 2);
     } else if (p.shape === 'spark') {
+      // Streaking arcade velocity spark with white-hot leading tip + glowing tail!
       const sz = Math.max(2, snap(p.size * frac + 2));
       ctx.fillStyle = p.color;
+      for (let s = 1; s <= 3; s++) {
+        const tx = snap(p.x - p.vx * 0.011 * s);
+        const ty = snap(p.y - p.vy * 0.011 * s);
+        const ts = Math.max(2, sz - s);
+        ctx.fillRect(tx - ts / 2, ty - ts / 2, ts, ts);
+      }
+      ctx.fillStyle = '#ffffff';
       ctx.fillRect(px - sz / 2, py - sz / 2, sz, sz);
-      const tailX = snap(p.x - p.vx * 0.018);
-      const tailY = snap(p.y - p.vy * 0.018);
-      ctx.fillRect(tailX - 1, tailY - 1, 2, 2);
     } else {
       const sz = Math.max(4, snap(p.size * (0.5 + frac * 0.6)));
       ctx.fillStyle = p.color;
@@ -476,7 +572,7 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
   }
 }
 
-/** Crisp arcade damage numbers with strong dark pixel border & integer alignment */
+/** Crisp spring-pop arcade damage numbers with fiery crit halos, coin icons, and strong dark outlines */
 export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[]): void {
   ctx.save();
   ctx.textAlign = 'center';
@@ -485,23 +581,68 @@ export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[
 
   for (const pop of popups) {
     const frac = Math.max(0, pop.life / pop.maxLife);
-    const fontSize = Math.round(13.5 * pop.scale);
+    const age = pop.maxLife - pop.life;
+    const isCrit = pop.kind === 'crit' || pop.text.endsWith('!');
+    const isGold = pop.kind === 'gold' || (pop.text.startsWith('+') && pop.text.endsWith('G'));
+    const isBase = pop.kind === 'base';
+
+    // Crisp spring-pop scale overshoot in the first 0.14s!
+    let popMult = 1;
+    if (age < 0.07) {
+      const t = age / 0.07;
+      popMult = 0.75 + t * (isCrit ? 0.92 : 0.62);
+    } else if (age < 0.18) {
+      const t = (age - 0.07) / 0.11;
+      popMult = (isCrit ? 1.67 : 1.37) - t * (isCrit ? 0.67 : 0.37);
+    }
+
+    const fontSize = Math.round(14 * pop.scale * popMult);
     const px = Math.round(pop.x);
     const py = Math.round(pop.y);
 
-    ctx.globalAlpha = Math.min(1, frac * 1.6);
+    ctx.globalAlpha = Math.min(1, frac * 1.75);
     ctx.font = `900 ${fontSize}px ui-monospace, 'SFMono-Regular', Menlo, Consolas, monospace`;
 
-    // Hard 2px arcade drop shadow for guaranteed contrast over busy pixel battles
-    ctx.fillStyle = 'rgba(8, 10, 18, 0.96)';
-    ctx.fillText(pop.text, px + 1.5, py + 2);
+    // Fiery outer glow halo + pixel starburst behind CRIT & BASE damage hits!
+    if (isCrit && frac > 0.25) {
+      ctx.lineWidth = 6.5;
+      ctx.strokeStyle = 'rgba(234, 88, 12, 0.85)';
+      ctx.strokeText(pop.text, px, py);
 
-    ctx.lineWidth = 3.6;
-    ctx.strokeStyle = '#0a0d16';
+      // Tiny crisp pixel star glints flanking the crit number
+      const halfW = Math.round(pop.text.length * fontSize * 0.34) + 6;
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(px - halfW - 4, py - 1, 8, 2);
+      ctx.fillRect(px - halfW - 1, py - 4, 2, 8);
+      ctx.fillRect(px + halfW - 4, py - 1, 8, 2);
+      ctx.fillRect(px + halfW - 1, py - 4, 2, 8);
+    } else if (isBase) {
+      ctx.lineWidth = 5.5;
+      ctx.strokeStyle = 'rgba(185, 28, 28, 0.75)';
+      ctx.strokeText(pop.text, px, py);
+    }
+
+    // Hard 2px arcade drop shadow for guaranteed contrast over busy pixel battles
+    ctx.fillStyle = 'rgba(6, 8, 15, 0.98)';
+    ctx.fillText(pop.text, px + 2, py + 2.5);
+
+    ctx.lineWidth = isCrit ? 4.2 : 3.6;
+    ctx.strokeStyle = '#090c14';
     ctx.strokeText(pop.text, px, py);
 
     ctx.fillStyle = pop.color;
     ctx.fillText(pop.text, px, py);
+
+    // Tiny gleaming pixel gold coin badge next to kill gold popups!
+    if (isGold) {
+      const coinX = px - Math.round(pop.text.length * fontSize * 0.34) - 6;
+      ctx.fillStyle = '#090c14';
+      ctx.fillRect(coinX - 4, py - 4, 8, 8);
+      ctx.fillStyle = '#f59e0b';
+      ctx.fillRect(coinX - 3, py - 3, 6, 6);
+      ctx.fillStyle = '#fef08a';
+      ctx.fillRect(coinX - 2, py - 2, 3, 3);
+    }
   }
 
   ctx.restore();

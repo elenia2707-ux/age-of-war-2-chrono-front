@@ -257,6 +257,7 @@ export interface FactionState {
   totalXp: number;
   baseHp: number;
   baseMaxHp: number;
+  displayBaseHp: number;
   turretSlots: number;
   turrets: (InstalledTurret | null)[];
   queue: QueuedUnit[];
@@ -265,6 +266,7 @@ export interface FactionState {
   ultimateMaxCooldown: number;
   baseHitFlash: number;
   evolveFlash: number;
+  upgradeFlash: number;
   kills: number;
   unitsSpawned: number;
 }
@@ -277,11 +279,15 @@ export interface UnitEntity {
   y: number;
   hp: number;
   maxHp: number;
+  displayHp: number;
+  displayHpHold: number;
   state: 'walk' | 'attack' | 'idle' | 'dead';
   attackCooldown: number;
   attackAnim: number; // 0..1 progress of current swing/recoil
   walkPhase: number;
   hitFlash: number;
+  lastHitCrit: boolean;
+  upgradeFlash: number;
   knockbackVel: number;
   deathTimer: number;
 }
@@ -344,7 +350,7 @@ export interface ParticleEntity {
   life: number;
   maxLife: number;
   gravity: number;
-  shape: 'circle' | 'spark' | 'smoke' | 'ring' | 'debris';
+  shape: 'circle' | 'spark' | 'smoke' | 'ring' | 'debris' | 'flash_star' | 'fireball' | 'dust_wave';
   rotation?: number;
   vRot?: number;
 }
@@ -380,6 +386,7 @@ export interface DamagePopup {
   scale: number;
   life: number;
   maxLife: number;
+  kind?: 'normal' | 'crit' | 'elemental' | 'player_hit' | 'gold' | 'base' | 'heal';
 }
 
 export interface ActiveUltimate {

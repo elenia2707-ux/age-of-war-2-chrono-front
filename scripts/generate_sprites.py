@@ -47,7 +47,7 @@ def build_all_sprites() -> dict[str, tuple[PixelCanvas, int, int]]:
             for team in TEAMS:
                 swapped = base_canvas.swap_team(team)
                 if anim == 'hurt_0':
-                    swapped = swapped.tint_flash((255, 245, 225, 255), 0.28)
+                    swapped = swapped.tint_flash((255, 250, 235, 255), 0.36)
                 key = f'unit/{unit_id}/{team}/{anim}'
                 sprites[key] = (swapped, ax, ay)
 
@@ -59,7 +59,7 @@ def build_all_sprites() -> dict[str, tuple[PixelCanvas, int, int]]:
                 key = f'base/era_{era_idx}/{team}/{dmg}'
                 sprites[key] = (base_canvas.swap_team(team), ax, ay)
 
-    # 3. All 14 turrets x 2 states (idle, fire) x 2 teams + turret mount platforms
+    # 3. All 20 turrets x 2 states (idle, fire) x 2 teams + turret mount platforms
     plat_canvas, pax, pay = gen_turret_platform()
     for team in TEAMS:
         sprites[f'turret/platform/{team}'] = (plat_canvas.swap_team(team), pax, pay)
@@ -82,7 +82,7 @@ def build_all_sprites() -> dict[str, tuple[PixelCanvas, int, int]]:
 
 def pack_atlas(
     sprites: dict[str, tuple[PixelCanvas, int, int]],
-    max_width: int = 1536,
+    max_width: int = 2560,
     padding: int = 2,
 ) -> tuple[Image.Image, dict[str, dict[str, int]]]:
     """Pack all sprites tightly using height-sorted shelf packing with transparent padding."""
@@ -124,18 +124,14 @@ def pack_atlas(
 
 
 def save_preview_sheet(sprites: dict[str, tuple[PixelCanvas, int, int]], out_path: Path) -> None:
-    """Create a 3x zoomed contact sheet showcasing all units (walk/attack/hurt/death), bases, turrets, tiles."""
-    # Showcase: 22 units (player walk_0, attack_1, hurt_0, death_0 + enemy walk_0)
+    """Create a contact sheet showcasing all 31 HD units (walk_0, attack_1, hurt_0, death_0, enemy walk_0)."""
     unit_ids = list(ALL_UNIT_GENERATORS.keys())
     cols = 5
-    cell_w, cell_h = 84, 78
+    cell_w, cell_h = 154, 148
     rows = len(unit_ids)
-    # Plus bases & turrets section on the right
-    left_w = cols * cell_w + 16
-    right_w = 7 * 116 + 16
-    img_w = max(left_w, right_w)
-    img_h = rows * cell_h + 170 + 110
-    canvas = Image.new('RGBA', (img_w, img_h), (24, 30, 42, 255))
+    img_w = cols * cell_w + 16
+    img_h = rows * cell_h + 16
+    canvas = Image.new('RGBA', (img_w, img_h), (22, 27, 38, 255))
 
     for r, uid in enumerate(unit_ids):
         keys = [
@@ -152,31 +148,13 @@ def save_preview_sheet(sprites: dict[str, tuple[PixelCanvas, int, int]], out_pat
             oy = 8 + r * cell_h + (cell_h - im.height)
             canvas.alpha_composite(im, (ox, oy))
 
-    # Bases row (7 eras intact + era 2 damaged_25)
-    base_y = rows * cell_h + 24
-    for era_idx in range(7):
-        key = f'base/era_{era_idx}/player/intact'
-        sp, _, _ = sprites[key]
-        im = sp.to_image()
-        canvas.alpha_composite(im, (12 + era_idx * 114, base_y))
-
-    # Ground tiles + turrets row
-    tile_y = base_y + 148
-    for era_idx in range(7):
-        sp, _, _ = sprites[f'tile/ground_era_{era_idx}']
-        canvas.alpha_composite(sp.to_image(), (12 + era_idx * 74, tile_y))
-    for i, tid in enumerate(ALL_TURRET_KINDS):
-        sp, _, _ = sprites[f'turret/{tid}/player/fire']
-        canvas.alpha_composite(sp.to_image(), (12 + i * 44, tile_y + 72))
-
-    zoomed = canvas.resize((canvas.width * 2, canvas.height * 2), Image.Resampling.NEAREST)
     out_path.parent.mkdir(parents=True, exist_ok=True)
-    zoomed.save(out_path)
+    canvas.save(out_path)
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description='Generate Age of War 2 pixel-art sprite sheet & JSON atlas.')
-    parser.add_argument('--preview', type=Path, default=None, help='Optional path to write 2x visual preview sheet')
+    parser.add_argument('--preview', type=Path, default=None, help='Optional path to write visual preview sheet')
     args = parser.parse_args()
 
     out_dir = REPO_ROOT / 'public' / 'sprites'
@@ -195,8 +173,9 @@ def main() -> None:
             'width': sheet.width,
             'height': sheet.height,
             'pixelScale': 2,
+            'unitScale': 1,
             'frameCount': len(frames_meta),
-            'version': 1,
+            'version': 2,
         },
         'frames': frames_meta,
     }
