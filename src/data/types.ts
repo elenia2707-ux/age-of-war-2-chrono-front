@@ -299,6 +299,29 @@ export interface ParticleEntity {
   maxLife: number;
   gravity: number;
   shape: 'circle' | 'spark' | 'smoke' | 'ring' | 'debris';
+  rotation?: number;
+  vRot?: number;
+}
+
+export interface SlashEffect {
+  x: number;
+  y: number;
+  dir: 1 | -1;
+  radius: number;
+  color: string;
+  coreColor: string;
+  life: number;
+  maxLife: number;
+  angleOffset: number;
+  style: 'heavy' | 'blade' | 'thrust' | 'plasma';
+}
+
+export interface ScorchMark {
+  x: number;
+  radius: number;
+  glowColor: string;
+  life: number;
+  maxLife: number;
 }
 
 export interface DamagePopup {
@@ -352,6 +375,8 @@ export interface GameSnapshot {
   projectiles: ProjectileEntity[];
   beams: BeamEffect[];
   particles: ParticleEntity[];
+  slashes: SlashEffect[];
+  scorchMarks: ScorchMark[];
   popups: DamagePopup[];
   ultimates: ActiveUltimate[];
   eraTransition: {

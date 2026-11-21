@@ -8,7 +8,7 @@ import {
   WORLD_HEIGHT,
   WORLD_WIDTH,
 } from '../game/constants';
-import { renderBackground } from './backgroundRenderer';
+import { renderBackground, renderForegroundParallax } from './backgroundRenderer';
 import { renderBase } from './baseRenderer';
 import { renderUnitEntity } from './unitRenderer';
 import {
@@ -17,6 +17,8 @@ import {
   renderParticles,
   renderPopups,
   renderProjectiles,
+  renderScorchMarks,
+  renderSlashes,
   renderUltimateAtmosphere,
 } from './vfxRenderer';
 
@@ -63,7 +65,7 @@ export class GameRenderer {
     ctx.scale(scale, scale);
     ctx.translate(camera.shakeX, camera.shakeY);
 
-    // 1. Parallax Background (reflects player's current era)
+    // 1. Parallax Background & Textured Battlefield Floor
     renderBackground(
       ctx,
       snapshot.player.eraIndex,
@@ -80,7 +82,10 @@ export class GameRenderer {
     ctx.save();
     ctx.translate(-camera.x, 0);
 
-    // Bases & Turrets (each displays its own era independently)
+    // Persistent ground blast craters / scorch marks on the road
+    renderScorchMarks(ctx, snapshot.scorchMarks);
+
+    // Monumental Fortresses & Turrets (each displays its own era independently)
     renderBase(ctx, snapshot.player, wallTime, highlightSellMode);
     renderBase(ctx, snapshot.enemy, wallTime, false);
 
@@ -91,11 +96,12 @@ export class GameRenderer {
       return a.uid - b.uid;
     });
     for (const unit of sortedUnits) {
-      if (unit.x + 120 < camera.x || unit.x - 120 > camera.x + viewportW) continue;
+      if (unit.x + 150 < camera.x || unit.x - 150 > camera.x + viewportW) continue;
       renderUnitEntity(ctx, unit);
     }
 
-    // Active Ultimates, Projectiles, Beams, Particles, Popups
+    // Combat VFX: Slashes, Active Ultimates, Projectiles, Beams, Particles, Popups
+    renderSlashes(ctx, snapshot.slashes);
     renderActiveUltimates(ctx, snapshot.ultimates);
     renderProjectiles(ctx, snapshot.projectiles);
     renderBeams(ctx, snapshot.beams);
@@ -103,6 +109,10 @@ export class GameRenderer {
     renderPopups(ctx, snapshot.popups);
 
     ctx.restore();
+
+    // 4. Foreground Parallax Grass / Rocks / Barbed Wire / Pylons along bottom ground lip
+    renderForegroundParallax(ctx, snapshot.player.eraIndex, camera.x, viewportW, wallTime);
+
     ctx.restore();
   }
 }

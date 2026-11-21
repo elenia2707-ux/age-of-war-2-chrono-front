@@ -12,24 +12,25 @@ export function getUnitIconUrl(unitId: UnitVisualKind): string {
   if (typeof document === 'undefined') return '';
 
   const canvas = document.createElement('canvas');
-  canvas.width = 72;
-  canvas.height = 56;
+  canvas.width = 120;
+  canvas.height = 92;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
   const def = UNIT_BY_ID[unitId];
-  const scale = Math.min(54 / Math.max(36, def.width + 12), 44 / Math.max(42, def.height + 6));
+  const scale = Math.min(86 / Math.max(38, def.width + 18), 72 / Math.max(44, def.height + 10));
 
   ctx.save();
-  ctx.translate(34, 50);
+  ctx.translate(54, 82);
   ctx.scale(scale, scale);
   renderUnitPose(ctx, {
     kind: unitId,
     team: 'player',
-    walkPhase: 0.4,
+    walkPhase: 0.45,
     attackAnim: 0,
     hitFlash: 0,
     deathProgress: 0,
+    isWalking: false,
   });
   ctx.restore();
 
@@ -44,14 +45,14 @@ export function getTurretIconUrl(turretId: TurretVisualKind): string {
   if (typeof document === 'undefined') return '';
 
   const canvas = document.createElement('canvas');
-  canvas.width = 72;
-  canvas.height = 56;
+  canvas.width = 120;
+  canvas.height = 92;
   const ctx = canvas.getContext('2d');
   if (!ctx) return '';
 
   ctx.save();
-  ctx.translate(28, 34);
-  ctx.scale(1.62, 1.62);
+  ctx.translate(48, 56);
+  ctx.scale(2.55, 2.55);
   drawTurretArt(ctx, turretId, 'player', -0.1, 0);
   ctx.restore();
 

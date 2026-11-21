@@ -11,6 +11,8 @@ import type {
   GameStatus,
   ParticleEntity,
   ProjectileEntity,
+  ScorchMark,
+  SlashEffect,
   Team,
   TurretVisualKind,
   UnitDef,
@@ -53,6 +55,8 @@ export class GameEngine {
   public projectiles: ProjectileEntity[] = [];
   public beams: BeamEffect[] = [];
   public particles: ParticleEntity[] = [];
+  public slashes: SlashEffect[] = [];
+  public scorchMarks: ScorchMark[] = [];
   public popups: DamagePopup[] = [];
   public ultimates: ActiveUltimate[] = [];
 
@@ -92,6 +96,8 @@ export class GameEngine {
     this.projectiles = [];
     this.beams = [];
     this.particles = [];
+    this.slashes = [];
+    this.scorchMarks = [];
     this.popups = [];
     this.ultimates = [];
     this.eraTransition = {
@@ -415,6 +421,8 @@ export class GameEngine {
       projectiles: this.projectiles,
       beams: this.beams,
       particles: this.particles,
+      slashes: this.slashes,
+      scorchMarks: this.scorchMarks,
       popups: this.popups,
       ultimates: this.ultimates,
       eraTransition: this.eraTransition,
@@ -653,14 +661,14 @@ export class GameEngine {
 
     this.callbacks.onSound?.(def.attackSound);
 
-    const originX = attacker.x + dir * (def.width * 0.42);
-    const originY = GROUND_Y - def.height * 0.62;
+    const originX = attacker.x + dir * (def.width * 0.56);
+    const originY = GROUND_Y - def.height * 0.88;
     const targetX = target
       ? target.x
       : attacker.team === 'player'
         ? ENEMY_BASE_FRONT_X + 12
         : PLAYER_BASE_FRONT_X - 12;
-    const targetY = target ? GROUND_Y - target.def.height * 0.52 : GROUND_Y - 58;
+    const targetY = target ? GROUND_Y - target.def.height * 0.72 : GROUND_Y - 70;
 
     // Instant Railgun piercing beam
     if (def.projectile === 'railgun') {
@@ -807,6 +815,10 @@ export class GameEngine {
     }
 
     // Direct Melee Hit (+ optional cleave splash for chariot/cyborg)
+    const slashX = attacker.x + dir * (def.width * 0.62);
+    const slashY = GROUND_Y - def.height * 0.76;
+    this.spawnMeleeSlash(attacker, slashX, slashY, dir, isCrit);
+
     if (target) {
       if (def.splashRadius > 0) {
         this.applySplashDamage(
@@ -821,8 +833,18 @@ export class GameEngine {
       } else {
         this.applyDamageToUnit(target, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team);
       }
-      this.spawnBurst(target.x - dir * 8, GROUND_Y - target.def.height * 0.55, isCrit ? '#fde047' : '#ffffff', isCrit ? 9 : 4, 120);
-      if (isCrit) this.callbacks.onShake?.(0.18);
+      const impactY = GROUND_Y - target.def.height * 0.72;
+      this.spawnBurst(
+        target.x - dir * 10,
+        impactY,
+        isCrit ? '#fde047' : def.id === 'cyborg' ? '#38bdf8' : '#fff7ed',
+        isCrit ? 12 : 7,
+        isCrit ? 175 : 130,
+      );
+      if (isCrit) {
+        this.spawnRing(target.x - dir * 8, impactY, '#fde047', 26);
+        this.callbacks.onShake?.(0.18);
+      }
     } else {
       this.applyDamageToBase(
         attacker.team === 'player' ? 'enemy' : 'player',
@@ -830,7 +852,7 @@ export class GameEngine {
         isCrit,
         attacker.team,
       );
-      this.spawnBurst(targetX, targetY, '#fcd34d', 6, 110);
+      this.spawnBurst(targetX, targetY, '#fcd34d', 9, 135);
     }
   }
 
@@ -1213,11 +1235,11 @@ export class GameEngine {
     victim.knockbackVel += knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.85);
 
     this.addPopup(
-      victim.x + (this.random() - 0.5) * 14,
-      GROUND_Y - victim.def.height - 6,
+      victim.x + (this.random() - 0.5) * 16,
+      GROUND_Y - victim.def.height * 1.48 - 10,
       isCrit ? `${finalDamage}!` : `${finalDamage}`,
       isCrit ? '#fde047' : '#ffffff',
-      isCrit ? 1.25 : 0.95,
+      isCrit ? 1.28 : 0.98,
     );
 
     if (victim.hp <= 0) {
@@ -1246,14 +1268,15 @@ export class GameEngine {
       loser.totalXp += consolationXp;
 
       if (attackerTeam === 'player') {
-        this.addPopup(victim.x, GROUND_Y - victim.def.height - 22, `+${rewardGold}G`, '#facc15', 0.92);
+        this.addPopup(victim.x, GROUND_Y - victim.def.height * 1.48 - 28, `+${rewardGold}G`, '#facc15', 0.96);
       }
 
       if (victim.def.isMechanical) {
-        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.45, 42, '#f97316');
+        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 52, '#f97316');
         this.callbacks.onSound?.('explosion');
       } else {
-        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.4, victim.team === 'player' ? '#60a5fa' : '#f87171', 8, 130);
+        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 10, 145);
+        this.spawnDebris(victim.x, GROUND_Y - victim.def.height * 0.45, '#52525b', 4, 130);
       }
     }
   }
@@ -1270,7 +1293,8 @@ export class GameEngine {
     attacker.totalXp += xpGain;
 
     const baseX = targetTeam === 'player' ? PLAYER_BASE_X + 55 : ENEMY_BASE_X - 55;
-    this.addPopup(baseX + (this.random() - 0.5) * 24, GROUND_Y - 105, `-${dmg}`, isCrit ? '#fbbf24' : '#f87171', isCrit ? 1.3 : 1.08);
+    this.addPopup(baseX + (this.random() - 0.5) * 24, GROUND_Y - 125, `-${dmg}`, isCrit ? '#fbbf24' : '#f87171', isCrit ? 1.3 : 1.08);
+    this.spawnDebris(baseX, GROUND_Y - 64, '#78716c', 4, 150);
     this.callbacks.onSound?.('hit_base');
     this.callbacks.onShake?.(isCrit ? 0.25 : 0.12);
   }
@@ -1279,6 +1303,16 @@ export class GameEngine {
     for (let i = this.beams.length - 1; i >= 0; i--) {
       this.beams[i].life -= dt;
       if (this.beams[i].life <= 0) this.beams.splice(i, 1);
+    }
+
+    for (let i = this.slashes.length - 1; i >= 0; i--) {
+      this.slashes[i].life -= dt;
+      if (this.slashes[i].life <= 0) this.slashes.splice(i, 1);
+    }
+
+    for (let i = this.scorchMarks.length - 1; i >= 0; i--) {
+      this.scorchMarks[i].life -= dt;
+      if (this.scorchMarks[i].life <= 0) this.scorchMarks.splice(i, 1);
     }
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
@@ -1292,7 +1326,14 @@ export class GameEngine {
       p.x += p.vx * dt;
       p.y += p.vy * dt;
       if (p.shape === 'ring') {
-        p.size += dt * 165;
+        p.size += dt * 190;
+      } else if (p.shape === 'debris') {
+        p.rotation = (p.rotation ?? 0) + (p.vRot ?? 6) * dt;
+        if (p.y > GROUND_Y) {
+          p.y = GROUND_Y;
+          p.vy = -Math.abs(p.vy) * 0.38;
+          p.vx *= 0.65;
+        }
       }
     }
 
@@ -1304,9 +1345,15 @@ export class GameEngine {
       if (pop.life <= 0) this.popups.splice(i, 1);
     }
 
-    // Cap particle budget for buttery smooth 60fps on mobile Safari
-    if (this.particles.length > 260) {
-      this.particles.splice(0, this.particles.length - 260);
+    // Cap VFX budgets for locked 60fps on iPhone Safari
+    if (this.particles.length > 340) {
+      this.particles.splice(0, this.particles.length - 340);
+    }
+    if (this.scorchMarks.length > 36) {
+      this.scorchMarks.splice(0, this.scorchMarks.length - 36);
+    }
+    if (this.slashes.length > 28) {
+      this.slashes.splice(0, this.slashes.length - 28);
     }
     if (this.popups.length > 48) {
       this.popups.splice(0, this.popups.length - 48);
@@ -1317,12 +1364,56 @@ export class GameEngine {
     this.popups.push({
       x,
       y,
-      vy: -52,
+      vy: -54,
       text,
       color,
       scale,
       life: 0.78,
       maxLife: 0.78,
+    });
+  }
+
+  private spawnMeleeSlash(
+    attacker: UnitEntity,
+    x: number,
+    y: number,
+    dir: 1 | -1,
+    isCrit: boolean,
+  ): void {
+    const id = attacker.def.id;
+    let style: SlashEffect['style'] = 'blade';
+    let color = attacker.team === 'player' ? '#93c5fd' : '#fca5a5';
+    let coreColor = '#ffffff';
+    let radius = 34;
+
+    if (id === 'clubman' || id === 'dino_rider') {
+      style = 'heavy';
+      color = '#fbbf24';
+      coreColor = '#fef9c3';
+      radius = id === 'dino_rider' ? 46 : 32;
+    } else if (id === 'spearman' || id === 'chariot' || id === 'heavy_cavalry' || id === 'pikeman') {
+      style = 'thrust';
+      color = attacker.team === 'player' ? '#60a5fa' : '#f87171';
+      coreColor = '#f8fafc';
+      radius = id === 'pikeman' || id === 'heavy_cavalry' ? 48 : 38;
+    } else if (id === 'cyborg') {
+      style = 'plasma';
+      color = attacker.team === 'player' ? '#22d3ee' : '#fb7185';
+      coreColor = '#ecfeff';
+      radius = 48;
+    }
+
+    this.slashes.push({
+      x,
+      y,
+      dir,
+      radius: isCrit ? radius * 1.32 : radius * 1.12,
+      color: isCrit ? '#facc15' : color,
+      coreColor,
+      life: 0.28,
+      maxLife: 0.28,
+      angleOffset: (this.random() - 0.5) * 0.28,
+      style,
     });
   }
 
@@ -1334,31 +1425,53 @@ export class GameEngine {
         x,
         y,
         vx: Math.cos(angle) * spd,
-        vy: Math.sin(angle) * spd - 35,
-        size: 2.5 + this.random() * 3.5,
+        vy: Math.sin(angle) * spd - 45,
+        size: 2.8 + this.random() * 3.8,
         color,
         alpha: 1,
-        life: 0.28 + this.random() * 0.25,
-        maxLife: 0.53,
-        gravity: 340,
+        life: 0.26 + this.random() * 0.26,
+        maxLife: 0.52,
+        gravity: 360,
         shape: 'spark',
       });
     }
   }
 
-  private spawnSmoke(x: number, y: number, count: number): void {
+  private spawnDebris(x: number, y: number, color: string, count: number, speed: number): void {
+    for (let i = 0; i < count; i++) {
+      const angle = -Math.PI * (0.15 + this.random() * 0.7);
+      const spd = speed * (0.45 + this.random() * 0.85);
+      this.particles.push({
+        x: x + (this.random() - 0.5) * 14,
+        y: y + (this.random() - 0.5) * 10,
+        vx: Math.cos(angle) * spd,
+        vy: Math.sin(angle) * spd - 40,
+        size: 3.5 + this.random() * 4.5,
+        color,
+        alpha: 1,
+        life: 0.65 + this.random() * 0.45,
+        maxLife: 1.1,
+        gravity: 540,
+        shape: 'debris',
+        rotation: this.random() * Math.PI * 2,
+        vRot: (this.random() - 0.5) * 16,
+      });
+    }
+  }
+
+  private spawnSmoke(x: number, y: number, count: number, dark = false): void {
     for (let i = 0; i < count; i++) {
       this.particles.push({
-        x: x + (this.random() - 0.5) * 10,
-        y: y + (this.random() - 0.5) * 8,
-        vx: (this.random() - 0.5) * 30,
-        vy: -24 - this.random() * 32,
-        size: 6 + this.random() * 7,
-        color: '#cbd5e1',
-        alpha: 0.55,
-        life: 0.45 + this.random() * 0.25,
-        maxLife: 0.7,
-        gravity: -20,
+        x: x + (this.random() - 0.5) * 18,
+        y: y + (this.random() - 0.5) * 12,
+        vx: (this.random() - 0.5) * 38,
+        vy: -28 - this.random() * 40,
+        size: 8 + this.random() * 10,
+        color: dark ? '#334155' : '#cbd5e1',
+        alpha: dark ? 0.62 : 0.52,
+        life: 0.55 + this.random() * 0.35,
+        maxLife: 0.9,
+        gravity: -18,
         shape: 'smoke',
       });
     }
@@ -1370,29 +1483,48 @@ export class GameEngine {
       y,
       vx: 0,
       vy: 0,
-      size: Math.max(8, initialRadius * 0.25),
+      size: Math.max(10, initialRadius * 0.22),
       color,
-      alpha: 0.9,
-      life: 0.34,
-      maxLife: 0.34,
+      alpha: 0.95,
+      life: 0.38,
+      maxLife: 0.38,
       gravity: 0,
       shape: 'ring',
     });
   }
 
+  private spawnScorch(x: number, radius: number, glowColor: string): void {
+    this.scorchMarks.push({
+      x,
+      radius: Math.max(18, Math.min(82, radius * 0.72)),
+      glowColor,
+      life: 9.5,
+      maxLife: 9.5,
+    });
+  }
+
   private spawnExplosion(x: number, y: number, radius: number, accentColor: string): void {
+    // Dual shockwave rings (outer colored + inner hot core)
     this.spawnRing(x, y, accentColor, radius);
-    this.spawnBurst(x, y, accentColor, 12, Math.min(260, radius * 3.2));
-    this.spawnBurst(x, y, '#fef08a', 7, Math.min(200, radius * 2.4));
-    this.spawnSmoke(x, y - 6, 4);
+    this.spawnRing(x, y, '#fef9c3', radius * 0.45);
+    // Sparks + fiery core + flying debris shards + billowing dark & light smoke
+    this.spawnBurst(x, y, accentColor, 14, Math.min(290, radius * 3.5));
+    this.spawnBurst(x, y, '#fef08a', 9, Math.min(220, radius * 2.5));
+    this.spawnDebris(x, y, accentColor === '#22d3ee' ? '#334155' : '#44403c', Math.min(10, Math.max(5, Math.round(radius / 11))), Math.min(280, radius * 3.1));
+    this.spawnSmoke(x, y - 8, 5, true);
+    this.spawnSmoke(x, y - 14, 3, false);
+    // Ground scorch crater mark when impact is close to the ground
+    if (y >= GROUND_Y - 75) {
+      this.spawnScorch(x, radius, accentColor);
+    }
   }
 
   private spawnBaseDestruction(baseX: number): void {
-    for (let k = 0; k < 5; k++) {
+    for (let k = 0; k < 6; k++) {
       this.spawnExplosion(
-        baseX + (this.random() - 0.5) * 110,
-        GROUND_Y - 25 - this.random() * 110,
-        70,
+        baseX + (this.random() - 0.5) * 120,
+        GROUND_Y - 20 - this.random() * 115,
+        78,
         k % 2 === 0 ? '#f97316' : '#ef4444',
       );
     }
