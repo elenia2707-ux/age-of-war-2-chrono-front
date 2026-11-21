@@ -1,13 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import atlasRaw from '../../public/sprites/sprites_atlas.json';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID } from '../data/eras';
-import { SPRITE_ATLAS_VERSION } from '../data/spriteManifest';
+import { SPRITE_ATLAS_JSON, SPRITE_ATLAS_VERSION, SPRITE_SHEET_URLS } from '../data/spriteManifest';
 import { UPGRADES } from '../data/upgrades';
 import { GameEngine } from '../game/engine';
 import type { SpriteAtlasData } from '../render/spriteAtlas';
 import { selectUnitAnimFrame } from '../render/unitRenderer';
 
-const atlas = atlasRaw as SpriteAtlasData;
+const atlas = SPRITE_ATLAS_JSON as SpriteAtlasData;
 
 const HEAVY_UNITS = new Set([
   'dino_rider',
@@ -24,21 +23,27 @@ const HEAVY_UNITS = new Set([
 ]);
 
 describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
-  it('contains valid sprites_atlas.json covering all 10 eras, 40 units, 20 turrets, bases, projectiles, tiles, and 8 upgrade icons', () => {
-    expect(atlas.meta.image).toBe('sprites_sheet.png');
-    expect(atlas.meta.width).toBeGreaterThan(0);
-    expect(atlas.meta.height).toBeGreaterThan(0);
+  it('contains valid iOS-safe multi-page sprite atlas covering all 10 eras, 40 units, 20 turrets, bases, projectiles, tiles, and 8 upgrade icons', () => {
+    expect(atlas.meta.pages).toBeDefined();
+    const pages = atlas.meta.pages!;
+    expect(pages.length).toBeGreaterThanOrEqual(2);
+    expect(SPRITE_SHEET_URLS).toHaveLength(pages.length);
     expect(atlas.meta.frameCount).toBe(Object.keys(atlas.frames).length);
     expect(atlas.meta.hash).toBe(SPRITE_ATLAS_VERSION);
 
-    const sheetW = atlas.meta.width;
-    const sheetH = atlas.meta.height;
+    // Every sheet page MUST stay <= 1536x1536 (< 2.5 MP) for guaranteed iOS SFSafariViewController decoding!
+    for (const page of pages) {
+      expect(page.width).toBeGreaterThan(0);
+      expect(page.height).toBeGreaterThan(0);
+      expect(page.width).toBeLessThanOrEqual(1536);
+      expect(page.height).toBeLessThanOrEqual(1536);
+      expect(page.width * page.height).toBeLessThanOrEqual(2_500_000);
+    }
+
     const anims = ['walk_0', 'walk_1', 'walk_2', 'walk_3', 'attack_0', 'attack_1', 'attack_2', 'hurt_0', 'death_0'];
     const teams = ['player', 'enemy'];
 
-    // 1. All 40 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & iOS texture safety
-    expect(sheetW).toBeLessThanOrEqual(4096);
-    expect(sheetH).toBeLessThanOrEqual(4096);
+    // 1. All 40 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & page bounds
     expect(atlas.meta.unitScale).toBe(1);
     expect(Object.keys(UNIT_BY_ID)).toHaveLength(40);
 
@@ -48,10 +53,12 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
           const key = `unit/${unitId}/${team}/${anim}`;
           const f = atlas.frames[key];
           expect(f, `Missing unit frame ${key}`).toBeDefined();
+          const page = pages[f.page ?? 0];
+          expect(page, `Invalid page ${f.page} for ${key}`).toBeDefined();
           expect(f.x).toBeGreaterThanOrEqual(0);
           expect(f.y).toBeGreaterThanOrEqual(0);
-          expect(f.x + f.w).toBeLessThanOrEqual(sheetW);
-          expect(f.y + f.h).toBeLessThanOrEqual(sheetH);
+          expect(f.x + f.w).toBeLessThanOrEqual(page.width);
+          expect(f.y + f.h).toBeLessThanOrEqual(page.height);
 
           if (HEAVY_UNITS.has(unitId)) {
             expect(f.w).toBeGreaterThanOrEqual(112);
@@ -75,10 +82,12 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
           const key = `base/era_${era}/${team}/${dmg}`;
           const f = atlas.frames[key];
           expect(f, `Missing base frame ${key}`).toBeDefined();
+          const page = pages[f.page ?? 0];
+          expect(page).toBeDefined();
           expect(f.w).toBeGreaterThanOrEqual(96);
           expect(f.h).toBeGreaterThanOrEqual(128);
-          expect(f.x + f.w).toBeLessThanOrEqual(sheetW);
-          expect(f.y + f.h).toBeLessThanOrEqual(sheetH);
+          expect(f.x + f.w).toBeLessThanOrEqual(page.width);
+          expect(f.y + f.h).toBeLessThanOrEqual(page.height);
         }
       }
     }

@@ -1,11 +1,15 @@
-import { SPRITE_ATLAS_VERSION } from '../data/spriteManifest';
+import { SPRITE_ATLAS_JSON, SPRITE_SHEET_URLS } from '../data/spriteManifest';
 
 /**
- * Pixel-art Sprite Sheet & JSON Atlas loader and crisp nearest-neighbor blitter.
- * Loads public/sprites/sprites_atlas.json + public/sprites/sprites_sheet.png.
+ * Multi-page Pixel-Art Sprite Sheet Atlas loader and crisp nearest-neighbor blitter.
+ *
+ * Uses inline-bundled JSON atlas metadata + Vite content-hashed compact PNG pages
+ * (each <= 1536x1400, < 2.2 MP) so iOS Safari and SFSafariViewController decode
+ * reliably with zero stale-cache mismatches or oversized-texture rejections.
  */
 
 export interface SpriteFrame {
+  page?: number;
   x: number;
   y: number;
   w: number;
@@ -14,11 +18,19 @@ export interface SpriteFrame {
   anchorY: number;
 }
 
+export interface SpritePageMeta {
+  image: string;
+  width: number;
+  height: number;
+}
+
 export interface SpriteAtlasData {
   meta: {
     image: string;
     width: number;
     height: number;
+    pageCount?: number;
+    pages?: SpritePageMeta[];
     pixelScale: number;
     unitScale?: number;
     frameCount: number;
@@ -34,72 +46,114 @@ export const PIXEL_WORLD_SCALE = 2;
 /** HD 1:1 pixel density for all 40 detailed character & heavy war-machine sprites */
 export const UNIT_WORLD_SCALE = 1;
 
-let atlasData: SpriteAtlasData | null = null;
-let sheetImage: HTMLImageElement | null = null;
-let ready = false;
+const atlasData: SpriteAtlasData = SPRITE_ATLAS_JSON as SpriteAtlasData;
+const sheetImages: Array<HTMLImageElement | null> = SPRITE_SHEET_URLS.map(() => null);
+let loadedCount = 0;
 let loadPromise: Promise<void> | null = null;
 const readyListeners: Array<() => void> = [];
 
+function notifyListeners(): void {
+  for (const cb of readyListeners) {
+    try {
+      cb();
+    } catch {
+      // ignore listener error
+    }
+  }
+}
+
 export function isSpriteAtlasReady(): boolean {
-  return ready && atlasData !== null && sheetImage !== null;
+  return loadedCount > 0;
+}
+
+export function isAllSpriteSheetsLoaded(): boolean {
+  return loadedCount >= SPRITE_SHEET_URLS.length;
 }
 
 export function getSpriteFrame(key: string): SpriteFrame | null {
-  if (!atlasData) return null;
   return atlasData.frames[key] ?? null;
 }
 
-export function getSpriteSheet(): HTMLImageElement | null {
-  return ready ? sheetImage : null;
+export function getSpriteSheet(page = 0): HTMLImageElement | null {
+  return sheetImages[page] ?? null;
 }
 
-export function getSpriteAtlas(): SpriteAtlasData | null {
+export function getSpriteAtlas(): SpriteAtlasData {
   return atlasData;
 }
 
 export function onSpriteAtlasReady(cb: () => void): void {
-  if (isSpriteAtlasReady()) {
+  readyListeners.push(cb);
+  if (loadedCount > 0) {
     cb();
-  } else {
-    readyListeners.push(cb);
   }
 }
 
-export function loadSpriteAtlas(basePath = './sprites/'): Promise<void> {
+function loadImageElement(src: string): Promise<HTMLImageElement> {
+  return new Promise((resolve, reject) => {
+    const img = new Image();
+    img.onload = () => {
+      if (img.naturalWidth > 0 && img.naturalHeight > 0) {
+        resolve(img);
+      } else {
+        reject(new Error(`Decoded image had zero size: ${src}`));
+      }
+    };
+    img.onerror = () => reject(new Error(`Image load error: ${src}`));
+    img.src = src;
+  });
+}
+
+async function loadImageViaBlob(url: string): Promise<HTMLImageElement> {
+  const res = await fetch(url);
+  if (!res.ok) throw new Error(`HTTP ${res.status} loading ${url}`);
+  const blob = await res.blob();
+  const objUrl = URL.createObjectURL(blob);
+  try {
+    return await loadImageElement(objUrl);
+  } finally {
+    // Keep object URL briefly? Once loaded into HTMLImageElement on WebKit, revoking on next tick is safe
+    window.setTimeout(() => URL.revokeObjectURL(objUrl), 5000);
+  }
+}
+
+async function loadSheetWithRetry(url: string): Promise<HTMLImageElement> {
+  // Attempt 1: direct native Image load (fastest, uses HTTP cache for immutable hashed Vite PNG)
+  try {
+    return await loadImageElement(url);
+  } catch {
+    // Attempt 2: fetch -> Blob -> ObjectURL fallback (bypasses Safari Image pipeline edge cases)
+    try {
+      return await loadImageViaBlob(url);
+    } catch {
+      // Attempt 3: cache-busted retry after brief backoff
+      await new Promise((r) => window.setTimeout(r, 250));
+      const sep = url.includes('?') ? '&' : '?';
+      return await loadImageElement(`${url}${sep}retry=1`);
+    }
+  }
+}
+
+export function loadSpriteAtlas(_basePath?: string): Promise<void> {
   if (loadPromise) return loadPromise;
   if (typeof window === 'undefined' || typeof Image === 'undefined') {
     loadPromise = Promise.resolve();
     return loadPromise;
   }
 
-  const bust = `?v=${encodeURIComponent(SPRITE_ATLAS_VERSION)}`;
-
-  loadPromise = (async () => {
-    const res = await fetch(`${basePath}sprites_atlas.json${bust}`, { cache: 'no-cache' });
-    if (!res.ok) {
-      throw new Error(`Failed to load sprites_atlas.json (${res.status})`);
-    }
-    const parsed = (await res.json()) as SpriteAtlasData;
-    atlasData = parsed;
-
-    const imgBust = parsed.meta.hash ? `?v=${encodeURIComponent(parsed.meta.hash)}` : bust;
-    const img = new Image();
-    img.decoding = 'sync';
-    await new Promise<void>((resolve, reject) => {
-      img.onload = () => resolve();
-      img.onerror = (err) => reject(err);
-      img.src = `${basePath}${parsed.meta.image}${imgBust}`;
-    });
-
-    sheetImage = img;
-    ready = true;
-
-    for (const cb of readyListeners.splice(0, readyListeners.length)) {
-      cb();
-    }
-  })().catch((err) => {
-    console.error('[SpriteAtlas] Load error:', err);
-  });
+  loadPromise = Promise.all(
+    SPRITE_SHEET_URLS.map(async (url, idx) => {
+      try {
+        const img = await loadSheetWithRetry(url);
+        sheetImages[idx] = img;
+        loadedCount += 1;
+        // Fire listeners progressively as each compact sheet decodes so HUD icons appear immediately!
+        notifyListeners();
+      } catch (err) {
+        console.error(`[SpriteAtlas] Failed loading sheet page ${idx} (${url}):`, err);
+      }
+    }),
+  ).then(() => undefined);
 
   return loadPromise;
 }
@@ -125,9 +179,10 @@ export function drawSprite(
   worldY: number,
   opts: DrawSpriteOptions = {},
 ): boolean {
-  if (!ready || !sheetImage || !atlasData) return false;
   const frame = atlasData.frames[key];
   if (!frame) return false;
+  const sheetImage = sheetImages[frame.page ?? 0];
+  if (!sheetImage) return false;
 
   const baseScale = opts.scale ?? PIXEL_WORLD_SCALE;
   const sxMult = (opts.scaleX ?? 1) * (opts.flipX ? -1 : 1);
@@ -180,9 +235,11 @@ export function renderSpriteToDataUrl(
   canvasH: number,
   padding = 6,
 ): string | null {
-  if (typeof document === 'undefined' || !ready || !sheetImage || !atlasData) return null;
+  if (typeof document === 'undefined') return null;
   const frame = atlasData.frames[key];
   if (!frame) return null;
+  const sheetImage = sheetImages[frame.page ?? 0];
+  if (!sheetImage) return null;
 
   // Measure tight non-transparent bounding box so HD sprites fill HUD action cards boldly
   const probe = document.createElement('canvas');

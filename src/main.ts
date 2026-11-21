@@ -264,12 +264,20 @@ onSpriteAtlasReady(() => {
   spritesReady,
 };
 
-// Register offline PWA Service Worker cleanly under any relative GitHub Pages base path
-if ('serviceWorker' in navigator && import.meta.env.PROD) {
+// Clean up any legacy PWA Service Workers & stale caches so iOS Safari always loads fresh content-hashed assets
+if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
-    navigator.serviceWorker
-      .register('./sw.js', { updateViaCache: 'none' })
-      .then((reg) => reg.update().catch(() => undefined))
-      .catch(() => undefined);
+    if ('caches' in window) {
+      caches
+        .keys()
+        .then((keys) => Promise.all(keys.filter((k) => k.startsWith('chrono-front')).map((k) => caches.delete(k))))
+        .catch(() => undefined);
+    }
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker
+        .getRegistrations()
+        .then((regs) => Promise.all(regs.map((r) => r.unregister())))
+        .catch(() => undefined);
+    }
   });
 }
