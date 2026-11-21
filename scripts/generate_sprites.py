@@ -27,15 +27,20 @@ from sprites_lib.projectiles import gen_projectiles
 from sprites_lib.turrets import ALL_TURRET_KINDS, gen_turret, gen_turret_platform
 from sprites_lib.units_ancient import ANCIENT_UNIT_GENERATORS
 from sprites_lib.units_modern import MODERN_UNIT_GENERATORS
+from sprites_lib.units_new_eras import NEW_ERA_UNIT_GENERATORS
 
-ALL_UNIT_GENERATORS = {**ANCIENT_UNIT_GENERATORS, **MODERN_UNIT_GENERATORS}
+ALL_UNIT_GENERATORS = {
+    **ANCIENT_UNIT_GENERATORS,
+    **MODERN_UNIT_GENERATORS,
+    **NEW_ERA_UNIT_GENERATORS,
+}
 TEAMS = ('player', 'enemy')
 
 
 def build_all_sprites() -> dict[str, tuple[PixelCanvas, int, int]]:
     sprites: dict[str, tuple[PixelCanvas, int, int]] = {}
 
-    # 1. All 22 units x 9 frames x 2 teams (player blue / enemy red palette swap)
+    # 1. All 31 units x 9 frames x 2 teams (player blue / enemy red palette swap)
     for unit_id, gen_fn in ALL_UNIT_GENERATORS.items():
         for anim in ANIM_FRAMES:
             base_canvas, ax, ay = gen_fn(anim)
@@ -46,8 +51,8 @@ def build_all_sprites() -> dict[str, tuple[PixelCanvas, int, int]]:
                 key = f'unit/{unit_id}/{team}/{anim}'
                 sprites[key] = (swapped, ax, ay)
 
-    # 2. All 7 era fortresses x 3 damage stages x 2 teams (100x128px each)
-    for era_idx in range(7):
+    # 2. All 10 era fortresses x 3 damage stages x 2 teams (100x128px each)
+    for era_idx in range(10):
         for dmg in DAMAGE_STATES:
             base_canvas, ax, ay = gen_base(era_idx, dmg)
             for team in TEAMS:

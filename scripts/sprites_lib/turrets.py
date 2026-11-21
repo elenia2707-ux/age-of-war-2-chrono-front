@@ -8,14 +8,19 @@ from .palettes import (
     BONE,
     BRONZE,
     CHARCOAL,
+    COPPER,
+    COSMIC_VIOLET,
     DARK_STEEL,
     FIRE,
     GOLD,
     INK,
     IRON,
     LEATHER,
+    OBSIDIAN,
     OFF_WHITE,
     OLIVE,
+    SANDSTONE,
+    SOLAR_GOLD,
     STEEL,
     STONE,
     T_DEEP,
@@ -180,6 +185,54 @@ def gen_turret(kind: str, firing: bool) -> tuple[PixelCanvas, int, int]:
         if firing:
             c.rect(px + 7 + rec, py - 1, 12, 2, WHITE)
 
+    elif kind == 'obelisk_beam':
+        # Carved Egyptian sandstone obelisk turret topped with blazing solar crystal!
+        c.box(px - 6 + rec, py - 5, 12, 10, SANDSTONE)
+        c.box(px - 4 + rec, py - 3, 6, 6, TEAM_RAMP)
+        c.box(px + 5 + rec, py - 3, 12, 6, GOLD)
+        c.shaded_ellipse(px + 16 + rec, py, 3, 3, SOLAR_GOLD)
+        c.px(px + 16 + rec, py, WHITE)
+
+    elif kind == 'scarab_catapult':
+        c.box(px - 7 + rec, py - 4, 17, 7, GOLD)
+        c.box(px - 5 + rec, py - 2, 7, 4, TEAM_RAMP)
+        c.shaded_ellipse(px + 11 + rec, py - 1, 5, 5, SOLAR_GOLD)
+        c.px(px + 11 + rec, py - 2, WHITE)
+
+    elif kind == 'steam_repeater':
+        # Steampunk rotary brass & copper clockwork gatling turret
+        c.box(px - 7 + rec, py - 6, 13, 11, COPPER)
+        c.box(px - 5 + rec, py - 4, 7, 6, TEAM_RAMP)
+        c.box(px + 5 + rec, py - 4, 14, 2, GOLD)
+        c.box(px + 5 + rec, py - 1, 14, 2, IRON)
+        c.box(px + 5 + rec, py + 2, 14, 2, GOLD)
+        c.rect(px + 13 + rec, py - 4, 2, 8, BRONZE[3])
+
+    elif kind == 'boiler_mortar':
+        # Heavy stubby copper boiler siege mortar with pressure dome
+        c.shaded_ellipse(px - 1 + rec, py - 1, 7, 7, COPPER)
+        c.rect(px - 4 + rec, py - 3, 6, 4, T_MID)
+        c.box(px + 4 + rec, py - 5, 13, 10, BRONZE)
+        c.rect(px + 14 + rec, py - 6, 3, 12, GOLD[3])
+
+    elif kind == 'prism_spire':
+        # Floating golden cosmic prism crystal emitter
+        c.box(px - 7 + rec, py - 6, 13, 11, OBSIDIAN)
+        c.box(px - 5 + rec, py - 4, 7, 7, TEAM_RAMP)
+        c.shaded_poly([(px + 6 + rec, py - 6), (px + 19 + rec, py), (px + 6 + rec, py + 6)], GOLD)
+        c.rect(px + 8 + rec, py - 2, 8, 4, COSMIC_VIOLET[3])
+        c.px(px + 14 + rec, py, WHITE)
+
+    elif kind == 'singularity_cannon':
+        # Colossal cosmic void-ring accelerator cannon
+        c.box(px - 8 + rec, py - 7, 15, 13, OBSIDIAN)
+        c.box(px - 6 + rec, py - 5, 9, 9, GOLD)
+        c.rect(px - 4 + rec, py - 3, 5, 5, TEAM_RAMP[2])
+        c.box(px + 6 + rec, py - 5, 15, 3, GOLD)
+        c.box(px + 6 + rec, py + 2, 15, 3, GOLD)
+        c.shaded_ellipse(px + 13 + rec, py, 4, 3, COSMIC_VIOLET)
+        c.rect(px + 9 + rec, py - 1, 11, 2, WHITE)
+
     else:  # ion_cannon
         c.box(px - 8 + rec, py - 7, 15, 13, TITANIUM)
         c.box(px - 6 + rec, py - 5, 9, 9, TEAM_RAMP)
@@ -195,8 +248,12 @@ def gen_turret(kind: str, firing: bool) -> tuple[PixelCanvas, int, int]:
     if firing:
         if kind == 'missile_pod':
             draw_muzzle_flash(c, px + 11, py, 4, FIRE)
-        elif kind in ('musket_battery', 'fortress_cannon', 'mg_nest', 'howitzer_turret', 'vulcan_ciws'):
+        elif kind in ('musket_battery', 'fortress_cannon', 'mg_nest', 'howitzer_turret', 'vulcan_ciws', 'steam_repeater', 'boiler_mortar'):
             draw_muzzle_flash(c, px + 17, py, 4, FIRE)
+        elif kind in ('obelisk_beam', 'scarab_catapult'):
+            draw_muzzle_flash(c, px + 17, py, 4, SOLAR_GOLD)
+        elif kind in ('prism_spire', 'singularity_cannon'):
+            draw_muzzle_flash(c, px + 17, py, 5, COSMIC_VIOLET)
         elif kind in ('plasma_repeater', 'ion_cannon'):
             draw_muzzle_flash(c, px + 17, py, 4, (T_DEEP, T_SHADE, T_MID, T_GLOW, WHITE))
 
@@ -206,16 +263,22 @@ def gen_turret(kind: str, firing: bool) -> tuple[PixelCanvas, int, int]:
 ALL_TURRET_KINDS = (
     'rock_dropper',
     'bone_catapult',
+    'obelisk_beam',
+    'scarab_catapult',
     'arrow_tower',
     'ballista',
     'crossbow_bastion',
     'keep_trebuchet',
     'musket_battery',
     'fortress_cannon',
+    'steam_repeater',
+    'boiler_mortar',
     'mg_nest',
     'howitzer_turret',
     'vulcan_ciws',
     'missile_pod',
     'plasma_repeater',
     'ion_cannon',
+    'prism_spire',
+    'singularity_cannon',
 )

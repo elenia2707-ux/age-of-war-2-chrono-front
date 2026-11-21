@@ -1,10 +1,11 @@
+import { ERAS } from '../data/eras';
 import type { DifficultyId } from '../data/types';
 
 export interface PlayerRecords {
   bestVictoryTimeSec: Record<DifficultyId, number | null>;
   victories: number;
   matchesPlayed: number;
-  highestEraReached: number; // 1..7
+  highestEraReached: number; // 1..ERAS.length
   totalKills: number;
   muted: boolean;
 }
@@ -54,7 +55,7 @@ export function loadRecords(storage: Storage | null = getStorage()): PlayerRecor
       matchesPlayed: typeof parsed.matchesPlayed === 'number' ? parsed.matchesPlayed : 0,
       highestEraReached:
         typeof parsed.highestEraReached === 'number'
-          ? Math.max(1, Math.min(7, parsed.highestEraReached))
+          ? Math.max(1, Math.min(ERAS.length, parsed.highestEraReached))
           : 1,
       totalKills: typeof parsed.totalKills === 'number' ? parsed.totalKills : 0,
       muted: Boolean(parsed.muted),
@@ -91,7 +92,7 @@ export function recordMatchResult(
   records.totalKills += Math.max(0, Math.floor(params.kills));
   records.highestEraReached = Math.max(
     records.highestEraReached,
-    Math.min(7, Math.max(1, params.eraReached)),
+    Math.min(ERAS.length, Math.max(1, params.eraReached)),
   );
 
   let isNewBestTime = false;

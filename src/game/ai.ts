@@ -1,5 +1,6 @@
 import { DIFFICULTIES } from '../data/difficulty';
 import { getEra } from '../data/eras';
+import type { UpgradeId } from '../data/types';
 import { WORLD_WIDTH } from './constants';
 import type { GameEngine } from './engine';
 
@@ -39,6 +40,7 @@ export class EnemyAI {
     const enemyUnits = engine.units.filter((u) => u.team === 'enemy' && u.state !== 'dead');
 
     const closestPlayerX = playerUnits.reduce((maxX, u) => Math.max(maxX, u.x), 0);
+    const criticalThreat = closestPlayerX > WORLD_WIDTH * 0.72 && enemyUnits.length < 3;
     const underThreat = closestPlayerX > WORLD_WIDTH * 0.56 || enemy.baseHp < enemy.baseMaxHp * 0.72;
 
     // 2. Ultimate usage (Normal / Hard) when player army pushes past midfield
@@ -52,7 +54,12 @@ export class EnemyAI {
       return;
     }
 
-    // 3. Turret management: sell outdated turrets or build new era turret
+    // 3. Difficulty-scaled Gold Spec Upgrades (weapons, armor, economy, fortress)
+    if (!criticalThreat && this.tryPurchaseUpgrade(engine, underThreat, enemyUnits.length)) {
+      return;
+    }
+
+    // 4. Turret management: sell outdated turrets or build new era turret
     const installedTurrets = enemy.turrets.filter((t) => t !== null);
     const targetTurrets = Math.min(
       diff.aiMaxTurrets,
@@ -69,10 +76,12 @@ export class EnemyAI {
     }
 
     // Expand slot if all unlocked slots are full and below desired turret cap
+    const nextSlotCost = engine.getNextTurretSlotCost('enemy');
     if (
+      nextSlotCost !== null &&
       installedTurrets.length === enemy.turretSlots &&
       enemy.turretSlots < targetTurrets &&
-      enemy.gold >= engine.getNextTurretSlotCost('enemy')! + era.turrets[0].cost * 0.5
+      enemy.gold >= nextSlotCost + era.turrets[0].cost * 0.5
     ) {
       engine.expandTurretSlot('enemy');
       return;
@@ -93,7 +102,7 @@ export class EnemyAI {
       }
     }
 
-    // 4. Tactical unit composition training
+    // 5. Tactical unit composition training
     if (enemy.queue.length >= 3) return;
 
     const units = era.units;
@@ -109,7 +118,7 @@ export class EnemyAI {
     ).length;
 
     // Emergency cheap defender when player is near enemy base
-    if (closestPlayerX > WORLD_WIDTH * 0.72 && enemyUnits.length < 3) {
+    if (criticalThreat) {
       const cheapest = units[0];
       if (cheapest && enemy.gold >= cheapest.cost) {
         engine.enqueueUnit('enemy', cheapest.id);
@@ -154,5 +163,44 @@ export class EnemyAI {
     if (candidate && enemy.gold >= candidate.cost) {
       engine.enqueueUnit('enemy', candidate.id);
     }
+  }
+
+  private tryPurchaseUpgrade(engine: GameEngine, underThreat: boolean, activeAllies: number): boolean {
+    const diff = DIFFICULTIES[engine.difficulty];
+    const enemy = engine.enemy;
+    const era = getEra(enemy.eraIndex);
+
+    // Keep a healthy reserve for at least one frontline defender before spending on upgrades
+    const reserveGold = era.units[0].cost * (underThreat ? 1.5 : 0.9);
+    if (engine.random() > diff.aiUpgradeChance) return false;
+
+    // Cap target upgrade level gracefully by both difficulty ceiling and era progression
+    const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + 1));
+
+    // Tactical priority order based on live battlefield pressure
+    let priority: UpgradeId[];
+    if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
+      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets)
+      priority = ['fortress', 'armor', 'weapons', 'economy'];
+    } else if (enemy.upgrades.economy < Math.min(eraCap, 3) && !underThreat) {
+      // Early/mid economic snowballing
+      priority = ['economy', 'weapons', 'armor', 'fortress'];
+    } else if (activeAllies >= 3) {
+      // Active push -> scale frontline combat power
+      priority = ['weapons', 'armor', 'economy', 'fortress'];
+    } else {
+      priority = ['armor', 'weapons', 'economy', 'fortress'];
+    }
+
+    for (const id of priority) {
+      const level = enemy.upgrades[id];
+      if (level >= eraCap) continue;
+      const cost = engine.getUpgradeCost('enemy', id);
+      if (cost !== null && enemy.gold >= cost + reserveGold) {
+        return engine.buyUpgrade('enemy', id);
+      }
+    }
+
+    return false;
   }
 }

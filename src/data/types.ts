@@ -7,6 +7,7 @@ export type GameStatus = 'title' | 'playing' | 'paused' | 'victory' | 'defeat';
 export type ProjectileStyle =
   | 'stone'
   | 'boulder'
+  | 'solar_orb'
   | 'arrow'
   | 'fire_arrow'
   | 'bolt'
@@ -17,16 +18,35 @@ export type ProjectileStyle =
   | 'rocket'
   | 'plasma'
   | 'railgun'
-  | 'ion_beam';
+  | 'ion_beam'
+  | 'antimatter'
+  | 'gravity_beam';
 
 export type UltimateKind =
   | 'meteor'
+  | 'solar_wrath'
   | 'lightning'
   | 'fire_arrows'
   | 'naval_barrage'
+  | 'zeppelin_raid'
   | 'carpet_bomb'
   | 'tactical_missiles'
-  | 'orbital_laser';
+  | 'orbital_laser'
+  | 'black_hole';
+
+export type UpgradeId = 'weapons' | 'armor' | 'economy' | 'fortress';
+
+export type UpgradeLevels = Record<UpgradeId, number>;
+
+export interface UpgradeDef {
+  id: UpgradeId;
+  name: string;
+  shortName: string;
+  effectText: string;
+  maxLevel: number;
+  costs: readonly number[];
+  spriteKey: string;
+}
 
 export type UnitRole = 'melee' | 'ranged' | 'heavy' | 'siege';
 
@@ -34,6 +54,9 @@ export type UnitVisualKind =
   | 'clubman'
   | 'slinger'
   | 'dino_rider'
+  | 'anubis_warrior'
+  | 'sun_priest'
+  | 'sphinx_chariot'
   | 'spearman'
   | 'archer'
   | 'chariot'
@@ -44,6 +67,9 @@ export type UnitVisualKind =
   | 'pikeman'
   | 'musketeer'
   | 'field_cannon'
+  | 'steam_trooper'
+  | 'gatling_gunner'
+  | 'steam_walker'
   | 'rifleman'
   | 'flamethrower'
   | 'early_tank'
@@ -52,23 +78,32 @@ export type UnitVisualKind =
   | 'mbt'
   | 'cyborg'
   | 'railgun_sniper'
-  | 'colossus_mech';
+  | 'colossus_mech'
+  | 'void_templar'
+  | 'gravity_sniper'
+  | 'omega_titan';
 
 export type TurretVisualKind =
   | 'rock_dropper'
   | 'bone_catapult'
+  | 'obelisk_beam'
+  | 'scarab_catapult'
   | 'arrow_tower'
   | 'ballista'
   | 'crossbow_bastion'
   | 'keep_trebuchet'
   | 'musket_battery'
   | 'fortress_cannon'
+  | 'steam_repeater'
+  | 'boiler_mortar'
   | 'mg_nest'
   | 'howitzer_turret'
   | 'vulcan_ciws'
   | 'missile_pod'
   | 'plasma_repeater'
-  | 'ion_cannon';
+  | 'ion_cannon'
+  | 'prism_spire'
+  | 'singularity_cannon';
 
 export type SoundCue =
   | 'melee_wood'
@@ -192,6 +227,8 @@ export interface DifficultyConfig {
   aiMaxTurrets: number;
   aiUsesUltimate: boolean;
   aiEvolveDelay: number;
+  aiMaxUpgradeLevel: number;
+  aiUpgradeChance: number;
 }
 
 export interface QueuedUnit {
@@ -223,6 +260,7 @@ export interface FactionState {
   turretSlots: number;
   turrets: (InstalledTurret | null)[];
   queue: QueuedUnit[];
+  upgrades: UpgradeLevels;
   ultimateCooldown: number;
   ultimateMaxCooldown: number;
   baseHitFlash: number;
@@ -275,7 +313,15 @@ export interface ProjectileEntity {
 export interface BeamEffect {
   uid: number;
   team: Team;
-  style: 'railgun' | 'ion_beam' | 'lightning' | 'orbital_laser' | 'flame_jet';
+  style:
+    | 'railgun'
+    | 'ion_beam'
+    | 'lightning'
+    | 'orbital_laser'
+    | 'flame_jet'
+    | 'solar_beam'
+    | 'gravity_beam'
+    | 'black_hole_vortex';
   x1: number;
   y1: number;
   x2: number;
@@ -345,7 +391,7 @@ export interface ActiveUltimate {
   strikesFired: number;
   nextStrikeAt: number;
   /** Visual projectiles/aircraft specific to active ultimate */
-  planes?: { x: number; y: number; speed: number; dir: 1 | -1 }[];
+  planes?: { x: number; y: number; speed: number; dir: 1 | -1; kind?: 'bomber' | 'zeppelin' }[];
   fallingOrdinance: {
     x: number;
     y: number;

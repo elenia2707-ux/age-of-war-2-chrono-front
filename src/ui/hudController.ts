@@ -1,13 +1,14 @@
 import { getEra } from '../data/eras';
-import type { GameSnapshot, TurretVisualKind, UnitVisualKind } from '../data/types';
+import type { GameSnapshot, TurretVisualKind, UnitVisualKind, UpgradeId } from '../data/types';
+import { getNextUpgradeCost, UPGRADE_BY_ID, UPGRADES } from '../data/upgrades';
 import type { BattleCamera } from '../game/camera';
 import { WORLD_WIDTH } from '../game/constants';
 import type { GameEngine } from '../game/engine';
-import { getTurretIconUrl, getUnitIconUrl } from '../render/iconRenderer';
+import { getTurretIconUrl, getUnitIconUrl, getUpgradeIconUrl } from '../render/iconRenderer';
 import { renderMinimap } from '../render/renderer';
 import { formatDuration } from '../storage/records';
 
-export type DockTab = 'units' | 'turrets';
+export type DockTab = 'units' | 'turrets' | 'upgrades';
 
 export class HudController {
   public activeTab: DockTab = 'units';
@@ -33,7 +34,9 @@ export class HudController {
 
   private tabUnitsBtn = document.getElementById('tab-units') as HTMLButtonElement;
   private tabTurretsBtn = document.getElementById('tab-turrets') as HTMLButtonElement;
+  private tabUpgradesBtn = document.getElementById('tab-upgrades') as HTMLButtonElement;
   private turretSlotCountEl = document.getElementById('turret-slot-count')!;
+  private upgradeLevelTotalEl = document.getElementById('upgrade-level-total')!;
   private actionCardsEl = document.getElementById('action-cards')!;
 
   private evolveBtn = document.getElementById('btn-evolve') as HTMLButtonElement;
@@ -139,9 +142,12 @@ export class HudController {
     this.speedBtn.textContent = `${snapshot.speed}x`;
     this.speedBtn.classList.toggle('active', snapshot.speed === 2);
 
-    // Turret slot count badge
+    // Turret slot count badge & total upgrade level badge
     const installedCount = p.turrets.filter((t) => t !== null).length;
     this.turretSlotCountEl.textContent = `${installedCount}/${p.turretSlots}`;
+    const totalUpgradeLevels =
+      p.upgrades.weapons + p.upgrades.armor + p.upgrades.economy + p.upgrades.fortress;
+    this.upgradeLevelTotalEl.textContent = `Lv${totalUpgradeLevels}`;
 
     // Rebuild bottom action cards only when era or active tab changes
     if (this.renderedEra !== p.eraIndex || this.renderedTab !== this.activeTab) {
@@ -169,7 +175,7 @@ export class HudController {
       this.evolveBtn.disabled = !ready;
     } else {
       this.evolveKicker.textContent = '최종 시대';
-      this.evolveLabel.textContent = 'VII 미래';
+      this.evolveLabel.textContent = `${era.roman} ${era.shortName}`;
       this.evolveSub.textContent = 'MAX';
       this.evolveFill.style.height = '100%';
       this.evolveBtn.classList.remove('ready');
@@ -216,6 +222,11 @@ export class HudController {
       this.switchTab('turrets');
     });
 
+    this.tabUpgradesBtn.addEventListener('click', () => {
+      this.onUnlockAudio();
+      this.switchTab('upgrades');
+    });
+
     this.evolveBtn.addEventListener('click', () => {
       this.onUnlockAudio();
       this.engine.evolve('player');
@@ -259,6 +270,8 @@ export class HudController {
     this.tabUnitsBtn.setAttribute('aria-selected', String(tab === 'units'));
     this.tabTurretsBtn.classList.toggle('active', tab === 'turrets');
     this.tabTurretsBtn.setAttribute('aria-selected', String(tab === 'turrets'));
+    this.tabUpgradesBtn.classList.toggle('active', tab === 'upgrades');
+    this.tabUpgradesBtn.setAttribute('aria-selected', String(tab === 'upgrades'));
   }
 
   private buildActionCards(eraIndex: number, tab: DockTab): void {
@@ -286,6 +299,34 @@ export class HudController {
         btn.addEventListener('click', () => {
           this.onUnlockAudio();
           this.engine.enqueueUnit('player', unit.id as UnitVisualKind);
+        });
+        this.actionCardsEl.appendChild(btn);
+      }
+      return;
+    }
+
+    if (tab === 'upgrades') {
+      this.actionCardsEl.dataset.cols = '4';
+      for (const upg of UPGRADES) {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        btn.className = 'action-card upgrade-card';
+        btn.dataset.kind = 'upgrade';
+        btn.dataset.upgradeId = upg.id;
+        btn.title = `${upg.name} (${upg.effectText})`;
+
+        const iconUrl = getUpgradeIconUrl(upg.id);
+        btn.innerHTML = `
+          <img class="card-sprite upgrade-sprite" src="${iconUrl}" alt="${upg.name}" />
+          <span class="card-name">${upg.shortName}</span>
+          <span class="card-effect">${upg.effectText}</span>
+          <span class="card-cost num" data-upg-cost>${upg.costs[0].toLocaleString()}G</span>
+          <span class="card-level-badge num" data-upg-level>Lv.0</span>
+        `;
+
+        btn.addEventListener('click', () => {
+          this.onUnlockAudio();
+          this.engine.buyUpgrade('player', upg.id);
         });
         this.actionCardsEl.appendChild(btn);
       }
@@ -392,6 +433,33 @@ export class HudController {
           badge.classList.toggle('hidden', queuedCount === 0);
           badge.textContent = `x${queuedCount}`;
         }
+      }
+      return;
+    }
+
+    if (this.activeTab === 'upgrades') {
+      for (const card of cards) {
+        const upgId = card.dataset.upgradeId as UpgradeId;
+        const def = UPGRADE_BY_ID[upgId];
+        if (!def) continue;
+        const level = p.upgrades[upgId];
+        const nextCost = getNextUpgradeCost(upgId, level);
+        const maxed = nextCost === null;
+
+        const levelBadge = card.querySelector<HTMLElement>('[data-upg-level]');
+        if (levelBadge) {
+          levelBadge.textContent = maxed ? 'MAX' : `Lv.${level}`;
+          levelBadge.classList.toggle('maxed', maxed);
+        }
+
+        const costEl = card.querySelector<HTMLElement>('[data-upg-cost]');
+        if (costEl) {
+          costEl.textContent = maxed ? 'MAX' : `${nextCost.toLocaleString()}G`;
+        }
+
+        card.disabled = maxed;
+        card.classList.toggle('maxed', maxed);
+        card.classList.toggle('unaffordable', maxed || p.gold < nextCost);
       }
       return;
     }

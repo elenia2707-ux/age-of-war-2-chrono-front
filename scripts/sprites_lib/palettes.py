@@ -94,3 +94,9 @@ GRASS = (hx('#1d3315'), hx('#335723'), hx('#548234'), hx('#82b04c'), hx('#b4d975
 DIRT = (hx('#24180f'), hx('#422c1b'), hx('#66462b'), hx('#8f6742'), hx('#b88d62'))
 CYAN_GLOW = (hx('#0a3b5c'), hx('#0d749c'), hx('#1ec4e8'), hx('#80f0ff'), hx('#e8feff'))
 HAZARD_YELLOW = (hx('#593b08'), hx('#9c6e0e'), hx('#dba718'), hx('#facc15'), hx('#fef08a'))
+COPPER = (hx('#3d1a0d'), hx('#75361c'), hx('#b55c32'), hx('#de8c56'), hx('#f7c392'))
+OBSIDIAN = (hx('#0f0c1a'), hx('#1e1833'), hx('#332952'), hx('#54467d'), hx('#8574b5'))
+COSMIC_VIOLET = (hx('#2c0c4f'), hx('#5b1c99'), hx('#9b3be6'), hx('#d47aff'), hx('#fae3ff'))
+SOLAR_GOLD = (hx('#663406'), hx('#b3640c'), hx('#f2a51a'), hx('#ffdf59'), hx('#fffce0'))
+EGYPT_LINEN = (hx('#5e523e'), hx('#948468'), hx('#cfc1a5'), hx('#ede4d1'), hx('#fffdf5'))
+

@@ -25,7 +25,9 @@ export function renderUltimateAtmosphere(
       Math.min(1, Math.max(0, (ult.duration + 0.6 - ult.elapsed) * 1.6));
     let tint = 'rgba(20, 12, 8, 0.24)';
     if (ult.def.kind === 'lightning') tint = 'rgba(10, 20, 42, 0.45)';
+    else if (ult.def.kind === 'solar_wrath') tint = 'rgba(84, 52, 8, 0.34)';
     else if (ult.def.kind === 'orbital_laser') tint = 'rgba(6, 22, 36, 0.4)';
+    else if (ult.def.kind === 'black_hole') tint = 'rgba(32, 8, 56, 0.52)';
     else if (ult.def.kind === 'meteor') tint = 'rgba(58, 18, 6, 0.34)';
     else if (ult.def.kind === 'fire_arrows') tint = 'rgba(46, 14, 8, 0.28)';
 
@@ -124,15 +126,27 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
     const angle = Math.atan2(p.vy, p.vx);
 
     // Crisp pixel trail behind fast/heavy projectiles
-    if (p.style === 'bullet' || p.style === 'plasma' || p.style === 'rocket' || p.style === 'shell' || p.style === 'boulder') {
+    if (
+      p.style === 'bullet' ||
+      p.style === 'plasma' ||
+      p.style === 'antimatter' ||
+      p.style === 'solar_orb' ||
+      p.style === 'rocket' ||
+      p.style === 'shell' ||
+      p.style === 'boulder'
+    ) {
       const trailCol =
         p.style === 'plasma'
           ? p.team === 'player'
             ? 'rgba(56, 232, 255, 0.55)'
             : 'rgba(255, 77, 125, 0.55)'
-          : p.style === 'bullet'
-            ? 'rgba(254, 240, 138, 0.52)'
-            : 'rgba(226, 232, 240, 0.36)';
+          : p.style === 'antimatter'
+            ? 'rgba(192, 132, 252, 0.62)'
+            : p.style === 'solar_orb'
+              ? 'rgba(251, 191, 36, 0.62)'
+              : p.style === 'bullet'
+                ? 'rgba(254, 240, 138, 0.52)'
+                : 'rgba(226, 232, 240, 0.36)';
       ctx.fillStyle = trailCol;
       for (let s = 1; s <= 3; s++) {
         const tx = snap(p.x - p.vx * 0.008 * s);
@@ -145,12 +159,19 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
     let spriteKey = `proj/${p.style}`;
     if (p.style === 'plasma') {
       spriteKey = `proj/plasma/${p.team}`;
-    } else if (p.style === 'flame' || p.style === 'railgun' || p.style === 'ion_beam') {
+    } else if (p.style === 'antimatter') {
+      spriteKey = `proj/antimatter/${p.team}`;
+    } else if (
+      p.style === 'flame' ||
+      p.style === 'railgun' ||
+      p.style === 'ion_beam' ||
+      p.style === 'gravity_beam'
+    ) {
       spriteKey = 'proj/bullet';
     }
 
     const spinAngle =
-      p.style === 'stone' || p.style === 'boulder' || p.style === 'cannonball'
+      p.style === 'stone' || p.style === 'boulder' || p.style === 'cannonball' || p.style === 'solar_orb'
         ? p.life * 8 * (p.vx >= 0 ? 1 : -1)
         : angle;
 
@@ -168,7 +189,7 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
   ctx.restore();
 }
 
-/** Crisp pixel-stepped lightning, orbital laser, flamethrower cone & railgun/ion beams */
+/** Crisp pixel-stepped lightning, solar beam, orbital laser, black hole vortex, flame & railgun/gravity beams */
 export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]): void {
   for (const b of beams) {
     const ratio = Math.max(0, b.life / b.maxLife);
@@ -190,7 +211,6 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
             : snap(b.x1 + (b.x2 - b.x1) * t + Math.sin(b.seed + s * 7.3) * 26);
         const ny = snap(b.y1 + (b.y2 - b.y1) * t);
 
-        // Stepped horizontal + vertical pixel lightning bolt
         const midY = snap((prevY + ny) * 0.5);
         ctx.fillStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
         ctx.fillRect(prevX - outerW / 2, Math.min(prevY, midY), outerW, Math.abs(midY - prevY) + outerW / 2);
@@ -205,26 +225,79 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
         prevX = nx;
         prevY = ny;
       }
-    } else if (b.style === 'orbital_laser') {
+    } else if (b.style === 'orbital_laser' || b.style === 'solar_beam') {
+      const isSolar = b.style === 'solar_beam';
       const cx = snap(b.x1);
       const w = Math.max(8, snap(b.width * (0.48 + ratio * 0.8)));
       const h = snap(b.y2 - b.y1);
-      // 4-band stepped pixel orbital beam
-      ctx.fillStyle = `rgba(6, 182, 212, ${(ratio * 0.42).toFixed(2)})`;
+      ctx.fillStyle = isSolar
+        ? `rgba(245, 158, 11, ${(ratio * 0.45).toFixed(2)})`
+        : `rgba(6, 182, 212, ${(ratio * 0.42).toFixed(2)})`;
       ctx.fillRect(cx - w, b.y1, w * 2, h);
-      ctx.fillStyle = `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
+      ctx.fillStyle = isSolar
+        ? `rgba(251, 191, 36, ${(ratio * 0.88).toFixed(2)})`
+        : `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
       ctx.fillRect(cx - Math.round(w * 0.65), b.y1, Math.round(w * 1.3), h);
-      ctx.fillStyle = `rgba(224, 242, 254, ${Math.min(1, ratio * 1.15).toFixed(2)})`;
+      ctx.fillStyle = isSolar
+        ? `rgba(254, 249, 195, ${Math.min(1, ratio * 1.15).toFixed(2)})`
+        : `rgba(224, 242, 254, ${Math.min(1, ratio * 1.15).toFixed(2)})`;
       ctx.fillRect(cx - Math.round(w * 0.35), b.y1, Math.round(w * 0.7), h);
       ctx.fillStyle = '#ffffff';
       ctx.fillRect(cx - Math.max(4, Math.round(w * 0.16)), b.y1, Math.max(8, Math.round(w * 0.32)), h);
 
-      // Pixel shockwave impact blast dome on ground
       const domeW = snap(w * 1.55);
-      ctx.fillStyle = `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
+      ctx.fillStyle = isSolar
+        ? `rgba(251, 191, 36, ${(ratio * 0.88).toFixed(2)})`
+        : `rgba(34, 211, 238, ${(ratio * 0.85).toFixed(2)})`;
       ctx.fillRect(cx - domeW, GROUND_Y - 10, domeW * 2, 16);
       ctx.fillStyle = `rgba(255, 255, 255, ${(ratio * 0.95).toFixed(2)})`;
       ctx.fillRect(cx - Math.round(domeW * 0.6), GROUND_Y - 14, Math.round(domeW * 1.2), 14);
+    } else if (b.style === 'black_hole_vortex') {
+      // Crisp pixel-art circular cosmic singularity with tilted accretion disk
+      const cx = snap(b.x1);
+      const cy = snap(b.y1);
+      const r = Math.max(16, snap(b.width * (0.55 + Math.sin(ratio * Math.PI) * 0.55)));
+      const drawPixDisc = (rad: number, color: string) => {
+        ctx.fillStyle = color;
+        for (let dy = -rad; dy <= rad; dy += 4) {
+          const hw = snap(Math.sqrt(Math.max(0, rad * rad - dy * dy)));
+          if (hw >= 2) ctx.fillRect(cx - hw, cy + dy, hw * 2, 4);
+        }
+      };
+
+      // 1. Outer violet gravity lensing halo
+      drawPixDisc(snap(r * 1.15), `rgba(126, 34, 206, ${(ratio * 0.34).toFixed(2)})`);
+      drawPixDisc(snap(r * 0.88), `rgba(168, 85, 247, ${(ratio * 0.48).toFixed(2)})`);
+
+      // 2. Back arc of tilted accretion disk
+      const diskRx = snap(r * 1.45);
+      const diskRy = Math.max(6, snap(r * 0.34));
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + (1 - ratio) * 9 + b.seed;
+        if (Math.sin(ang) > 0) continue;
+        const rx = snap(cx + Math.cos(ang) * diskRx);
+        const ry = snap(cy + Math.sin(ang) * diskRy);
+        ctx.fillStyle = i % 3 === 0 ? '#fde047' : i % 2 === 0 ? '#e879f9' : '#c084fc';
+        ctx.fillRect(rx - 4, ry - 2, 8, 4);
+      }
+
+      // 3. Glowing photon ring + pitch-black circular event horizon
+      const coreR = Math.max(10, snap(r * 0.52));
+      drawPixDisc(coreR + 4, `rgba(240, 171, 252, ${(ratio * 0.92).toFixed(2)})`);
+      drawPixDisc(coreR + 2, `rgba(255, 255, 255, ${Math.min(1, ratio * 1.1).toFixed(2)})`);
+      drawPixDisc(coreR, '#05020d');
+
+      // 4. Front sweeping arc of tilted accretion disk (Gargantua pixel effect)
+      for (let i = 0; i < 16; i++) {
+        const ang = (i / 16) * Math.PI * 2 + (1 - ratio) * 9 + b.seed;
+        if (Math.sin(ang) <= 0) continue;
+        const rx = snap(cx + Math.cos(ang) * diskRx);
+        const ry = snap(cy + Math.sin(ang) * diskRy);
+        ctx.fillStyle = i % 3 === 0 ? '#fef08a' : i % 2 === 0 ? '#facc15' : '#f472b6';
+        ctx.fillRect(rx - 4, ry - 2, 8, 4);
+      }
+      ctx.fillStyle = `rgba(254, 240, 138, ${(ratio * 0.85).toFixed(2)})`;
+      ctx.fillRect(cx - diskRx + 4, cy - 2, (diskRx - 4) * 2, 4);
     } else if (b.style === 'flame_jet') {
       const steps = 7;
       for (let i = 0; i < steps; i++) {
@@ -241,7 +314,7 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
         }
       }
     } else {
-      // Crisp stepped railgun or ion beam
+      // Crisp stepped railgun, ion beam, or cosmic gravity beam
       const dx = b.x2 - b.x1;
       const dy = b.y2 - b.y1;
       const dist = Math.max(1, Math.hypot(dx, dy));
@@ -257,7 +330,7 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
         const by = snap(b.y1 + dy * t);
         ctx.fillRect(bx - outer / 2, by - outer / 2, outer, outer);
       }
-      ctx.fillStyle = '#ffffff';
+      ctx.fillStyle = b.style === 'gravity_beam' ? '#fef08a' : '#ffffff';
       for (let i = 0; i <= stepCount; i++) {
         const t = i / stepCount;
         const bx = snap(b.x1 + dx * t);
@@ -270,7 +343,7 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
   }
 }
 
-/** Pixel-art bombers & falling ultimate ordinance */
+/** Pixel-art bombers, steampunk zeppelins & falling ultimate ordinance */
 export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: ActiveUltimate[]): void {
   ctx.save();
   ctx.imageSmoothingEnabled = false;
@@ -278,7 +351,9 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
   for (const ult of ultimates) {
     if (ult.planes) {
       for (const plane of ult.planes) {
-        drawSprite(ctx, `ult/bomber/${ult.team}`, plane.x, plane.y, {
+        const craftKey =
+          plane.kind === 'zeppelin' ? `ult/zeppelin/${ult.team}` : `ult/bomber/${ult.team}`;
+        drawSprite(ctx, craftKey, plane.x, plane.y, {
           scale: PIXEL_WORLD_SCALE,
           flipX: plane.dir === -1,
         });

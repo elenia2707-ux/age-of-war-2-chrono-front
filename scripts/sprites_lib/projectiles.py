@@ -6,6 +6,8 @@ from .canvas import PixelCanvas
 from .palettes import (
     BRONZE,
     CHARCOAL,
+    COPPER,
+    COSMIC_VIOLET,
     CYAN_GLOW,
     DARK_STEEL,
     FIRE,
@@ -15,6 +17,7 @@ from .palettes import (
     OFF_WHITE,
     OLIVE,
     SMOKE,
+    SOLAR_GOLD,
     STEEL,
     STONE,
     T_DEEP,
@@ -178,5 +181,48 @@ def gen_projectiles() -> dict[str, tuple[PixelCanvas, int, int]]:
     c.add_outline(INK)
     out['ult/bomber/player'] = (c.swap_team('player'), 22, 11)
     out['ult/bomber/enemy'] = (c.swap_team('enemy'), 22, 11)
+
+    # 15. Egyptian Blazing Solar Orb (14x14)
+    c = PixelCanvas(14, 14)
+    c.shaded_ellipse(7, 7, 5, 5, SOLAR_GOLD)
+    c.shaded_ellipse(7, 7, 2, 2, (SOLAR_GOLD[3], SOLAR_GOLD[4], WHITE, WHITE))
+    c.px(7, 1, SOLAR_GOLD[3])
+    c.px(7, 12, SOLAR_GOLD[3])
+    c.px(1, 7, SOLAR_GOLD[3])
+    c.px(12, 7, SOLAR_GOLD[3])
+    c.add_outline(INK)
+    out['proj/solar_orb'] = (c, 7, 7)
+
+    # 16. Interstellar Antimatter Orb (team-swappable, 16x16)
+    c = PixelCanvas(16, 16)
+    c.shaded_ellipse(8, 8, 6, 6, COSMIC_VIOLET)
+    c.shaded_ellipse(8, 8, 3, 3, (T_SHADE, T_MID, T_GLOW, WHITE))
+    c.px(8, 8, WHITE)
+    c.add_outline(INK)
+    out['proj/antimatter/player'] = (c.swap_team('player'), 8, 8)
+    out['proj/antimatter/enemy'] = (c.swap_team('enemy'), 8, 8)
+
+    # 17. Industrial Era Ultimate Steampunk War Zeppelin (team-swappable, 56x28)
+    c = PixelCanvas(56, 28)
+    # Giant armored brass-ribbed dirigible envelope!
+    c.shaded_ellipse(28, 12, 24, 9, COPPER)
+    # Team sovereign stripe across hull
+    c.rect(10, 10, 36, 4, T_MID)
+    c.rect(12, 10, 32, 2, T_LIGHT)
+    # Brass structural ribs
+    for rx in (16, 26, 36, 44):
+        c.rect(rx, 5, 2, 14, GOLD[3])
+    # Tail stabilizer fins
+    c.shaded_poly([(3, 10), (10, 6), (11, 12), (4, 13)], (T_DEEP, T_SHADE, T_MID, T_LIGHT))
+    c.shaded_poly([(3, 14), (10, 18), (11, 13), (4, 12)], (T_DEEP, T_SHADE, T_MID, T_LIGHT))
+    # Armored underslung bomb gondola & spinning rear propeller
+    c.box(18, 20, 20, 6, DARK_STEEL)
+    c.rect(22, 22, 4, 2, FIRE[3])
+    c.rect(28, 22, 4, 2, FIRE[3])
+    c.rect(34, 22, 2, 2, GOLD[3])
+    c.rect(14, 20, 2, 6, SMOKE[3])
+    c.add_outline(INK)
+    out['ult/zeppelin/player'] = (c.swap_team('player'), 28, 14)
+    out['ult/zeppelin/enemy'] = (c.swap_team('enemy'), 28, 14)
 
     return out

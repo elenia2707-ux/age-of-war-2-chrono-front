@@ -86,7 +86,7 @@ function startMatch(difficulty: DifficultyId): void {
   hud.setVisible(true);
   overlays.hideAllGameOverlays();
   const era = getEra(0);
-  hud.showBanner(`시대 1: ${era.name}`, '적 기지를 파괴하고 7시대까지 진화하세요', era.palette.accent);
+  hud.showBanner(`시대 1: ${era.name}`, '골드 강화와 함께 10시대 성간 문명까지 진화하세요', era.palette.accent);
 }
 
 // ============================================================================

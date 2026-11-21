@@ -13,9 +13,9 @@
     <meta name="theme-color" content="#11161f" />
     <meta
       name="description"
-      content="원시 시대부터 미래 시대까지 7단계 진화 2D 횡스크롤 전략 디펜스 웹 게임 — 아이폰 사파리 및 PWA 최적화"
+      content="원시 시대부터 성간 문명까지 10단계 진화 2D 횡스크롤 전략 디펜스 웹 게임 — 아이폰 사파리 및 PWA 최적화"
     />
-    <title>전쟁시대 2: 크로노 프론트 — 7시대 전략 디펜스</title>
+    <title>전쟁시대 2: 크로노 프론트 — 10시대 전략 디펜스</title>
     <link rel="manifest" href="./manifest.webmanifest" />
     <link rel="apple-touch-icon" href="./icons/apple-touch-icon.png" />
     <link rel="icon" type="image/png" sizes="192x192" href="./icons/icon-192.png" />
@@ -114,6 +114,16 @@
               <span>포탑</span>
               <small id="turret-slot-count" class="num">0/1</small>
             </button>
+            <button
+              id="tab-upgrades"
+              class="mode-tab upgrade-tab"
+              type="button"
+              role="tab"
+              aria-selected="false"
+            >
+              <span>강화</span>
+              <small id="upgrade-level-total" class="num">Lv0</small>
+            </button>
           </div>
           <div id="action-cards" class="action-cards" data-cols="3"></div>
         </div>
@@ -123,7 +133,7 @@
             <div class="power-fill" id="evolve-fill"></div>
             <div class="power-content">
               <span class="power-kicker" id="evolve-kicker">시대 진화</span>
-              <strong class="power-label" id="evolve-label">II 고대</strong>
+              <strong class="power-label" id="evolve-label">II 이집트</strong>
               <span class="power-sub num" id="evolve-sub">450 XP</span>
             </div>
           </button>
@@ -143,19 +153,22 @@
       <section id="overlay-title" class="overlay-backdrop" aria-label="시작 화면">
         <div class="title-modal glass-modal">
           <div class="title-left">
-            <span class="title-eyebrow">AGE OF WAR II · 7-ERA STRATEGY</span>
+            <span class="title-eyebrow">AGE OF WAR II · 10-ERA STRATEGY</span>
             <h1>전쟁시대 2: 크로노 프론트</h1>
             <p class="title-desc">
-              원시 시대부터 미래 시대까지 진화하며 적 기지를 파괴하는 횡스크롤 전략 디펜스
+              원시 시대부터 성간 문명까지 10시대를 진화하고, 골드 강화로 군대를 육성해 적 기지를 파괴하는 횡스크롤 전략 디펜스
             </p>
-            <div class="era-strip" aria-label="7시대 진화 단계">
+            <div class="era-strip" aria-label="10시대 진화 단계">
               <span>I 원시</span>
-              <span>II 고대</span>
-              <span>III 중세</span>
-              <span>IV 화약</span>
-              <span>V 대전</span>
-              <span>VI 현대</span>
-              <span>VII 미래</span>
+              <span>II 이집트</span>
+              <span>III 고대</span>
+              <span>IV 중세</span>
+              <span>V 화약</span>
+              <span>VI 산업</span>
+              <span>VII 대전</span>
+              <span>VIII 현대</span>
+              <span>IX 미래</span>
+              <span>X 성간</span>
             </div>
             <div class="records-box" id="title-records"></div>
           </div>

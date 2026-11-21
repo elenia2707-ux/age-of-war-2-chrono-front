@@ -5,7 +5,6 @@ import { PIXEL_WORLD_SCALE, drawSprite, getSpriteFrame } from './spriteAtlas';
 const PX = PIXEL_WORLD_SCALE; // 2 logical world units per pixel block
 const snap = (v: number): number => Math.floor(v / PX) * PX;
 
-/** Parse #rrggbb to [r, g, b] */
 function parseHex(hex: string): [number, number, number] {
   const clean = hex.replace('#', '');
   return [
@@ -24,7 +23,6 @@ function mixHex(a: string, b: string, t: number): string {
   return `rgb(${r},${g},${bl})`;
 }
 
-/** Draw a classic 16-bit checkerboard pixel dither band across the viewport */
 function drawDitherStrip(
   ctx: CanvasRenderingContext2D,
   y: number,
@@ -43,7 +41,6 @@ function drawDitherStrip(
   }
 }
 
-/** Draw a stepped pixel disc (no smooth anti-aliased arc edges) */
 function drawPixelDisc(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -94,10 +91,6 @@ export function renderBackground(
   ctx.restore();
 }
 
-/**
- * Foreground parallax pixel-art props (ferns, sandstone ruins, grass tufts,
- * shrubs, sandbags, concrete barriers, sci-fi pylons) along the bottom ground lip.
- */
 export function renderForegroundParallax(
   ctx: CanvasRenderingContext2D,
   eraIndex: number,
@@ -109,14 +102,15 @@ export function renderForegroundParallax(
   const spacing = 190;
   const startIdx = Math.floor((-offset - 100) / spacing);
   const endIdx = Math.ceil((viewportW - offset + 100) / spacing);
-  const key = `prop/fore_${Math.max(0, Math.min(6, eraIndex))}`;
+  const clampedEra = Math.max(0, Math.min(9, eraIndex));
+  const key = `prop/fore_${clampedEra}`;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
 
   for (let i = startIdx; i <= endIdx; i++) {
     const px = snap(i * spacing + offset + (((i * 53) & 31) - 16));
-    const sway = eraIndex === 0 || eraIndex === 2 ? Math.round(Math.sin(time * 2.2 + i)) * 2 : 0;
+    const sway = clampedEra === 0 || clampedEra === 3 ? Math.round(Math.sin(time * 2.2 + i)) * 2 : 0;
     const py = GROUND_Y + 34;
 
     const drawn = drawSprite(ctx, key, px + sway, py, {
@@ -146,19 +140,10 @@ function renderSingleEraBackground(
   const era = getEra(eraIndex);
   const p = era.palette;
 
-  // 1. Stepped 16-Bit Pixel Sky with Dithered Horizon Bands
   drawPixelSky(ctx, p.skyTop, p.skyMid, p.skyBottom, viewportW);
-
-  // 2. Pixel Celestial Body, Dithered Halo, Pixel Clouds & Sky Details
   drawSkyAtmosphere(ctx, eraIndex, cameraX, viewportW, time, p.sunColor);
-
-  // 3. Pixel-Stepped Far Horizon Landmarks (parallax 0.16)
   drawFarLayer(ctx, eraIndex, cameraX, viewportW, time, p.farHill, p.skyBottom);
-
-  // 4. Stepped Midground Hills + Pixel-Art Era Landmarks (parallax 0.38)
   drawMidLayer(ctx, eraIndex, cameraX, viewportW, time, p.midHill);
-
-  // 5. Seamless 64x64px Pixel-Art Ground Tiles & Road (parallax 1.0)
   drawPixelGround(ctx, eraIndex, cameraX, viewportW, p.groundTop, p.groundMid, p.groundDark, p.accent);
 }
 
@@ -169,7 +154,6 @@ function drawPixelSky(
   skyBottom: string,
   viewportW: number,
 ): void {
-  // 8 crisp stepped sky color bands with 16-bit checkerboard dithering seams
   const stops = [
     skyTop,
     mixHex(skyTop, skyMid, 0.35),
@@ -201,21 +185,19 @@ function drawSkyAtmosphere(
   sunColor: string,
 ): void {
   const sunX = snap(viewportW * 0.62 - cameraX * 0.05);
-  const sunY = eraIndex === 6 ? 94 : 106;
+  const sunY = eraIndex >= 8 ? 94 : 106;
 
   ctx.save();
-  // Stepped pixel sun halo rings
   ctx.globalAlpha = 0.14;
-  drawPixelDisc(ctx, sunX, sunY, 72, sunColor);
+  drawPixelDisc(ctx, sunX, sunY, eraIndex === 1 ? 82 : 72, sunColor);
   ctx.globalAlpha = 0.24;
-  drawPixelDisc(ctx, sunX, sunY, 44, sunColor);
+  drawPixelDisc(ctx, sunX, sunY, eraIndex === 1 ? 52 : 44, sunColor);
   ctx.globalAlpha = 1;
-  drawPixelDisc(ctx, sunX, sunY, eraIndex === 6 ? 26 : 22, sunColor);
-  // Crisp highlight crescent inside pixel sun
+  drawPixelDisc(ctx, sunX, sunY, eraIndex >= 8 || eraIndex === 1 ? 28 : 22, sunColor);
   drawPixelDisc(ctx, sunX - 6, sunY - 6, 8, '#ffffff');
 
   if (eraIndex === 0) {
-    // Gliding pixel pterodactyl silhouettes
+    // Era 1 (Stone): Gliding pixel pterodactyl silhouettes
     ctx.fillStyle = 'rgba(42, 20, 14, 0.72)';
     for (let i = 0; i < 4; i++) {
       const bx = snap(
@@ -230,8 +212,36 @@ function drawSkyAtmosphere(
       ctx.fillRect(bx + 4, by + flap, 8, 4);
       ctx.fillRect(bx + 2, by - 4, 4, 4);
     }
-  } else if (eraIndex === 4) {
-    // Stepped wartime anti-aircraft searchlights + pixel zeppelin
+  } else if (eraIndex === 1) {
+    // Era 2 (Ancient Egypt): Radiant pixel sun rays & soaring desert falcons
+    ctx.fillStyle = 'rgba(255, 240, 160, 0.12)';
+    for (let r = -2; r <= 2; r++) {
+      const rx = sunX + r * 36;
+      ctx.fillRect(rx - 4, sunY + 26, 8, GROUND_Y - sunY - 40);
+    }
+    ctx.fillStyle = 'rgba(72, 40, 16, 0.65)';
+    for (let i = 0; i < 3; i++) {
+      const bx = snap(((i * 330 + time * 18 - cameraX * 0.1) % (viewportW + 160) + (viewportW + 160)) % (viewportW + 160) - 80);
+      const by = snap(74 + i * 24);
+      ctx.fillRect(bx - 8, by, 6, 2);
+      ctx.fillRect(bx - 2, by + 2, 4, 2);
+      ctx.fillRect(bx + 2, by, 6, 2);
+    }
+  } else if (eraIndex === 5) {
+    // Era 6 (Industrial Steampunk): Distant steampunk airship silhouette drifting across copper smog
+    const ax = snap(
+      ((time * 11 + 190 - cameraX * 0.1) % (viewportW + 260) + (viewportW + 260)) % (viewportW + 260) -
+        130,
+    );
+    ctx.fillStyle = 'rgba(54, 38, 30, 0.64)';
+    ctx.fillRect(ax - 34, 70, 68, 16);
+    ctx.fillRect(ax - 24, 64, 48, 28);
+    ctx.fillRect(ax - 12, 92, 24, 6);
+    ctx.fillStyle = 'rgba(250, 204, 21, 0.45)';
+    ctx.fillRect(ax - 6, 94, 4, 2);
+    ctx.fillRect(ax + 2, 94, 4, 2);
+  } else if (eraIndex === 6) {
+    // Era 7 (World War): Wartime anti-aircraft searchlights + distant zeppelin
     ctx.fillStyle = 'rgba(245, 236, 198, 0.08)';
     for (let i = 0; i < 4; i++) {
       const lx = snap(
@@ -256,8 +266,8 @@ function drawSkyAtmosphere(
     ctx.fillRect(zx - 22, 64, 44, 22);
     ctx.fillRect(zx - 10, 86, 20, 6);
     ctx.fillRect(zx - 34, 64, 8, 22);
-  } else if (eraIndex === 5) {
-    // Stepped jet contrails across modern dusk sky
+  } else if (eraIndex === 7) {
+    // Era 8 (Modern): Stepped jet contrails
     ctx.fillStyle = 'rgba(226, 241, 255, 0.24)';
     for (let x = 0; x < viewportW; x += 16) {
       const y1 = snap(96 - (x / viewportW) * 40);
@@ -265,8 +275,8 @@ function drawSkyAtmosphere(
       ctx.fillRect(x, y1, 16, 2);
       ctx.fillRect(x, y2, 16, 2);
     }
-  } else if (eraIndex === 6) {
-    // Crisp 2px pixel starfield & pixel orbital ring around sci-fi planet
+  } else if (eraIndex === 8) {
+    // Era 9 (Future): Crisp pixel starfield & cyan orbital ring
     ctx.fillStyle = '#baf5ff';
     for (let i = 0; i < 52; i++) {
       const sx = snap(((i * 97.3 - cameraX * 0.04) % viewportW + viewportW) % viewportW);
@@ -276,7 +286,6 @@ function drawSkyAtmosphere(
       const sz = i % 5 === 0 ? 4 : 2;
       ctx.fillRect(sx, sy, sz, sz);
     }
-    // Stepped pixel orbital planet ring
     ctx.globalAlpha = 0.52;
     ctx.fillStyle = '#38bdf8';
     for (let deg = 0; deg < 360; deg += 9) {
@@ -288,12 +297,38 @@ function drawSkyAtmosphere(
       ctx.fillRect(snap(sunX + rotX), snap(sunY + rotY), 4, 2);
     }
     ctx.globalAlpha = 1;
+  } else if (eraIndex === 9) {
+    // Era 10 (Interstellar Cosmic): Deep multi-color starfield, cosmic pulsar rings & nebula bands!
+    for (let i = 0; i < 68; i++) {
+      const sx = snap(((i * 89.7 - cameraX * 0.04) % viewportW + viewportW) % viewportW);
+      const sy = snap((i * 41.3) % (GROUND_Y * 0.62));
+      const twinkle = 0.3 + 0.7 * Math.abs(Math.sin(time * 2.4 + i));
+      ctx.globalAlpha = twinkle * 0.9;
+      ctx.fillStyle = i % 3 === 0 ? '#fde047' : i % 3 === 1 ? '#e879f9' : '#e0f2fe';
+      const sz = i % 6 === 0 ? 4 : 2;
+      ctx.fillRect(sx, sy, sz, sz);
+    }
+    // Dual golden & violet cosmic orbital rings around pulsar star
+    ctx.globalAlpha = 0.65;
+    for (let deg = 0; deg < 360; deg += 8) {
+      const rad = (deg * Math.PI) / 180;
+      const rx1 = Math.cos(rad) * 76;
+      const ry1 = Math.sin(rad) * 16;
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(snap(sunX + rx1 * 0.94 - ry1 * -0.32), snap(sunY + rx1 * -0.32 + ry1 * 0.94), 4, 2);
+      const rx2 = Math.cos(rad) * 58;
+      const ry2 = Math.sin(rad) * 18;
+      ctx.fillStyle = '#c084fc';
+      ctx.fillRect(snap(sunX + rx2 * 0.94 - ry2 * 0.32), snap(sunY + rx2 * 0.32 + ry2 * 0.94), 4, 2);
+    }
+    ctx.globalAlpha = 1;
   }
 
-  // Classic 16-bit blocky pixel clouds for eras 1..5
-  if (eraIndex >= 1 && eraIndex <= 5) {
-    const cloudMain = eraIndex === 4 ? 'rgba(66, 62, 56, 0.45)' : 'rgba(255, 250, 240, 0.24)';
-    const cloudHi = eraIndex === 4 ? 'rgba(98, 92, 82, 0.35)' : 'rgba(255, 255, 255, 0.22)';
+  // Blocky pixel clouds for atmospheric eras (2..7)
+  if (eraIndex >= 2 && eraIndex <= 7) {
+    const isSmog = eraIndex === 5 || eraIndex === 6;
+    const cloudMain = isSmog ? 'rgba(66, 56, 48, 0.44)' : 'rgba(255, 250, 240, 0.24)';
+    const cloudHi = isSmog ? 'rgba(110, 88, 70, 0.32)' : 'rgba(255, 255, 255, 0.22)';
     for (let i = 0; i < 5; i++) {
       const cx = snap(
         ((i * 270 + time * (6 + i * 1.2) - cameraX * 0.08) % (viewportW + 240) + (viewportW + 240)) %
@@ -324,19 +359,17 @@ function drawFarLayer(
   skyBottom: string,
 ): void {
   const offset = -(cameraX * 0.16);
-  const colStep = 8; // crisp 4-pixel-block horizon stepping
+  const colStep = 8;
   ctx.save();
   ctx.fillStyle = color;
 
   if (eraIndex === 0) {
-    // Pixel-stepped volcanic ridges
+    // Era 1 (Stone): Volcanic ridges + smoking volcanoes
     for (let wx = -colStep; wx <= viewportW + colStep; wx += colStep) {
       const ws = wx - offset;
       const ridge = snap(Math.sin(ws * 0.0055) * 42 + Math.cos(ws * 0.013) * 22 + 76);
       ctx.fillRect(wx, GROUND_Y - ridge, colStep, ridge);
     }
-
-    // Twin pixel-stepped smoking volcanoes with glowing lava fissures
     for (const vxBase of [340, 1040]) {
       const vx = snap(vxBase + offset);
       for (let row = 0; row < 156; row += 6) {
@@ -344,11 +377,9 @@ function drawFarLayer(
         const y = GROUND_Y - 172 + row;
         ctx.fillStyle = color;
         ctx.fillRect(vx - half, y, half * 2, 6);
-        // Sunlit right volcanic slope facet
         ctx.fillStyle = 'rgba(255, 168, 92, 0.18)';
         ctx.fillRect(vx + 4, y, Math.max(4, half - 4), 6);
       }
-      // Glowing pixel lava crater & fissure
       ctx.fillStyle = '#fb923c';
       ctx.fillRect(vx - 18, GROUND_Y - 174, 36, 6);
       ctx.fillStyle = '#fef08a';
@@ -357,8 +388,6 @@ function drawFarLayer(
       ctx.fillRect(vx - 8, GROUND_Y - 168, 4, 14);
       ctx.fillRect(vx - 12, GROUND_Y - 154, 4, 16);
       ctx.fillRect(vx - 18, GROUND_Y - 138, 4, 14);
-
-      // Rising pixel ash puffs
       ctx.fillStyle = 'rgba(68, 46, 40, 0.5)';
       for (let s = 0; s < 5; s++) {
         const sy = snap(GROUND_Y - 188 - s * 18 - ((time * 12 + s * 10) % 24));
@@ -368,38 +397,61 @@ function drawFarLayer(
       }
     }
   } else if (eraIndex === 1) {
-    // Pixel-stepped desert dunes + monumental stepped pixel pyramids
+    // Era 2 (Ancient Egypt — NEW!): Sweeping Sahara Dunes + Monumental Giza Pyramids & Sphinx Silhouette!
     for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
-      const h = snap(48 + Math.sin(ws * 0.006) * 20);
+      const h = snap(46 + Math.sin(ws * 0.0055) * 18);
       ctx.fillRect(x, GROUND_Y - h, colStep, h);
     }
-
     for (const [pxBase, ph] of [
-      [250, 132],
-      [420, 96],
-      [980, 120],
+      [240, 148],
+      [440, 108],
+      [960, 136],
     ]) {
       const px = snap(pxBase + offset);
       for (let row = 0; row < ph; row += 6) {
         const half = snap(row + 4);
-        const y = GROUND_Y - 30 - ph + row;
-        ctx.fillStyle = color;
+        const y = GROUND_Y - 26 - ph + row;
+        ctx.fillStyle = row < 18 ? '#eab308' : color;
         ctx.fillRect(px - half, y, half * 2, 6);
-        // Shaded right face of pyramid
-        ctx.fillStyle = 'rgba(0,0,0,0.22)';
+        ctx.fillStyle = 'rgba(0,0,0,0.24)';
         ctx.fillRect(px + Math.round(half * 0.14), y, Math.max(4, Math.round(half * 0.86)), 6);
       }
     }
+    // Distant Great Sphinx monument silhouette between pyramids
+    const sx = snap(680 + offset);
+    ctx.fillStyle = '#754e2c';
+    ctx.fillRect(sx - 36, GROUND_Y - 58, 72, 32);
+    ctx.fillRect(sx + 16, GROUND_Y - 88, 28, 32);
+    ctx.fillRect(sx + 20, GROUND_Y - 96, 18, 10);
+    ctx.fillRect(sx + 38, GROUND_Y - 46, 26, 20);
   } else if (eraIndex === 2) {
-    // Jagged pixel-stepped alpine peaks + distant gothic hill fortress
+    // Era 3 (Ancient Classical): Mediterranean hills & Acropolis Parthenon + aqueduct arches
+    for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
+      const ws = x - offset;
+      const h = snap(56 + Math.sin(ws * 0.006) * 24);
+      ctx.fillRect(x, GROUND_Y - h, colStep, h);
+    }
+    // Distant Roman aqueduct silhouette
+    for (let ax = 120; ax <= 1080; ax += 44) {
+      const px = snap(ax + offset);
+      ctx.fillRect(px, GROUND_Y - 104, 12, 62);
+      ctx.fillRect(px, GROUND_Y - 110, 44, 12);
+    }
+    // Distant hilltop Parthenon
+    const tx = snap(520 + offset);
+    ctx.fillRect(tx - 44, GROUND_Y - 144, 88, 10);
+    for (let cx = -36; cx <= 36; cx += 14) {
+      ctx.fillRect(tx + cx, GROUND_Y - 134, 6, 36);
+    }
+  } else if (eraIndex === 3) {
+    // Era 4 (Medieval): Jagged alpine peaks + snowcaps + gothic fortress
     for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
       const h = snap(74 + Math.abs(Math.sin(ws * 0.0045)) * 84 + Math.cos(ws * 0.011) * 16);
       ctx.fillStyle = color;
       ctx.fillRect(x, GROUND_Y - h, colStep, h);
       if (h > 134) {
-        // Crisp snowcap pixel rim
         ctx.fillStyle = 'rgba(241, 245, 249, 0.32)';
         ctx.fillRect(x, GROUND_Y - h, colStep, 10);
       }
@@ -411,15 +463,14 @@ function drawFarLayer(
     ctx.fillRect(cx + 18, GROUND_Y - 164, 16, 68);
     ctx.fillRect(cx - 30, GROUND_Y - 178, 8, 10);
     ctx.fillRect(cx - 28, GROUND_Y - 186, 4, 8);
-  } else if (eraIndex === 3) {
-    // Pixel shimmering ocean horizon + pixel sailing frigates
+  } else if (eraIndex === 4) {
+    // Era 5 (Gunpowder): Pixel sea horizon & sailing frigates
     ctx.fillStyle = 'rgba(38, 62, 84, 0.78)';
     ctx.fillRect(0, GROUND_Y - 82, viewportW, 82);
-    // Shimmering pixel water highlights
     ctx.fillStyle = 'rgba(255, 232, 185, 0.25)';
     for (let wy = GROUND_Y - 76; wy < GROUND_Y - 14; wy += 12) {
       for (let wx = 0; wx < viewportW; wx += 48) {
-        const shift = snap(((wx + wy * 3 + Math.floor(time * 8) * 4) % 24));
+        const shift = snap((wx + wy * 3 + Math.floor(time * 8) * 4) % 24);
         ctx.fillRect(wx + shift, wy, 14, 2);
       }
     }
@@ -435,8 +486,40 @@ function drawFarLayer(
       ctx.fillRect(sx - 8, GROUND_Y - 124 + bob, 14, 34);
       ctx.fillRect(sx + 12, GROUND_Y - 114 + bob, 10, 26);
     }
-  } else if (eraIndex === 4) {
-    // Pixel-stepped shell-blasted hills & ruined WW factories with smokestacks
+  } else if (eraIndex === 5) {
+    // Era 6 (Industrial Steampunk — NEW!): Victorian ironworks skyline, clocktower & smoking chimneys!
+    for (let i = 0; i < 16; i++) {
+      const bx = snap(i * 92 + offset);
+      const bw = snap(48 + ((i * 23) % 28));
+      const bh = snap(78 + ((i * 41) % 72));
+      ctx.fillStyle = color;
+      ctx.fillRect(bx, GROUND_Y - bh, bw, bh);
+      // Tall foundry smokestack + rising pixel coal smoke!
+      ctx.fillRect(bx + 8, GROUND_Y - bh - 44, 10, 44);
+      ctx.fillStyle = 'rgba(42, 34, 32, 0.42)';
+      for (let s = 0; s < 3; s++) {
+        const sy = snap(GROUND_Y - bh - 52 - s * 14 - ((time * 10 + i * 7 + s * 6) % 18));
+        ctx.fillRect(bx + 8 + s * 8, sy, 12 + s * 4, 10);
+      }
+      // Warm amber industrial factory windows
+      ctx.fillStyle = 'rgba(251, 146, 60, 0.45)';
+      for (let wy = GROUND_Y - bh + 12; wy < GROUND_Y - 34; wy += 16) {
+        ctx.fillRect(bx + 8, wy, 10, 8);
+        ctx.fillRect(bx + 26, wy, 10, 8);
+      }
+    }
+    // Iconic Victorian Clocktower Silhouette
+    const cx = snap(560 + offset);
+    ctx.fillStyle = '#291f1d';
+    ctx.fillRect(cx - 22, GROUND_Y - 186, 44, 186);
+    ctx.fillRect(cx - 14, GROUND_Y - 210, 28, 24);
+    ctx.fillRect(cx - 4, GROUND_Y - 226, 8, 16);
+    drawPixelDisc(ctx, cx, GROUND_Y - 162, 12, '#fcd34d');
+    ctx.fillStyle = '#291f1d';
+    ctx.fillRect(cx - 2, GROUND_Y - 170, 4, 10);
+    ctx.fillRect(cx, GROUND_Y - 164, 8, 4);
+  } else if (eraIndex === 6) {
+    // Era 7 (World War): Shell-blasted hills & ruined factories
     for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
       const ws = x - offset;
       const h = snap(56 + Math.sin(ws * 0.008) * 24);
@@ -447,14 +530,13 @@ function drawFarLayer(
       ctx.fillRect(fx, GROUND_Y - 128, 52, 74);
       ctx.fillRect(fx + 8, GROUND_Y - 170, 10, 46);
       ctx.fillRect(fx + 28, GROUND_Y - 156, 8, 36);
-      // Warm glowing factory furnace window pixels
       ctx.fillStyle = 'rgba(251, 146, 60, 0.42)';
       ctx.fillRect(fx + 10, GROUND_Y - 110, 8, 8);
       ctx.fillRect(fx + 26, GROUND_Y - 110, 8, 8);
       ctx.fillStyle = color;
     }
-  } else if (eraIndex === 5) {
-    // Crisp pixel metropolitan skyline with lit office pixel grids & red tower beacons
+  } else if (eraIndex === 7) {
+    // Era 8 (Modern): Lit metropolitan skyscrapers
     for (let i = 0; i < 24; i++) {
       const bx = snap(i * 68 + offset);
       const bw = snap(38 + ((i * 19) % 26));
@@ -476,8 +558,8 @@ function drawFarLayer(
         ctx.fillRect(bx + snap(bw * 0.5) - 2, GROUND_Y - bh - 6, 4, 4);
       }
     }
-  } else {
-    // Era 7: Crisp cyberpunk megastructure pixel arcologies + cyan neon conduits
+  } else if (eraIndex === 8) {
+    // Era 9 (Future): Cyberpunk megastructure pixel arcologies
     for (let i = 0; i < 18; i++) {
       const bx = snap(i * 96 + offset);
       const bw = snap(48 + ((i * 23) % 34));
@@ -485,8 +567,6 @@ function drawFarLayer(
       ctx.fillStyle = color;
       ctx.fillRect(bx, GROUND_Y - bh, bw, bh);
       ctx.fillRect(bx + 8, GROUND_Y - bh - 12, Math.max(12, bw - 16), 12);
-
-      // Lit bevel strip & vertical neon cyan energy spine
       ctx.fillStyle = 'rgba(56, 189, 248, 0.16)';
       ctx.fillRect(bx + 4, GROUND_Y - bh + 4, 6, bh - 24);
       ctx.fillStyle = 'rgba(34, 211, 238, 0.6)';
@@ -496,9 +576,30 @@ function drawFarLayer(
         ctx.fillRect(bx + 10, fy, bw - 20, 2);
       }
     }
+  } else {
+    // Era 10 (Interstellar Cosmic — NEW!): Floating Crystalline Obsidian Monoliths & Golden Energy Arches!
+    for (let i = 0; i < 14; i++) {
+      const bx = snap(i * 110 + offset);
+      const bw = snap(44 + ((i * 17) % 28));
+      const bh = snap(96 + ((i * 59) % 116));
+      const floatOff = Math.round(Math.sin(time * 1.4 + i) * 4) * 2;
+      const topY = GROUND_Y - bh - 28 + floatOff;
+
+      // Floating monolithic cosmic spire hovering above horizon!
+      ctx.fillStyle = color;
+      ctx.fillRect(bx, topY, bw, bh);
+      ctx.fillRect(bx + 8, topY - 14, Math.max(12, bw - 16), 14);
+      // Golden border trim + glowing violet energy spine
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.45)';
+      ctx.fillRect(bx, topY, 4, bh);
+      ctx.fillRect(bx + bw - 4, topY, 4, bh);
+      ctx.fillStyle = 'rgba(192, 132, 252, 0.72)';
+      ctx.fillRect(bx + snap(bw * 0.5) - 2, topY + 6, 4, bh - 16);
+      ctx.fillStyle = 'rgba(250, 232, 255, 0.45)';
+      ctx.fillRect(bx + 8, topY + 24, bw - 16, 4);
+    }
   }
 
-  // Subtle stepped pixel atmospheric horizon mist strip
   ctx.fillStyle = skyBottom;
   ctx.globalAlpha = 0.16;
   ctx.fillRect(0, GROUND_Y - 64, viewportW, 64);
@@ -521,7 +622,6 @@ function drawMidLayer(
   ctx.save();
   ctx.imageSmoothingEnabled = false;
 
-  // Rolling pixel-stepped midground hill ridge
   ctx.fillStyle = midColor;
   for (let x = -colStep; x <= viewportW + colStep; x += colStep) {
     const ws = x - offset;
@@ -529,16 +629,16 @@ function drawMidLayer(
     ctx.fillRect(x, GROUND_Y - h, colStep, h);
   }
 
-  // Blit crisp pixel-art era midground landmarks from sprites_sheet.png!
   const spacing = 190;
   const startIdx = Math.floor((-offset - 120) / spacing);
   const endIdx = Math.ceil((viewportW - offset + 120) / spacing);
-  const propKey = `prop/mid_${Math.max(0, Math.min(6, eraIndex))}`;
+  const clampedEra = Math.max(0, Math.min(9, eraIndex));
+  const propKey = `prop/mid_${clampedEra}`;
 
   for (let i = startIdx; i <= endIdx; i++) {
     const px = snap(i * spacing + offset);
     const py = GROUND_Y - 12;
-    const sway = eraIndex === 0 || eraIndex === 2 ? Math.round(Math.sin(time * 2.0 + i)) * 2 : 0;
+    const sway = clampedEra === 0 || clampedEra === 3 ? Math.round(Math.sin(time * 2.0 + i)) * 2 : 0;
 
     drawSprite(ctx, propKey, px + sway, py, {
       scale: PIXEL_WORLD_SCALE,
@@ -560,14 +660,14 @@ function drawPixelGround(
   accent: string,
 ): void {
   const groundH = WORLD_HEIGHT - GROUND_Y;
-  const tileKey = `tile/ground_era_${Math.max(0, Math.min(6, eraIndex))}`;
+  const clampedEra = Math.max(0, Math.min(9, eraIndex));
+  const tileKey = `tile/ground_era_${clampedEra}`;
   const frame = getSpriteFrame(tileKey);
   const tileWorldSize = frame ? frame.w * PIXEL_WORLD_SCALE : 128;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
 
-  // Base fallback pixel strata (ensures 100% coverage even before sprite sheet finishes loading)
   ctx.fillStyle = topCol;
   ctx.fillRect(0, GROUND_Y, viewportW + 4, 16);
   ctx.fillStyle = midCol;
@@ -575,7 +675,6 @@ function drawPixelGround(
   ctx.fillStyle = darkCol;
   ctx.fillRect(0, GROUND_Y + 58, viewportW + 4, Math.max(0, groundH - 58));
 
-  // Seamless repeating 64x64px pixel ground tiles blitted at 2x (128x128 world units)
   const firstTile = Math.floor(cameraX / tileWorldSize) - 1;
   const lastTile = Math.ceil((cameraX + viewportW) / tileWorldSize) + 1;
   for (let i = firstTile; i <= lastTile; i++) {
@@ -585,11 +684,14 @@ function drawPixelGround(
     });
   }
 
-  // Crisp 2px dark road border top highlight
-  ctx.fillStyle = eraIndex === 6 ? 'rgba(56, 232, 255, 0.78)' : 'rgba(17, 19, 29, 0.65)';
+  ctx.fillStyle =
+    clampedEra === 9
+      ? 'rgba(250, 204, 21, 0.85)'
+      : clampedEra === 8
+        ? 'rgba(56, 232, 255, 0.78)'
+        : 'rgba(17, 19, 29, 0.65)';
   ctx.fillRect(0, GROUND_Y - 2, viewportW + 4, 2);
 
-  // Distinct Pixel Midfield Marker at WORLD_WIDTH / 2
   const midX = snap(WORLD_WIDTH * 0.5 - cameraX);
   if (midX > -40 && midX < viewportW + 40) {
     ctx.fillStyle = '#11131d';

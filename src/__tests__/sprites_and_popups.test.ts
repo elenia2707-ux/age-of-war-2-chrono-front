@@ -9,17 +9,20 @@ const atlas = atlasRaw as SpriteAtlasData;
 
 const HEAVY_UNITS = new Set([
   'dino_rider',
+  'sphinx_chariot',
   'chariot',
   'heavy_cavalry',
   'catapult',
   'field_cannon',
+  'steam_walker',
   'early_tank',
   'mbt',
   'colossus_mech',
+  'omega_titan',
 ]);
 
 describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
-  it('contains valid sprites_atlas.json covering all 7 eras, 22 units, 14 turrets, bases, projectiles, and tiles', () => {
+  it('contains valid sprites_atlas.json covering all 10 eras, 31 units, 20 turrets, bases, projectiles, tiles, and upgrade icons', () => {
     expect(atlas.meta.image).toBe('sprites_sheet.png');
     expect(atlas.meta.width).toBeGreaterThan(0);
     expect(atlas.meta.height).toBeGreaterThan(0);
@@ -30,7 +33,7 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
     const anims = ['walk_0', 'walk_1', 'walk_2', 'walk_3', 'attack_0', 'attack_1', 'attack_2', 'hurt_0', 'death_0'];
     const teams = ['player', 'enemy'];
 
-    // 1. All 22 units x 2 teams x 9 frames + resolution criteria
+    // 1. All 31 units x 2 teams x 9 frames + resolution criteria
     for (const unitId of Object.keys(UNIT_BY_ID)) {
       for (const team of teams) {
         for (const anim of anims) {
@@ -57,7 +60,7 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       }
     }
 
-    // 2. All 7 era bases x 2 teams x 3 damage states (>= 96x128px)
+    // 2. All 10 era bases x 2 teams x 3 damage states (>= 96x128px)
     for (let era = 0; era < ERAS.length; era++) {
       for (const team of teams) {
         for (const dmg of ['intact', 'damaged_50', 'damaged_25']) {
@@ -72,7 +75,7 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       }
     }
 
-    // 3. All 14 turrets x 2 teams x 2 states + platforms
+    // 3. All 20 turrets x 2 teams x 2 states + platforms
     for (const team of teams) {
       expect(atlas.frames[`turret/platform/${team}`]).toBeDefined();
     }
@@ -83,10 +86,11 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       }
     }
 
-    // 4. All projectile, ultimate, ground tile & prop sprites
+    // 4. All projectile, ultimate, ground tile, prop & upgrade icon sprites
     const requiredMisc = [
       'proj/stone',
       'proj/boulder',
+      'proj/solar_orb',
       'proj/arrow',
       'proj/fire_arrow',
       'proj/bolt',
@@ -96,14 +100,22 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       'proj/rocket',
       'proj/plasma/player',
       'proj/plasma/enemy',
+      'proj/antimatter/player',
+      'proj/antimatter/enemy',
       'proj/meteor',
       'proj/bomb',
       'proj/cruise_missile',
       'ult/bomber/player',
       'ult/bomber/enemy',
-      ...Array.from({ length: 7 }, (_, i) => `tile/ground_era_${i}`),
-      ...Array.from({ length: 7 }, (_, i) => `prop/mid_${i}`),
-      ...Array.from({ length: 7 }, (_, i) => `prop/fore_${i}`),
+      'ult/zeppelin/player',
+      'ult/zeppelin/enemy',
+      'icon/upg_weapons',
+      'icon/upg_armor',
+      'icon/upg_economy',
+      'icon/upg_fortress',
+      ...Array.from({ length: 10 }, (_, i) => `tile/ground_era_${i}`),
+      ...Array.from({ length: 10 }, (_, i) => `prop/mid_${i}`),
+      ...Array.from({ length: 10 }, (_, i) => `prop/fore_${i}`),
     ];
     for (const key of requiredMisc) {
       expect(atlas.frames[key], `Missing sprite ${key}`).toBeDefined();

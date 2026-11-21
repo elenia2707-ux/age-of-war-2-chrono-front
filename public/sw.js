@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chrono-front-v3';
+const CACHE_NAME = 'chrono-front-v4';
 const CORE_ASSETS = [
   './',
   './index.html',

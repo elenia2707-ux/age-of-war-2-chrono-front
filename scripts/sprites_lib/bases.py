@@ -11,6 +11,8 @@ from .palettes import (
     CHARCOAL,
     CLIFF,
     CONCRETE,
+    COPPER,
+    COSMIC_VIOLET,
     DARK_STEEL,
     FIRE,
     GOLD,
@@ -21,10 +23,12 @@ from .palettes import (
     IRON,
     KHAKI,
     LEATHER,
+    OBSIDIAN,
     OFF_WHITE,
     OLIVE,
     SANDSTONE,
     SMOKE,
+    SOLAR_GOLD,
     STEEL,
     STONE,
     T_DEEP,
@@ -500,22 +504,190 @@ def _draw_era_6_base(c: PixelCanvas) -> None:
     c.rect(32, gy - 122, 16, 1, WHITE)
 
 
+def _draw_egypt_base(c: PixelCanvas) -> None:
+    """New Era 2: Monumental Ancient Egyptian Pyramid-Pylon Temple & Golden Solar Obelisk."""
+    gy = BASE_H - 2
+    # Stepped golden sandstone foundation
+    c.box(4, gy - 10, 92, 10, SANDSTONE)
+
+    # Rear golden pyramid crest rising behind temple pylon
+    c.shaded_poly([(8, gy - 68), (44, gy - 116), (80, gy - 68)], SANDSTONE)
+    # Gilded pyramidion capstone!
+    c.shaded_poly([(35, gy - 104), (44, gy - 116), (53, gy - 104)], SOLAR_GOLD)
+    c.px(44, gy - 115, WHITE)
+
+    # Twin sloped Egyptian Pylon Temple Towers
+    left_pylon = [(6, gy - 8), (12, gy - 78), (46, gy - 78), (50, gy - 8)]
+    c.shaded_poly(left_pylon, SANDSTONE)
+    right_pylon = [(52, gy - 8), (56, gy - 70), (88, gy - 70), (94, gy - 8)]
+    c.shaded_poly(right_pylon, SANDSTONE)
+
+    # Horizontal carved hieroglyph masonry grooves
+    for y in range(gy - 66, gy - 12, 10):
+        c.rect(12, y, 36, 1, SANDSTONE[0])
+        c.rect(56, y, 32, 1, SANDSTONE[0])
+
+    # Carved golden cornice moldings with lapis/team stripes
+    c.box(9, gy - 83, 40, 6, GOLD)
+    c.rect(11, gy - 81, 36, 2, T_MID)
+    c.box(54, gy - 75, 36, 6, GOLD)
+    c.rect(56, gy - 73, 32, 2, T_MID)
+
+    # Tall Carved Solar Obelisk Spire on left flank!
+    c.box(16, gy - 114, 10, 34, SANDSTONE)
+    c.shaded_poly([(16, gy - 114), (21, gy - 123), (26, gy - 114)], SOLAR_GOLD)
+    for hy in range(gy - 109, gy - 85, 6):
+        c.rect(19, hy, 4, 2, T_MID)
+
+    # Draped Royal Egyptian Team Banners on Pylon Face
+    c.box(20, gy - 70, 16, 32, TEAM_RAMP)
+    c.rect(22, gy - 68, 12, 2, GOLD[3])
+    c.rect(22, gy - 42, 12, 2, GOLD[3])
+    # Golden Ankh emblem on banner
+    c.rect(26, gy - 61, 4, 4, GOLD[3])
+    c.rect(27, gy - 57, 2, 11, GOLD[3])
+    c.rect(24, gy - 55, 8, 2, GOLD[3])
+
+    # Temple Sanctuary Portal Gate + Winged Sun Disk Keystone!
+    c.box(58, gy - 44, 28, 44, GOLD)
+    c.rect(61, gy - 38, 22, 38, INK)
+    # Winged Sun Disk above gate
+    c.shaded_ellipse(72, gy - 48, 5, 4, SOLAR_GOLD)
+    c.px(72, gy - 48, WHITE)
+    c.rect(58, gy - 49, 10, 3, T_LIGHT)
+    c.rect(76, gy - 49, 10, 3, T_LIGHT)
+    # Glowing temple braziers flanking doorway
+    for bx in (54, 88):
+        c.box(bx - 2, gy - 14, 5, 6, BRONZE)
+        c.shaded_ellipse(bx, gy - 16, 3, 3, FIRE)
+
+
+def _draw_industrial_base(c: PixelCanvas) -> None:
+    """New Era 6: Steampunk Copper-and-Iron Clockwork Citadel with Giant Gears & Chimneys."""
+    gy = BASE_H - 2
+    # Main Riveted Copper & Iron Industrial Factory Fortress
+    c.box(6, gy - 76, 88, 76, IRON)
+    _draw_masonry(c, 10, gy - 72, 80, 68, COPPER, COPPER[0], 14, 10)
+    # Corner steel buttresses with bright rivets
+    c.box(6, gy - 76, 8, 76, DARK_STEEL)
+    c.box(86, gy - 76, 8, 76, DARK_STEEL)
+    for ry in range(gy - 70, gy - 6, 10):
+        c.px(9, ry, GOLD[3])
+        c.px(89, ry, GOLD[3])
+
+    # Twin Tall Smoking Iron Boiler Smokestacks!
+    for cx in (16, 30):
+        c.box(cx, gy - 120, 8, 44, DARK_STEEL)
+        c.box(cx - 2, gy - 122, 12, 4, BRONZE)
+        c.shaded_ellipse(cx + 4, gy - 124, 5, 3, SMOKE)
+
+    # Upper Riveted Copper Boiler Dome Citadel
+    c.shaded_ellipse(50, gy - 90, 26, 18, COPPER)
+    c.box(24, gy - 92, 52, 18, COPPER)
+    c.rect(24, gy - 84, 52, 3, BRONZE[3])
+    # Glowing pressure gauges / boiler windows
+    for wx in (36, 50, 64):
+        c.shaded_ellipse(wx, gy - 94, 4, 4, GOLD)
+        c.shaded_ellipse(wx, gy - 94, 2, 2, FIRE)
+
+    # Giant Exposed Interlocking Golden Clockwork Gears on Facade!
+    c.wheel(30, gy - 44, 13, GOLD, BRONZE[1], 0.2)
+    c.wheel(49, gy - 54, 9, BRONZE, GOLD[2], 0.7)
+
+    # Team Identification Iron Crest + Waving Steampunk Flag
+    c.box(18, gy - 26, 28, 12, TEAM_RAMP)
+    c.rect(20, gy - 24, 24, 2, GOLD[3])
+    _draw_waving_banner(c, 50, gy - 124, 20, 9)
+
+    # Heavy Arched Iron Foundry Deployment Gate glowing hot orange inside!
+    c.ellipse(72, gy - 16, 15, 22, DARK_STEEL[0])
+    c.rect(57, gy - 18, 30, 18, DARK_STEEL[0])
+    c.ellipse(72, gy - 16, 12, 19, INK)
+    c.rect(60, gy - 16, 24, 16, INK)
+    c.shaded_ellipse(72, gy - 8, 7, 6, FIRE)
+    c.box(55, gy - 41, 34, 4, BRONZE)
+
+
+def _draw_interstellar_base(c: PixelCanvas) -> None:
+    """New Era 10: Cosmic Celestial Star-Citadel with Floating Monoliths & Singularity Core."""
+    gy = BASE_H - 2
+    # Sculpted Obsidian & Gold Celestial Mothership Spire
+    hull_pts = [
+        (4, gy),
+        (10, gy - 82),
+        (36, gy - 106),
+        (68, gy - 86),
+        (95, gy),
+    ]
+    c.shaded_poly(hull_pts, OBSIDIAN, dither=True)
+
+    # Sweeping Gilded Armor Wing Buttresses
+    c.shaded_poly([(12, gy - 6), (18, gy - 78), (30, gy - 88), (26, gy - 6)], GOLD)
+    c.shaded_poly([(52, gy - 6), (56, gy - 84), (66, gy - 76), (62, gy - 6)], GOLD)
+
+    # Central Cosmic Singularity Reactor Conduit (Violet + Team Glow + White Core!)
+    c.box(32, gy - 90, 18, 74, OBSIDIAN)
+    c.rect(34, gy - 88, 14, 70, COSMIC_VIOLET[1])
+    c.rect(36, gy - 86, 10, 66, T_MID)
+    c.rect(38, gy - 86, 6, 66, T_GLOW)
+    c.rect(40, gy - 84, 2, 62, WHITE)
+    # Floating Golden Containment Rings around Core
+    for ry in (gy - 78, gy - 58, gy - 38):
+        c.box(29, ry, 24, 4, GOLD)
+        c.rect(31, ry + 1, 20, 1, COSMIC_VIOLET[4])
+
+    # Radiant Cosmic Singularity Orb hovering inside Upper Spire Arch!
+    c.shaded_ellipse(41, gy - 98, 9, 8, COSMIC_VIOLET)
+    c.shaded_ellipse(41, gy - 98, 5, 5, (T_SHADE, T_MID, T_GLOW, WHITE))
+    c.px(41, gy - 98, WHITE)
+
+    # Twin Floating Golden Crown Rings levitating above Apex!
+    c.ellipse(41, gy - 114, 17, 3, GOLD[3])
+    c.ellipse(41, gy - 114, 13, 2, INK)
+    for x in range(29, 54):
+        for y in range(gy - 115, gy - 112):
+            if ((x - 41) / 12.5) ** 2 + ((y - (gy - 114)) / 1.4) ** 2 < 1.0:
+                c.erase(x, y)
+    c.rect(33, gy - 116, 16, 1, WHITE)
+    # Floating diamond star crystal above rings
+    c.shaded_poly([(41, gy - 125), (37, gy - 121), (41, gy - 117), (45, gy - 121)], SOLAR_GOLD)
+    c.px(41, gy - 121, WHITE)
+
+    # Team Energy Banners on Left Flank
+    c.box(12, gy - 54, 14, 18, TEAM_RAMP)
+    c.rect(14, gy - 52, 10, 2, GOLD[3])
+    c.rect(14, gy - 39, 10, 2, GOLD[3])
+
+    # Dimensional Warp Deployment Portal on Right
+    portal_pts = [(62, gy), (66, gy - 40), (86, gy - 40), (91, gy)]
+    c.poly(portal_pts, INK)
+    c.line(62, gy, 66, gy - 40, GOLD[3], 2)
+    c.line(66, gy - 40, 86, gy - 40, GOLD[3], 2)
+    c.line(86, gy - 40, 91, gy, GOLD[3], 2)
+    for py in range(gy - 36, gy - 2, 4):
+        c.rect(68, py, 16, 2, COSMIC_VIOLET[2] if (py % 8 == 0) else T_DEEP)
+
+
 ERA_BASE_DRAWERS = [
-    _draw_era_0_base,
-    _draw_era_1_base,
-    _draw_era_2_base,
-    _draw_era_3_base,
-    _draw_era_4_base,
-    _draw_era_5_base,
-    _draw_era_6_base,
+    _draw_era_0_base,       # 0: Stone Age
+    _draw_egypt_base,       # 1: Ancient Egypt (NEW)
+    _draw_era_1_base,       # 2: Ancient Classical
+    _draw_era_2_base,       # 3: Medieval
+    _draw_era_3_base,       # 4: Gunpowder
+    _draw_industrial_base,  # 5: Industrial Steampunk (NEW)
+    _draw_era_4_base,       # 6: World War
+    _draw_era_5_base,       # 7: Modern
+    _draw_era_6_base,       # 8: Future
+    _draw_interstellar_base,# 9: Interstellar Cosmic (NEW)
 ]
 
 
 def gen_base(era_index: int, damage_state: str) -> tuple[PixelCanvas, int, int]:
-    """Generate a 100x128px fortress sprite for the given era (0..6) and damage state."""
+    """Generate a 100x128px fortress sprite for the given era (0..9) and damage state."""
     c = PixelCanvas(BASE_W, BASE_H)
     ERA_BASE_DRAWERS[era_index](c)
     _apply_damage_overlay(c, damage_state, era_index)
     c.add_outline(INK)
     # Bottom-center ground anchor at (50, 126)
     return c, BASE_W // 2, BASE_H - 2
+

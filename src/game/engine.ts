@@ -1,5 +1,18 @@
 import { DIFFICULTIES } from '../data/difficulty';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID, getEra } from '../data/eras';
+import {
+  FORTRESS_UPGRADE_REPAIR_RATIO,
+  UPGRADE_BY_ID,
+  createInitialUpgrades,
+  getArmorHpMult,
+  getArmorMitigationBonus,
+  getBaseMaxHpMult,
+  getGoldIncomeMult,
+  getNextUpgradeCost,
+  getTrainSpeedMult,
+  getTurretDamageMult,
+  getWeaponDamageMult,
+} from '../data/upgrades';
 import type {
   ActiveUltimate,
   BeamEffect,
@@ -18,6 +31,7 @@ import type {
   UnitDef,
   UnitEntity,
   UnitVisualKind,
+  UpgradeId,
 } from '../data/types';
 import { EnemyAI } from './ai';
 import {
@@ -184,16 +198,78 @@ export class GameEngine {
     if (faction.queue.length >= MAX_QUEUE_SIZE) return false;
     if (faction.gold < def.cost) return false;
 
+    const effectiveTrainTime = def.trainTime / getTrainSpeedMult(faction.upgrades);
     faction.gold -= def.cost;
     faction.queue.push({
       unitId: def.id,
       eraIndex: def.eraIndex,
       cost: def.cost,
-      trainTime: def.trainTime,
-      remaining: def.trainTime,
+      trainTime: effectiveTrainTime,
+      remaining: effectiveTrainTime,
     });
     if (team === 'player') {
       this.callbacks.onSound?.('spawn');
+    }
+    return true;
+  }
+
+  public getUpgradeCost(team: Team, id: UpgradeId): number | null {
+    const faction = this.getFaction(team);
+    return getNextUpgradeCost(id, faction.upgrades[id]);
+  }
+
+  public canBuyUpgrade(team: Team, id: UpgradeId): boolean {
+    if (this.status !== 'playing') return false;
+    const faction = this.getFaction(team);
+    const cost = this.getUpgradeCost(team, id);
+    return cost !== null && faction.gold >= cost;
+  }
+
+  public buyUpgrade(team: Team, id: UpgradeId): boolean {
+    if (!this.canBuyUpgrade(team, id)) return false;
+    const faction = this.getFaction(team);
+    const cost = this.getUpgradeCost(team, id)!;
+    const prevArmorMult = getArmorHpMult(faction.upgrades);
+    const prevBaseMaxHp = faction.baseMaxHp;
+
+    faction.gold -= cost;
+    faction.upgrades[id] += 1;
+    const newLevel = faction.upgrades[id];
+
+    const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
+    const def = UPGRADE_BY_ID[id];
+
+    if (id === 'armor') {
+      // Scale existing live allied units immediately so upgrading mid-battle feels punchy
+      const newArmorMult = getArmorHpMult(faction.upgrades);
+      const ratio = newArmorMult / prevArmorMult;
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          const oldMax = u.maxHp;
+          u.maxHp = Math.round(u.def.maxHp * newArmorMult);
+          u.hp = Math.min(u.maxHp, Math.round(u.hp * ratio + Math.max(0, u.maxHp - oldMax) * 0.5));
+        }
+      }
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#60a5fa', 1.15);
+    } else if (id === 'fortress') {
+      const era = getEra(faction.eraIndex);
+      const nextBaseMaxHp = Math.round(era.baseMaxHp * getBaseMaxHpMult(faction.upgrades));
+      const maxGain = Math.max(0, nextBaseMaxHp - prevBaseMaxHp);
+      const repair = Math.round(nextBaseMaxHp * FORTRESS_UPGRADE_REPAIR_RATIO);
+      faction.baseMaxHp = nextBaseMaxHp;
+      const beforeHp = faction.baseHp;
+      faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + maxGain + repair);
+      const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
+      this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.24);
+    } else if (id === 'weapons') {
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#fb923c', 1.15);
+    } else {
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.15);
+    }
+
+    this.spawnRing(baseX, GROUND_Y - 76, '#facc15', 75);
+    if (team === 'player') {
+      this.callbacks.onSound?.('turret_build');
     }
     return true;
   }
@@ -319,8 +395,11 @@ export class GameEngine {
     faction.xp -= prevEra.evolveXp;
     faction.eraIndex = nextEra.index;
 
-    const hpBonus = nextEra.baseMaxHp - prevEra.baseMaxHp;
-    faction.baseMaxHp = nextEra.baseMaxHp;
+    const baseMult = getBaseMaxHpMult(faction.upgrades);
+    const prevScaledMax = Math.round(prevEra.baseMaxHp * baseMult);
+    const nextScaledMax = Math.round(nextEra.baseMaxHp * baseMult);
+    const hpBonus = nextScaledMax - prevScaledMax;
+    faction.baseMaxHp = nextScaledMax;
     faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + hpBonus);
     faction.ultimateMaxCooldown = nextEra.ultimate.cooldown;
     // Reset ultimate cooldown on evolution so the player can unleash the new era's power right away
@@ -379,9 +458,16 @@ export class GameEngine {
       const dir: 1 | -1 = team === 'player' ? 1 : -1;
       const startX = dir === 1 ? -140 : WORLD_WIDTH + 140;
       active.planes = [
-        { x: startX, y: 78, speed: 680, dir },
-        { x: startX - dir * 110, y: 108, speed: 680, dir },
-        { x: startX - dir * 215, y: 88, speed: 680, dir },
+        { x: startX, y: 78, speed: 680, dir, kind: 'bomber' },
+        { x: startX - dir * 110, y: 108, speed: 680, dir, kind: 'bomber' },
+        { x: startX - dir * 215, y: 88, speed: 680, dir, kind: 'bomber' },
+      ];
+    } else if (def.kind === 'zeppelin_raid') {
+      const dir: 1 | -1 = team === 'player' ? 1 : -1;
+      const startX = dir === 1 ? -160 : WORLD_WIDTH + 160;
+      active.planes = [
+        { x: startX, y: 74, speed: 540, dir, kind: 'zeppelin' },
+        { x: startX - dir * 170, y: 104, speed: 540, dir, kind: 'zeppelin' },
       ];
     }
 
@@ -442,6 +528,7 @@ export class GameEngine {
       turretSlots: 1,
       turrets: [null, null, null, null],
       queue: [],
+      upgrades: createInitialUpgrades(),
       ultimateCooldown: 8, // brief opening cooldown so ultimate isn't wasted at 0:00
       ultimateMaxCooldown: era.ultimate.cooldown,
       baseHitFlash: 0,
@@ -454,13 +541,14 @@ export class GameEngine {
   private stepInternal(dt: number): void {
     this.elapsed += dt;
 
-    // 1. Passive income, cooldowns, flash decay
+    // 1. Passive income (scaled by Economy upgrade), cooldowns, flash decay
     const diff = DIFFICULTIES[this.difficulty];
     const pEra = getEra(this.player.eraIndex);
     const eEra = getEra(this.enemy.eraIndex);
 
-    this.player.gold += pEra.passiveGoldPerSec * dt;
-    this.enemy.gold += eEra.passiveGoldPerSec * diff.aiGoldMultiplier * dt;
+    this.player.gold += pEra.passiveGoldPerSec * getGoldIncomeMult(this.player.upgrades) * dt;
+    this.enemy.gold +=
+      eEra.passiveGoldPerSec * diff.aiGoldMultiplier * getGoldIncomeMult(this.enemy.upgrades) * dt;
 
     this.updateFactionTimers(this.player, dt);
     this.updateFactionTimers(this.enemy, dt);
@@ -533,14 +621,15 @@ export class GameEngine {
     const faction = this.getFaction(team);
     const spawnX = team === 'player' ? PLAYER_SPAWN_X : ENEMY_SPAWN_X;
     const jitter = (this.random() - 0.5) * 6;
+    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades));
     const unit: UnitEntity = {
       uid: this.nextUid++,
       team,
       def,
       x: spawnX + jitter,
       y: GROUND_Y,
-      hp: def.maxHp,
-      maxHp: def.maxHp,
+      hp: scaledMaxHp,
+      maxHp: scaledMaxHp,
       state: 'walk',
       attackCooldown: 0.15,
       attackAnim: 0,
@@ -656,8 +745,10 @@ export class GameEngine {
   private performUnitAttack(attacker: UnitEntity, target: UnitEntity | null): void {
     const dir = attacker.team === 'player' ? 1 : -1;
     const def = attacker.def;
+    const attackerFaction = this.getFaction(attacker.team);
     const isCrit = this.random() < def.critChance;
-    const rawDamage = def.damage * (isCrit ? CRIT_MULTIPLIER : 1);
+    const rawDamage =
+      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * (isCrit ? CRIT_MULTIPLIER : 1);
 
     this.callbacks.onSound?.(def.attackSound);
 
@@ -670,24 +761,25 @@ export class GameEngine {
         : PLAYER_BASE_FRONT_X - 12;
     const targetY = target ? GROUND_Y - target.def.height * 0.72 : GROUND_Y - 70;
 
-    // Instant Railgun piercing beam
-    if (def.projectile === 'railgun') {
+    // Instant Railgun or Interstellar Graviton piercing beam
+    if (def.projectile === 'railgun' || def.projectile === 'gravity_beam') {
+      const isGrav = def.projectile === 'gravity_beam';
       const endX = originX + dir * (def.range + 45);
       this.beams.push({
         uid: this.nextUid++,
         team: attacker.team,
-        style: 'railgun',
+        style: isGrav ? 'gravity_beam' : 'railgun',
         x1: originX,
         y1: originY,
         x2: endX,
         y2: originY,
-        width: 5,
-        color: attacker.team === 'player' ? '#38bdf8' : '#fb7185',
-        life: 0.24,
-        maxLife: 0.24,
+        width: isGrav ? 7 : 5,
+        color: isGrav ? '#c084fc' : attacker.team === 'player' ? '#38bdf8' : '#fb7185',
+        life: isGrav ? 0.28 : 0.24,
+        maxLife: isGrav ? 0.28 : 0.24,
         seed: this.random(),
       });
-      this.spawnBurst(originX, originY, '#7dd3fc', 6, 110);
+      this.spawnBurst(originX, originY, isGrav ? '#e879f9' : '#7dd3fc', 6, 110);
 
       // Pierce up to def.pierceCount enemies along beam
       const hitCandidates = this.units
@@ -896,34 +988,36 @@ export class GameEngine {
 
       const muzzleX = pos.x + Math.cos(turret.aimAngle) * 18;
       const muzzleY = pos.y + Math.sin(turret.aimAngle) * 18;
+      const scaledTurretDamage = def.damage * getTurretDamageMult(faction.upgrades);
 
-      if (def.projectile === 'ion_beam') {
+      if (def.projectile === 'ion_beam' || def.projectile === 'gravity_beam') {
+        const isGrav = def.projectile === 'gravity_beam';
         const tx = bestTarget.x;
         const ty = GROUND_Y - bestTarget.def.height * 0.5;
         this.beams.push({
           uid: this.nextUid++,
           team: faction.team,
-          style: 'ion_beam',
+          style: isGrav ? 'gravity_beam' : 'ion_beam',
           x1: muzzleX,
           y1: muzzleY,
           x2: tx,
           y2: ty,
-          width: 7,
-          color: '#22d3ee',
-          life: 0.28,
-          maxLife: 0.28,
+          width: isGrav ? 9 : 7,
+          color: isGrav ? '#c084fc' : '#22d3ee',
+          life: 0.3,
+          maxLife: 0.3,
           seed: this.random(),
         });
         this.applySplashDamage(
           tx,
           faction.team,
-          def.damage,
+          scaledTurretDamage,
           def.splashRadius,
           def.armorPierce,
           false,
-          dir * 75,
+          dir * (isGrav ? 95 : 75),
         );
-        this.spawnRing(tx, ty, '#38bdf8', def.splashRadius * 0.6);
+        this.spawnRing(tx, ty, isGrav ? '#c084fc' : '#38bdf8', def.splashRadius * 0.6);
         this.callbacks.onShake?.(0.2);
       } else {
         const flightTime = Math.max(0.14, Math.hypot(aimDx, aimDy) / def.projectileSpeed);
@@ -941,7 +1035,7 @@ export class GameEngine {
           vx,
           vy,
           gravity: def.projectileArc,
-          damage: def.damage,
+          damage: scaledTurretDamage,
           splashRadius: def.splashRadius,
           armorPierce: def.armorPierce,
           isCrit: false,
@@ -987,6 +1081,14 @@ export class GameEngine {
       const enemyTeam: Team = p.team === 'player' ? 'enemy' : 'player';
       const dir = p.team === 'player' ? 1 : -1;
       let impacted = false;
+      const blastColor =
+        p.style === 'plasma'
+          ? '#22d3ee'
+          : p.style === 'antimatter'
+            ? '#c084fc'
+            : p.style === 'solar_orb'
+              ? '#fbbf24'
+              : '#f97316';
 
       // Check collision with enemy units
       for (const u of this.units) {
@@ -998,12 +1100,12 @@ export class GameEngine {
           p.hitUids.push(u.uid);
           if (p.splashRadius > 0) {
             this.applySplashDamage(p.x, p.team, p.damage, p.splashRadius, p.armorPierce, p.isCrit, dir * p.knockback);
-            this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 6), p.splashRadius, p.style === 'plasma' ? '#22d3ee' : '#f97316');
+            this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 6), p.splashRadius, blastColor);
             this.callbacks.onSound?.('explosion');
             if (p.splashRadius >= 60) this.callbacks.onShake?.(0.22);
           } else {
             this.applyDamageToUnit(u, p.damage, p.armorPierce, p.isCrit, dir * p.knockback, p.team);
-            this.spawnBurst(p.x, p.y, p.style === 'plasma' ? '#38bdf8' : '#fef08a', 5, 100);
+            this.spawnBurst(p.x, p.y, blastColor === '#f97316' ? '#fef08a' : blastColor, 5, 100);
           }
           p.pierceRemaining -= 1;
           if (p.pierceRemaining <= 0) {
@@ -1021,7 +1123,7 @@ export class GameEngine {
         if (hitEnemyBase && p.y >= GROUND_Y - 170) {
           this.applyDamageToBase(enemyTeam, p.damage * p.baseDamageMult, p.isCrit, p.team);
           if (p.splashRadius > 0) {
-            this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 12), p.splashRadius * 0.8, '#fb923c');
+            this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 12), p.splashRadius * 0.8, blastColor);
             this.callbacks.onSound?.('explosion');
           } else {
             this.spawnBurst(p.x, p.y, '#fcd34d', 6, 90);
@@ -1034,7 +1136,7 @@ export class GameEngine {
       if (!impacted && p.y >= GROUND_Y) {
         if (p.splashRadius > 0) {
           this.applySplashDamage(p.x, p.team, p.damage, p.splashRadius, p.armorPierce, p.isCrit, dir * p.knockback);
-          this.spawnExplosion(p.x, GROUND_Y - 4, p.splashRadius, p.style === 'plasma' ? '#22d3ee' : '#f97316');
+          this.spawnExplosion(p.x, GROUND_Y - 4, p.splashRadius, blastColor);
           this.callbacks.onSound?.('explosion');
         } else {
           this.spawnBurst(p.x, GROUND_Y - 2, '#a8a29e', 4, 60);
@@ -1055,7 +1157,7 @@ export class GameEngine {
       const enemyTeam: Team = ult.team === 'player' ? 'enemy' : 'player';
       const dir = ult.team === 'player' ? 1 : -1;
 
-      // Update planes for carpet bombing
+      // Update aircraft / steampunk zeppelins
       if (ult.planes) {
         for (const plane of ult.planes) {
           plane.x += plane.speed * plane.dir * dt;
@@ -1079,7 +1181,12 @@ export class GameEngine {
 
         ord.x += ord.vx * dt;
         ord.y += ord.vy * dt;
-        if (ord.kind === 'fire_arrows' || ord.kind === 'carpet_bomb' || ord.kind === 'naval_barrage') {
+        if (
+          ord.kind === 'fire_arrows' ||
+          ord.kind === 'carpet_bomb' ||
+          ord.kind === 'zeppelin_raid' ||
+          ord.kind === 'naval_barrage'
+        ) {
           ord.vy += 320 * dt;
         }
 
@@ -1146,6 +1253,28 @@ export class GameEngine {
       return;
     }
 
+    if (kind === 'solar_wrath') {
+      this.beams.push({
+        uid: this.nextUid++,
+        team: ult.team,
+        style: 'solar_beam',
+        x1: targetX,
+        y1: -25,
+        x2: targetX,
+        y2: GROUND_Y + 4,
+        width: 34,
+        color: '#fbbf24',
+        life: 0.65,
+        maxLife: 0.65,
+        seed: this.random() * 1000,
+      });
+      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 75);
+      this.spawnExplosion(targetX, GROUND_Y - 6, ult.def.radius * 0.95, '#fbbf24');
+      this.callbacks.onSound?.('laser');
+      this.callbacks.onShake?.(0.32);
+      return;
+    }
+
     if (kind === 'orbital_laser') {
       this.beams.push({
         uid: this.nextUid++,
@@ -1168,8 +1297,30 @@ export class GameEngine {
       return;
     }
 
-    // Falling sky ordinance (meteor, fire_arrows, naval_barrage, carpet_bomb, tactical_missiles)
-    const startY = kind === 'carpet_bomb' ? 92 : -40;
+    if (kind === 'black_hole') {
+      this.beams.push({
+        uid: this.nextUid++,
+        team: ult.team,
+        style: 'black_hole_vortex',
+        x1: targetX,
+        y1: GROUND_Y - 68,
+        x2: targetX,
+        y2: GROUND_Y,
+        width: 58,
+        color: '#c084fc',
+        life: 0.92,
+        maxLife: 0.92,
+        seed: this.random() * 1000,
+      });
+      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, -dir * 40);
+      this.spawnExplosion(targetX, GROUND_Y - 12, ult.def.radius * 1.2, '#c084fc');
+      this.callbacks.onSound?.('explosion');
+      this.callbacks.onShake?.(0.5);
+      return;
+    }
+
+    // Falling sky ordinance (meteor, fire_arrows, naval_barrage, zeppelin_raid, carpet_bomb, tactical_missiles)
+    const startY = kind === 'carpet_bomb' || kind === 'zeppelin_raid' ? 92 : -40;
     const slant =
       kind === 'meteor'
         ? -dir * 220
@@ -1183,7 +1334,10 @@ export class GameEngine {
     const fallTime = kind === 'fire_arrows' ? 0.52 : kind === 'tactical_missiles' ? 0.45 : 0.6;
     const startX = targetX + slant;
     const vx = (targetX - startX) / fallTime;
-    const gravity = kind === 'fire_arrows' || kind === 'carpet_bomb' || kind === 'naval_barrage' ? 320 : 0;
+    const gravity =
+      kind === 'fire_arrows' || kind === 'carpet_bomb' || kind === 'zeppelin_raid' || kind === 'naval_barrage'
+        ? 320
+        : 0;
     const vy = (GROUND_Y - startY - 0.5 * gravity * fallTime * fallTime) / fallTime;
 
     ult.fallingOrdinance.push({
@@ -1228,7 +1382,9 @@ export class GameEngine {
     attackerTeam: Team,
   ): void {
     if (victim.state === 'dead') return;
-    const effectiveArmor = armorPierce ? victim.def.armor * 0.4 : victim.def.armor;
+    const victimFaction = this.getFaction(victim.team);
+    const totalArmor = Math.min(0.5, victim.def.armor + getArmorMitigationBonus(victimFaction.upgrades));
+    const effectiveArmor = armorPierce ? totalArmor * 0.4 : totalArmor;
     const finalDamage = Math.max(1, Math.round(rawDamage * (1 - effectiveArmor)));
     victim.hp -= finalDamage;
     victim.hitFlash = 1;
@@ -1424,11 +1580,16 @@ export class GameEngine {
     let coreColor = '#ffffff';
     let radius = 34;
 
-    if (id === 'clubman' || id === 'dino_rider') {
+    if (id === 'clubman' || id === 'dino_rider' || id === 'sphinx_chariot' || id === 'steam_trooper') {
       style = 'heavy';
-      color = '#fbbf24';
+      color = id === 'steam_trooper' ? '#fb923c' : '#fbbf24';
       coreColor = '#fef9c3';
-      radius = id === 'dino_rider' ? 46 : 32;
+      radius = id === 'dino_rider' || id === 'sphinx_chariot' ? 48 : 36;
+    } else if (id === 'anubis_warrior') {
+      style = 'blade';
+      color = '#facc15';
+      coreColor = '#fef9c3';
+      radius = 38;
     } else if (id === 'spearman' || id === 'chariot' || id === 'heavy_cavalry' || id === 'pikeman') {
       style = 'thrust';
       color = attacker.team === 'player' ? '#60a5fa' : '#f87171';
@@ -1439,6 +1600,11 @@ export class GameEngine {
       color = attacker.team === 'player' ? '#22d3ee' : '#fb7185';
       coreColor = '#ecfeff';
       radius = 48;
+    } else if (id === 'void_templar') {
+      style = 'plasma';
+      color = '#c084fc';
+      coreColor = '#fae8ff';
+      radius = 52;
     }
 
     this.slashes.push({
