@@ -1,4 +1,4 @@
-const CACHE_NAME = 'chrono-front-v5';
+const CACHE_NAME = 'chrono-front-v6';
 const CORE_ASSETS = [
   './',
   './index.html',
@@ -6,8 +6,6 @@ const CORE_ASSETS = [
   './icons/icon-192.png',
   './icons/icon-512.png',
   './icons/apple-touch-icon.png',
-  './sprites/sprites_sheet.png',
-  './sprites/sprites_atlas.json',
 ];
 
 self.addEventListener('install', (event) => {
@@ -31,9 +29,10 @@ self.addEventListener('fetch', (event) => {
   const url = new URL(event.request.url);
   if (url.origin !== self.location.origin) return;
 
-  // Network-first for HTML/navigation so fresh deployments appear immediately on Safari refresh
+  // Network-first for HTML, JSON manifests, and sprite sheets so Safari always gets matching new art
   const isNav = event.request.mode === 'navigate' || url.pathname.endsWith('.html') || url.pathname.endsWith('/');
-  if (isNav) {
+  const isDynamicAsset = url.pathname.includes('/sprites/') || url.pathname.endsWith('.json');
+  if (isNav || isDynamicAsset) {
     event.respondWith(
       fetch(event.request)
         .then((response) => {
@@ -48,7 +47,7 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // Cache-first with background refresh for hashed Vite assets & icons
+  // Cache-first with background refresh for content-hashed Vite JS/CSS bundles & static app icons
   event.respondWith(
     caches.match(event.request).then((cached) => {
       const networkFetch = fetch(event.request)

@@ -585,6 +585,50 @@ class PixelCanvas:
             d[i + 2] = min(255, int(d[i + 2] * inv + tint[2] * strength))
         return out
 
+    def add_rim_light(
+        self,
+        tint: RGBA = (255, 250, 232, 255),
+        strength: float = 0.24,
+    ) -> 'PixelCanvas':
+        """Catch upper-left silhouette edges with a subtle warm specular rim highlight (16-bit arcade pop)."""
+        out = self.copy()
+        w, h = self.w, self.h
+        src = self.data
+        dst = out.data
+        ink_r, ink_g, ink_b = INK[0], INK[1], INK[2]
+        inv = 1.0 - strength
+
+        def is_outline_or_empty(px_x: int, px_y: int) -> bool:
+            if px_x < 0 or px_y < 0 or px_x >= w or px_y >= h:
+                return True
+            idx = (px_y * w + px_x) * 4
+            if src[idx + 3] < 180:
+                return True
+            return src[idx] == ink_r and src[idx + 1] == ink_g and src[idx + 2] == ink_b
+
+        for y in range(1, h - 1):
+            row = y * w
+            for x in range(1, w - 1):
+                i = (row + x) * 4
+                if src[i + 3] < 220:
+                    continue
+                r, g, b = src[i], src[i + 1], src[i + 2]
+                # Skip dark outline/crease pixels and already pure-white specular pixels
+                if (r == ink_r and g == ink_g and b == ink_b) or (r + g + b < 78) or (r > 244 and g > 244 and b > 244):
+                    continue
+                # Rim light catches pixels bordering the upper-left exterior contour
+                if is_outline_or_empty(x, y - 1) and is_outline_or_empty(x - 1, y):
+                    dst[i] = min(255, int(r * inv + tint[0] * strength))
+                    dst[i + 1] = min(255, int(g * inv + tint[1] * strength))
+                    dst[i + 2] = min(255, int(b * inv + tint[2] * strength))
+                elif is_outline_or_empty(x, y - 1) and (x + y) % 2 == 0:
+                    s2 = strength * 0.55
+                    inv2 = 1.0 - s2
+                    dst[i] = min(255, int(r * inv2 + tint[0] * s2))
+                    dst[i + 1] = min(255, int(g * inv2 + tint[1] * s2))
+                    dst[i + 2] = min(255, int(b * inv2 + tint[2] * s2))
+        return out
+
     def to_image(self) -> Image.Image:
         return Image.frombytes('RGBA', (self.w, self.h), bytes(self.data))
 

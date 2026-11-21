@@ -322,19 +322,19 @@ def draw_humanoid(
         # Fold crease lines inside cape
         cape_p.line(torso_x + 1, torso_y + 6, torso_x - 6 - flutter, gy - 6, cape_ramp[0], 1)
         cape_p.line(torso_x + 2, torso_y + 7, torso_x - 3 - flutter // 2, gy - 5, cape_ramp[3], 1)
-        c.blit_part(cape_p, INK)
+        c.blit_part(cape_p, INK_SOFT)
 
     # 2. Backpack / Quiver / Fuel Tanks behind torso
     if backpack_fn is not None:
         bp_p = c.part()
         backpack_fn(bp_p, torso_x - 2, torso_y + 2, anim)
-        c.blit_part(bp_p, INK)
+        c.blit_part(bp_p, INK_SOFT)
 
     # 3. Optional Back Arm (behind torso)
     if back_arm_fn is not None:
         ba_p = c.part()
         back_arm_fn(ba_p, shoulder_x + 4, shoulder_y, anim)
-        c.blit_part(ba_p, INK)
+        c.blit_part(ba_p, INK_SOFT)
 
     # 4. Back Leg (articulated thigh -> knee -> shin -> boot, darker shade)
     back_leg_p = c.part()
@@ -353,7 +353,7 @@ def draw_humanoid(
     back_leg_p.box(b_foot_x - 3, b_foot_y - 5, 9, 5, b_boot_ramp)
     back_leg_p.rect(b_foot_x - 3, b_foot_y - 1, 10, 2, boots[0])
     back_leg_p.px(b_foot_x + 5, b_foot_y - 3, boots[2])
-    c.blit_part(back_leg_p, INK)
+    c.blit_part(back_leg_p, INK_SOFT)
 
     # 5. Front Leg (articulated thigh -> knee -> shin -> heroic boot, brightly lit)
     front_leg_p = c.part()
@@ -373,7 +373,7 @@ def draw_humanoid(
     front_leg_p.px(f_foot_x + 6, f_foot_y - 3, boots[3])
     if len(boots) > 4:
         front_leg_p.px(f_foot_x + 4, f_foot_y - 4, boots[4])
-    c.blit_part(front_leg_p, INK)
+    c.blit_part(front_leg_p, INK_SOFT)
 
     # 6. Heroic Tapered Torso Layer (broad shoulders -> defined waist)
     torso_p = c.part()
@@ -411,18 +411,18 @@ def draw_humanoid(
     if torso_detail_fn is not None:
         torso_detail_fn(torso_p, torso_x, torso_y, anim)
 
-    c.blit_part(torso_p, INK)
+    c.blit_part(torso_p, INK_SOFT)
 
     # 7. Head & Iconic Helmet / Hat / Crown Layer
     head_p = c.part()
     head_fn(head_p, head_cx, head_cy, anim)
-    c.blit_part(head_p, INK)
+    c.blit_part(head_p, INK_SOFT)
 
     # 8. Front Shield Layer (if carried on off-hand side)
     if shield_fn is not None:
         sh_p = c.part()
         shield_fn(sh_p, shoulder_x + 7, shoulder_y + 4, anim)
-        c.blit_part(sh_p, INK)
+        c.blit_part(sh_p, INK_SOFT)
 
     # 9. Front Weapon & Articulated Arm Layer
     wep_p = c.part()
@@ -431,7 +431,7 @@ def draw_humanoid(
         # Sculpted team shoulder pauldron overlapping shoulder joint cleanly!
         wep_p.shaded_ellipse(shoulder_x - 2, shoulder_y - 1, 5.5, 4.5, TEAM_RAMP)
         wep_p.rect(shoulder_x - 6, shoulder_y + 2, 9, 1, T_TRIM)
-    c.blit_part(wep_p, INK)
+    c.blit_part(wep_p, INK_SOFT)
 
     # 10. Final Crisp Outer Silhouette Assurance
     c.add_outline(INK)

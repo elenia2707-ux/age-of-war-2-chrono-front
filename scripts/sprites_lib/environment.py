@@ -464,6 +464,63 @@ def _gen_upgrade_icons() -> dict[str, tuple[PixelCanvas, int, int]]:
     c.add_outline(INK)
     out['icon/upg_fortress'] = (c, 12, 12)
 
+    # 5. Attack Speed Upgrade (Glowing Cyan-Gold Double Rapid Chevrons + Motion Dagger)
+    c = PixelCanvas(24, 24)
+    # Rapid twin speed bolts streaking right
+    c.shaded_poly([(3, 6), (11, 6), (16, 12), (11, 18), (3, 18), (8, 12)], CYAN_GLOW)
+    c.shaded_poly([(10, 4), (17, 4), (22, 12), (17, 20), (10, 20), (15, 12)], SOLAR_GOLD)
+    c.line(13, 7, 18, 12, WHITE, 1)
+    c.line(6, 9, 11, 12, WHITE, 1)
+    c.add_outline(INK)
+    out['icon/upg_attack_speed'] = (c, 12, 12)
+
+    # 6. Crit Mastery Upgrade (Blazing Crimson-Gold Bullseye + Starburst Impact)
+    c = PixelCanvas(24, 24)
+    c.shaded_ellipse(12, 12, 8, 8, FIRE)
+    c.shaded_ellipse(12, 12, 5, 5, SOLAR_GOLD)
+    # Crisp tactical crosshair ticks
+    c.rect(11, 2, 2, 5, WHITE)
+    c.rect(11, 17, 2, 5, WHITE)
+    c.rect(2, 11, 5, 2, WHITE)
+    c.rect(17, 11, 5, 2, WHITE)
+    # Blinding white-gold crit core
+    c.ellipse(12, 12, 2.5, 2.5, WHITE)
+    c.add_outline(INK)
+    out['icon/upg_crit_mastery'] = (c, 12, 12)
+
+    # 7. Mobility & March Upgrade (Winged Heroic War-Boot + Wind Streaks)
+    c = PixelCanvas(24, 24)
+    # Wind speed lines behind boot
+    c.rect(2, 8, 5, 2, CYAN_GLOW[3])
+    c.rect(3, 12, 4, 2, CYAN_GLOW[2])
+    # Gleaming winged war-boot
+    c.box(9, 7, 6, 11, (hx('#102359'), hx('#1b429c'), hx('#2a6df4'), hx('#66b0ff')))
+    c.box(9, 14, 12, 5, (hx('#102359'), hx('#1b429c'), hx('#2a6df4'), hx('#66b0ff')))
+    c.rect(9, 18, 12, 2, GOLD[3])
+    # Golden feather wing sweeping back from ankle!
+    c.shaded_poly([(9, 10), (3, 4), (7, 4), (12, 8)], SOLAR_GOLD)
+    c.shaded_poly([(9, 13), (5, 9), (8, 9), (12, 12)], GOLD)
+    c.px(6, 5, WHITE)
+    c.add_outline(INK)
+    out['icon/upg_mobility'] = (c, 12, 12)
+
+    # 8. Bounty & Plunder Upgrade (Overflowing Treasure Chest + Sparkling XP Crystal)
+    c = PixelCanvas(24, 24)
+    # Gilded wooden war-chest base
+    c.box(4, 11, 16, 10, WOOD)
+    c.rect(4, 11, 16, 2, GOLD[3])
+    c.rect(4, 19, 16, 2, GOLD[2])
+    c.rect(10, 11, 4, 5, GOLD[4])
+    c.rect(11, 13, 2, 2, INK)
+    # Overflowing mound of gold coins + radiant cyan XP gem!
+    c.shaded_ellipse(8, 9, 4, 3, SOLAR_GOLD)
+    c.shaded_ellipse(15, 9, 4, 3, SOLAR_GOLD)
+    c.shaded_poly([(12, 3), (8, 8), (12, 11), (16, 8)], CYAN_GLOW)
+    c.px(12, 5, WHITE)
+    c.px(7, 8, WHITE)
+    c.add_outline(INK)
+    out['icon/upg_bounty'] = (c, 12, 12)
+
     return out
 
 

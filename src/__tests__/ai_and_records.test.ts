@@ -34,25 +34,20 @@ describe('Enemy AI, Camera & Local Records', () => {
 
     expect(engine.enemy.eraIndex).toBeGreaterThanOrEqual(1);
     expect(engine.enemy.unitsSpawned).toBeGreaterThan(0);
-    const totalEnemyUpgrades =
-      engine.enemy.upgrades.weapons +
-      engine.enemy.upgrades.armor +
-      engine.enemy.upgrades.economy +
-      engine.enemy.upgrades.fortress;
+    const totalEnemyUpgrades = Object.values(engine.enemy.upgrades).reduce((a, b) => a + b, 0);
     expect(totalEnemyUpgrades).toBeGreaterThan(0);
   });
 
-  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3)', () => {
+  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3 across all 8 upgrades)', () => {
     const engine = new GameEngine();
     engine.startNewGame('easy', 1337);
     engine.enemy.gold = 200000;
 
     for (let i = 0; i < 400; i++) engine.step(0.05);
 
-    expect(engine.enemy.upgrades.weapons).toBeLessThanOrEqual(3);
-    expect(engine.enemy.upgrades.armor).toBeLessThanOrEqual(3);
-    expect(engine.enemy.upgrades.economy).toBeLessThanOrEqual(3);
-    expect(engine.enemy.upgrades.fortress).toBeLessThanOrEqual(3);
+    for (const lvl of Object.values(engine.enemy.upgrades)) {
+      expect(lvl).toBeLessThanOrEqual(3);
+    }
   });
 
   it('clamps BattleCamera safely inside world bounds and decays drag velocity', () => {

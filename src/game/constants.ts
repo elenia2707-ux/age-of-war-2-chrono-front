@@ -1,6 +1,6 @@
 export const WORLD_WIDTH = 2400;
-export const WORLD_HEIGHT = 460;
-export const GROUND_Y = 356;
+export const WORLD_HEIGHT = 468;
+export const GROUND_Y = 326;
 
 export const PLAYER_BASE_X = 125;
 export const ENEMY_BASE_X = WORLD_WIDTH - 125; // 2275

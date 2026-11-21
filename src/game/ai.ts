@@ -139,21 +139,25 @@ export class EnemyAI {
       return;
     }
 
-    // Choose unit based on squad composition balance
+    // Choose unit based on squad composition balance across all 4 units per era
     const roll = engine.random();
     let candidate = units[0];
 
-    if (topUnit && enemy.gold >= topUnit.cost && roll < (engine.difficulty === 'hard' ? 0.5 : 0.36)) {
-      candidate = heavyUnits[Math.floor(engine.random() * heavyUnits.length)] ?? topUnit;
+    if (topUnit && enemy.gold >= topUnit.cost && roll < (engine.difficulty === 'hard' ? 0.48 : 0.36)) {
+      const affordableHeavy = heavyUnits.filter((u) => enemy.gold >= u.cost);
+      candidate =
+        affordableHeavy[Math.floor(engine.random() * affordableHeavy.length)] ?? topUnit;
     } else if (
       rangedUnits.length > 0 &&
-      enemyFrontlineCount > enemyRangedCount &&
-      enemy.gold >= rangedUnits[0].cost &&
+      enemyFrontlineCount >= enemyRangedCount &&
+      rangedUnits.some((u) => enemy.gold >= u.cost) &&
       roll < 0.78
     ) {
-      candidate = rangedUnits[Math.floor(engine.random() * rangedUnits.length)];
-    } else if (meleeUnits.length > 0 && enemy.gold >= meleeUnits[0].cost) {
-      candidate = meleeUnits[0];
+      const affordableRanged = rangedUnits.filter((u) => enemy.gold >= u.cost);
+      candidate = affordableRanged[Math.floor(engine.random() * affordableRanged.length)];
+    } else if (meleeUnits.some((u) => enemy.gold >= u.cost)) {
+      const affordableMelee = meleeUnits.filter((u) => enemy.gold >= u.cost);
+      candidate = affordableMelee[Math.floor(engine.random() * affordableMelee.length)];
     } else {
       const affordable = units.filter((u) => enemy.gold >= u.cost);
       if (affordable.length === 0) return;
@@ -177,19 +181,19 @@ export class EnemyAI {
     // Cap target upgrade level gracefully by both difficulty ceiling and era progression
     const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + 1));
 
-    // Tactical priority order based on live battlefield pressure
+    // Tactical priority order across all 8 upgrades based on live battlefield pressure
     let priority: UpgradeId[];
     if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
-      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets)
-      priority = ['fortress', 'armor', 'weapons', 'economy'];
+      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets + faster ult)
+      priority = ['fortress', 'armor', 'weapons', 'attack_speed', 'mobility', 'crit_mastery', 'economy', 'bounty'];
     } else if (enemy.upgrades.economy < Math.min(eraCap, 3) && !underThreat) {
-      // Early/mid economic snowballing
-      priority = ['economy', 'weapons', 'armor', 'fortress'];
+      // Early/mid economic & bounty snowballing
+      priority = ['economy', 'bounty', 'weapons', 'armor', 'attack_speed', 'mobility', 'crit_mastery', 'fortress'];
     } else if (activeAllies >= 3) {
-      // Active push -> scale frontline combat power
-      priority = ['weapons', 'armor', 'economy', 'fortress'];
+      // Active push -> scale frontline combat DPS, crit & march momentum
+      priority = ['weapons', 'attack_speed', 'crit_mastery', 'armor', 'mobility', 'bounty', 'economy', 'fortress'];
     } else {
-      priority = ['armor', 'weapons', 'economy', 'fortress'];
+      priority = ['armor', 'weapons', 'attack_speed', 'mobility', 'crit_mastery', 'economy', 'bounty', 'fortress'];
     }
 
     for (const id of priority) {

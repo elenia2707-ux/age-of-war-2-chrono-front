@@ -159,6 +159,9 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
       p.style === 'plasma' ||
       p.style === 'antimatter' ||
       p.style === 'solar_orb' ||
+      p.style === 'totem_fire' ||
+      p.style === 'grenade' ||
+      p.style === 'mortar_shell' ||
       p.style === 'rocket' ||
       p.style === 'shell' ||
       p.style === 'boulder'
@@ -172,9 +175,11 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
             ? 'rgba(192, 132, 252, 0.62)'
             : p.style === 'solar_orb'
               ? 'rgba(251, 191, 36, 0.62)'
-              : p.style === 'bullet'
-                ? 'rgba(254, 240, 138, 0.52)'
-                : 'rgba(226, 232, 240, 0.36)';
+              : p.style === 'totem_fire'
+                ? 'rgba(249, 115, 22, 0.66)'
+                : p.style === 'bullet'
+                  ? 'rgba(254, 240, 138, 0.52)'
+                  : 'rgba(226, 232, 240, 0.36)';
       ctx.fillStyle = trailCol;
       for (let s = 1; s <= 3; s++) {
         const tx = snap(p.x - p.vx * 0.008 * s);
@@ -189,9 +194,12 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
       spriteKey = `proj/plasma/${p.team}`;
     } else if (p.style === 'antimatter') {
       spriteKey = `proj/antimatter/${p.team}`;
+    } else if (p.style === 'grenade') {
+      spriteKey = 'proj/grenade';
     } else if (
       p.style === 'flame' ||
       p.style === 'railgun' ||
+      p.style === 'tesla_arc' ||
       p.style === 'ion_beam' ||
       p.style === 'gravity_beam'
     ) {
@@ -199,7 +207,12 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
     }
 
     const spinAngle =
-      p.style === 'stone' || p.style === 'boulder' || p.style === 'cannonball' || p.style === 'solar_orb'
+      p.style === 'stone' ||
+      p.style === 'boulder' ||
+      p.style === 'cannonball' ||
+      p.style === 'grenade' ||
+      p.style === 'solar_orb' ||
+      p.style === 'totem_fire'
         ? p.life * 8 * (p.vx >= 0 ? 1 : -1)
         : angle;
 
@@ -217,38 +230,50 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
   ctx.restore();
 }
 
-/** Crisp pixel-stepped lightning, solar beam, orbital laser, black hole vortex, flame & railgun/gravity beams */
+/** Crisp pixel-stepped lightning, tesla arc, solar beam, orbital laser, black hole vortex, flame & railgun/gravity beams */
 export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]): void {
   for (const b of beams) {
     const ratio = Math.max(0, b.life / b.maxLife);
     ctx.save();
     ctx.imageSmoothingEnabled = false;
 
-    if (b.style === 'lightning') {
-      const segments = 12;
+    if (b.style === 'lightning' || b.style === 'tesla_arc') {
+      const isHorizontal = b.style === 'tesla_arc';
+      const segments = isHorizontal ? 9 : 12;
       let prevX = snap(b.x1);
       let prevY = snap(b.y1);
-      const outerW = Math.max(6, snap(b.width * ratio + 6));
-      const innerW = Math.max(4, snap(b.width * 0.45 * ratio));
+      const outerW = Math.max(4, snap(b.width * ratio + (isHorizontal ? 4 : 6)));
+      const innerW = Math.max(2, snap(b.width * 0.45 * ratio));
 
       for (let s = 1; s <= segments; s++) {
         const t = s / segments;
-        const nx =
-          s === segments
-            ? snap(b.x2)
-            : snap(b.x1 + (b.x2 - b.x1) * t + Math.sin(b.seed + s * 7.3) * 26);
-        const ny = snap(b.y1 + (b.y2 - b.y1) * t);
+        const jitter = s === segments ? 0 : Math.sin(b.seed + s * 7.3) * (isHorizontal ? 14 : 26);
+        const nx = isHorizontal ? snap(b.x1 + (b.x2 - b.x1) * t) : snap(b.x1 + (b.x2 - b.x1) * t + jitter);
+        const ny = isHorizontal ? snap(b.y1 + (b.y2 - b.y1) * t + jitter) : snap(b.y1 + (b.y2 - b.y1) * t);
 
-        const midY = snap((prevY + ny) * 0.5);
-        ctx.fillStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
-        ctx.fillRect(prevX - outerW / 2, Math.min(prevY, midY), outerW, Math.abs(midY - prevY) + outerW / 2);
-        ctx.fillRect(Math.min(prevX, nx) - outerW / 2, midY - outerW / 2, Math.abs(nx - prevX) + outerW, outerW);
-        ctx.fillRect(nx - outerW / 2, Math.min(midY, ny), outerW, Math.abs(ny - midY) + outerW / 2);
+        if (isHorizontal) {
+          const midX = snap((prevX + nx) * 0.5);
+          ctx.fillStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
+          ctx.fillRect(Math.min(prevX, midX), prevY - outerW / 2, Math.abs(midX - prevX) + outerW / 2, outerW);
+          ctx.fillRect(midX - outerW / 2, Math.min(prevY, ny) - outerW / 2, outerW, Math.abs(ny - prevY) + outerW);
+          ctx.fillRect(Math.min(midX, nx), ny - outerW / 2, Math.abs(nx - midX) + outerW / 2, outerW);
 
-        ctx.fillStyle = `rgba(255, 255, 255, ${ratio.toFixed(2)})`;
-        ctx.fillRect(prevX - innerW / 2, Math.min(prevY, midY), innerW, Math.abs(midY - prevY) + innerW / 2);
-        ctx.fillRect(Math.min(prevX, nx) - innerW / 2, midY - innerW / 2, Math.abs(nx - prevX) + innerW, innerW);
-        ctx.fillRect(nx - innerW / 2, Math.min(midY, ny), innerW, Math.abs(ny - midY) + innerW / 2);
+          ctx.fillStyle = `rgba(254, 249, 195, ${ratio.toFixed(2)})`;
+          ctx.fillRect(Math.min(prevX, midX), prevY - innerW / 2, Math.abs(midX - prevX) + innerW / 2, innerW);
+          ctx.fillRect(midX - innerW / 2, Math.min(prevY, ny) - innerW / 2, innerW, Math.abs(ny - prevY) + innerW);
+          ctx.fillRect(Math.min(midX, nx), ny - innerW / 2, Math.abs(nx - midX) + innerW / 2, innerW);
+        } else {
+          const midY = snap((prevY + ny) * 0.5);
+          ctx.fillStyle = `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`;
+          ctx.fillRect(prevX - outerW / 2, Math.min(prevY, midY), outerW, Math.abs(midY - prevY) + outerW / 2);
+          ctx.fillRect(Math.min(prevX, nx) - outerW / 2, midY - outerW / 2, Math.abs(nx - prevX) + outerW, outerW);
+          ctx.fillRect(nx - outerW / 2, Math.min(midY, ny), outerW, Math.abs(ny - midY) + outerW / 2);
+
+          ctx.fillStyle = `rgba(255, 255, 255, ${ratio.toFixed(2)})`;
+          ctx.fillRect(prevX - innerW / 2, Math.min(prevY, midY), innerW, Math.abs(midY - prevY) + innerW / 2);
+          ctx.fillRect(Math.min(prevX, nx) - innerW / 2, midY - innerW / 2, Math.abs(nx - prevX) + innerW, innerW);
+          ctx.fillRect(nx - innerW / 2, Math.min(midY, ny), innerW, Math.abs(ny - midY) + innerW / 2);
+        }
 
         prevX = nx;
         prevY = ny;

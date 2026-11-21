@@ -78,18 +78,25 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
 
   const alpha = deathProgress > 0.62 ? Math.max(0, 1 - (deathProgress - 0.62) / 0.38) : 1;
   const drawX = Math.round(unit.x);
-  const drawY = GROUND_Y;
+  const groundY = GROUND_Y;
+  const hoverBase = unit.def.hoverHeight ?? 0;
+  const hoverLift =
+    hoverBase > 0 && unit.state !== 'dead'
+      ? Math.round(hoverBase + Math.sin(unit.walkPhase * 1.4 + unit.uid * 1.7) * 3.5)
+      : 0;
+  const spriteY = groundY - hoverLift;
   const dir = unit.team === 'player' ? 1 : -1;
 
   ctx.save();
   ctx.imageSmoothingEnabled = false;
 
-  // Crisp stepped pixel-art contact shadow on the road
-  const shadowW = Math.max(26, Math.round(Math.min(visualW * 0.66, unit.def.width * 1.48) / 2) * 2);
-  const shadowAlpha = (1 - deathProgress * 0.8) * 0.46;
+  // Crisp stepped pixel-art contact shadow on the road (tightens gently when unit hovers higher)
+  const hoverShrink = hoverLift > 0 ? Math.max(0.65, 1 - hoverLift * 0.014) : 1;
+  const shadowW = Math.max(22, Math.round((Math.min(visualW * 0.66, unit.def.width * 1.48) * hoverShrink) / 2) * 2);
+  const shadowAlpha = (1 - deathProgress * 0.8) * (hoverLift > 0 ? 0.34 : 0.46);
   ctx.fillStyle = `rgba(8, 12, 20, ${shadowAlpha.toFixed(2)})`;
-  ctx.fillRect(drawX - Math.round(shadowW / 2), drawY - 1, shadowW, 4);
-  ctx.fillRect(drawX - Math.round(shadowW / 2) + 4, drawY - 3, Math.max(8, shadowW - 8), 8);
+  ctx.fillRect(drawX - Math.round(shadowW / 2), groundY - 1, shadowW, 4);
+  ctx.fillRect(drawX - Math.round(shadowW / 2) + 4, groundY - 3, Math.max(8, shadowW - 8), 8);
 
   // Arcade Hit-Reaction Squash-and-Stretch + Knockback Jolt + Attack Lunge Punch!
   let recoilDx = 0;
@@ -110,18 +117,18 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
     scaleY = 1 - 0.04 * strikePeak;
   }
 
-  // Golden upgrade power-up aura beneath/behind unit when weapons/armor upgraded
+  // Golden upgrade power-up aura beneath/behind unit when weapons/armor/combat upgraded
   if (unit.state !== 'dead' && unit.upgradeFlash > 0.05) {
     const f = unit.upgradeFlash;
     const auraW = Math.round(shadowW * 0.9);
     const auraH = Math.round(Math.min(visualH, unit.def.height * 1.35));
     ctx.fillStyle = `rgba(250, 204, 21, ${(f * 0.28).toFixed(2)})`;
-    ctx.fillRect(drawX - Math.round(auraW / 2), drawY - auraH, auraW, auraH);
+    ctx.fillRect(drawX - Math.round(auraW / 2), spriteY - auraH, auraW, auraH);
     ctx.fillStyle = `rgba(254, 249, 195, ${(f * 0.65).toFixed(2)})`;
-    ctx.fillRect(drawX - Math.round(auraW / 2), drawY - 4, auraW, 4);
+    ctx.fillRect(drawX - Math.round(auraW / 2), groundY - 4, auraW, 4);
   }
 
-  const drawn = drawSprite(ctx, spriteKey, drawX + recoilDx, drawY, {
+  const drawn = drawSprite(ctx, spriteKey, drawX + recoilDx, spriteY, {
     scale: UNIT_WORLD_SCALE,
     scaleX,
     scaleY,
@@ -132,13 +139,13 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
   // Fallback silhouette only for the tiny moment before PNG finishes decoding
   if (!drawn) {
     ctx.fillStyle = unit.team === 'player' ? '#2563eb' : '#dc2626';
-    ctx.fillRect(drawX - 10, drawY - 34, 20, 34);
+    ctx.fillRect(drawX - 10, spriteY - 34, 20, 34);
   }
 
   // Brief bright arcade impact ring/glint directly over torso on fresh critical hit
   if (unit.state !== 'dead' && unit.hitFlash > 0.68) {
     const f = (unit.hitFlash - 0.68) / 0.32;
-    const iy = Math.round(drawY - Math.min(visualH * 0.55, unit.def.height * 0.85));
+    const iy = Math.round(spriteY - Math.min(visualH * 0.55, unit.def.height * 0.85));
     const ix = drawX + recoilDx;
     const arm = Math.round((unit.lastHitCrit ? 18 : 11) * f);
     ctx.fillStyle = unit.lastHitCrit ? 'rgba(254, 240, 138, 0.95)' : 'rgba(255, 255, 255, 0.9)';
@@ -152,7 +159,7 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
   if (unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5)) {
     const barW = Math.max(32, Math.min(76, Math.round((unit.def.width * 1.24) / 2) * 2));
     const barH = 6;
-    const barY = drawY - Math.min(visualH, unit.def.height * 1.48 + 14) - 8;
+    const barY = spriteY - Math.min(visualH, unit.def.height * 1.48 + 14) - 8;
     const ratio = Math.max(0, Math.min(1, unit.hp / unit.maxHp));
     const trailRatio = Math.max(ratio, Math.min(1, unit.displayHp / unit.maxHp));
     const fillW = Math.max(0, Math.round(barW * ratio));

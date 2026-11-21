@@ -37,8 +37,8 @@ export const DIFFICULTIES: Record<DifficultyId, DifficultyConfig> = {
     aiMaxTurrets: 4,
     aiUsesUltimate: true,
     aiEvolveDelay: 0.5,
-    aiMaxUpgradeLevel: 8,
-    aiUpgradeChance: 0.52,
+    aiMaxUpgradeLevel: 9,
+    aiUpgradeChance: 0.54,
   },
 };
 

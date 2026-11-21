@@ -6,14 +6,18 @@ export type GameStatus = 'title' | 'playing' | 'paused' | 'victory' | 'defeat';
 
 export type ProjectileStyle =
   | 'stone'
+  | 'totem_fire'
   | 'boulder'
   | 'solar_orb'
   | 'arrow'
   | 'fire_arrow'
   | 'bolt'
   | 'bullet'
+  | 'grenade'
   | 'cannonball'
+  | 'tesla_arc'
   | 'flame'
+  | 'mortar_shell'
   | 'shell'
   | 'rocket'
   | 'plasma'
@@ -34,12 +38,23 @@ export type UltimateKind =
   | 'orbital_laser'
   | 'black_hole';
 
-export type UpgradeId = 'weapons' | 'armor' | 'economy' | 'fortress';
+export type UpgradeId =
+  | 'weapons'
+  | 'armor'
+  | 'attack_speed'
+  | 'crit_mastery'
+  | 'mobility'
+  | 'economy'
+  | 'bounty'
+  | 'fortress';
+
+export type UpgradeCategory = 'combat' | 'support';
 
 export type UpgradeLevels = Record<UpgradeId, number>;
 
 export interface UpgradeDef {
   id: UpgradeId;
+  category: UpgradeCategory;
   name: string;
   shortName: string;
   effectText: string;
@@ -53,12 +68,15 @@ export type UnitRole = 'melee' | 'ranged' | 'heavy' | 'siege';
 export type UnitVisualKind =
   | 'clubman'
   | 'slinger'
+  | 'shaman'
   | 'dino_rider'
   | 'anubis_warrior'
   | 'sun_priest'
+  | 'scorpion_guard'
   | 'sphinx_chariot'
   | 'spearman'
   | 'archer'
+  | 'centurion'
   | 'chariot'
   | 'knight'
   | 'crossbowman'
@@ -66,21 +84,27 @@ export type UnitVisualKind =
   | 'catapult'
   | 'pikeman'
   | 'musketeer'
+  | 'grenadier'
   | 'field_cannon'
   | 'steam_trooper'
   | 'gatling_gunner'
+  | 'tesla_coil_trooper'
   | 'steam_walker'
   | 'rifleman'
   | 'flamethrower'
+  | 'mortar_team'
   | 'early_tank'
   | 'spec_ops'
   | 'at_rocket'
+  | 'riot_juggernaut'
   | 'mbt'
   | 'cyborg'
+  | 'hover_drone'
   | 'railgun_sniper'
   | 'colossus_mech'
   | 'void_templar'
   | 'gravity_sniper'
+  | 'star_archon'
   | 'omega_titan';
 
 export type TurretVisualKind =
@@ -155,6 +179,8 @@ export interface UnitDef {
   projectileArc?: number;
   attackSound: SoundCue;
   isMechanical?: boolean;
+  /** Optional hovering height above ground shadow for drones & floating cosmic entities */
+  hoverHeight?: number;
 }
 
 export interface TurretDef {
@@ -323,6 +349,7 @@ export interface BeamEffect {
     | 'railgun'
     | 'ion_beam'
     | 'lightning'
+    | 'tesla_arc'
     | 'orbital_laser'
     | 'flame_jet'
     | 'solar_beam'

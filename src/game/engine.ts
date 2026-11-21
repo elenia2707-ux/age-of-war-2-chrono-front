@@ -6,11 +6,19 @@ import {
   createInitialUpgrades,
   getArmorHpMult,
   getArmorMitigationBonus,
+  getAttackSpeedMult,
   getBaseMaxHpMult,
+  getCritChanceBonus,
+  getCritDamageBonus,
   getGoldIncomeMult,
+  getKillGoldMult,
+  getKillXpMult,
+  getKnockbackResistMult,
+  getMoveSpeedMult,
   getNextUpgradeCost,
   getTrainSpeedMult,
   getTurretDamageMult,
+  getUltimateCooldownMult,
   getWeaponDamageMult,
 } from '../data/upgrades';
 import type {
@@ -263,15 +271,36 @@ export class GameEngine {
       const beforeHp = faction.baseHp;
       faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + maxGain + repair);
       faction.displayBaseHp = Math.max(faction.displayBaseHp, faction.baseHp);
+      const nextUltMax = Math.max(10, Math.round(era.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10);
+      if (faction.ultimateMaxCooldown > 0 && faction.ultimateCooldown > 0) {
+        faction.ultimateCooldown = Math.min(
+          nextUltMax,
+          faction.ultimateCooldown * (nextUltMax / faction.ultimateMaxCooldown),
+        );
+      }
+      faction.ultimateMaxCooldown = nextUltMax;
       const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
       this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.26, 'heal');
-    } else if (id === 'weapons') {
+    } else if (
+      id === 'weapons' ||
+      id === 'attack_speed' ||
+      id === 'crit_mastery' ||
+      id === 'mobility'
+    ) {
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           u.upgradeFlash = 1;
         }
       }
-      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#fb923c', 1.18, 'crit');
+      const col =
+        id === 'weapons'
+          ? '#fb923c'
+          : id === 'attack_speed'
+            ? '#38bdf8'
+            : id === 'crit_mastery'
+              ? '#fde047'
+              : '#4ade80';
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, col, 1.18, 'crit');
     } else {
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.18, 'gold');
     }
@@ -413,7 +442,10 @@ export class GameEngine {
     faction.baseMaxHp = nextScaledMax;
     faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + hpBonus);
     faction.displayBaseHp = faction.baseHp;
-    faction.ultimateMaxCooldown = nextEra.ultimate.cooldown;
+    faction.ultimateMaxCooldown = Math.max(
+      10,
+      Math.round(nextEra.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+    );
     // Reset ultimate cooldown on evolution so the player can unleash the new era's power right away
     faction.ultimateCooldown = 0;
     faction.evolveFlash = 1;
@@ -453,8 +485,12 @@ export class GameEngine {
     const era = getEra(faction.eraIndex);
     const def = era.ultimate;
 
-    faction.ultimateCooldown = def.cooldown;
-    faction.ultimateMaxCooldown = def.cooldown;
+    const scaledCd = Math.max(
+      10,
+      Math.round(def.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+    );
+    faction.ultimateCooldown = scaledCd;
+    faction.ultimateMaxCooldown = scaledCd;
 
     const active: ActiveUltimate = {
       uid: this.nextUid++,
@@ -684,6 +720,9 @@ export class GameEngine {
     const stepTeam = (allies: UnitEntity[], enemies: UnitEntity[], team: Team): void => {
       const dir = team === 'player' ? 1 : -1;
       const enemyBaseFront = team === 'player' ? ENEMY_BASE_FRONT_X : PLAYER_BASE_FRONT_X;
+      const teamFaction = this.getFaction(team);
+      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades);
+      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades);
 
       for (let i = 0; i < allies.length; i++) {
         const u = allies[i];
@@ -732,17 +771,21 @@ export class GameEngine {
           u.state = 'attack';
           if (u.attackCooldown <= 0) {
             this.performUnitAttack(u, inRangeOfUnit ? target : null);
-            u.attackCooldown = 1 / u.def.attackRate;
+            u.attackCooldown = 1 / (u.def.attackRate * atkSpdMult);
             u.attackAnim = 1;
           }
         } else {
-          // Friendly spacing: melee units avoid stacking directly on top of an engaged melee ally directly ahead
+          // Friendly spacing: same-role units queue cleanly behind engaged or waiting allies ahead
           let blockedByAlly = false;
           if (i > 0) {
             const ahead = allies[i - 1];
             const gap = (ahead.x - u.x) * dir;
             const desiredGap = (ahead.def.width + u.def.width) * 0.42;
-            if (gap < desiredGap && ahead.state === 'attack' && u.def.role === ahead.def.role) {
+            if (
+              gap < desiredGap &&
+              (ahead.state === 'attack' || ahead.state === 'idle') &&
+              u.def.role === ahead.def.role
+            ) {
               blockedByAlly = true;
             }
           }
@@ -751,7 +794,8 @@ export class GameEngine {
             u.state = 'idle';
           } else {
             u.state = 'walk';
-            const moveDist = u.def.speed * dt;
+            const effSpeed = u.def.speed * moveSpdMult;
+            const moveDist = effSpeed * dt;
             let nextX = u.x + moveDist * dir;
             // Don't walk past closest enemy unit or enemy base
             if (target) {
@@ -762,9 +806,13 @@ export class GameEngine {
             nextX = dir === 1 ? Math.min(nextX, baseStop) : Math.max(nextX, baseStop);
             u.x = nextX;
             const prevStep = Math.floor(u.walkPhase / Math.PI);
-            u.walkPhase += dt * (u.def.speed * 0.16);
+            u.walkPhase += dt * (effSpeed * 0.16);
             // Heavy war-machines & cavalry kick up subtle pixel road dust as they stride!
-            if ((u.def.role === 'heavy' || u.def.role === 'siege') && Math.floor(u.walkPhase / Math.PI) !== prevStep) {
+            if (
+              !u.def.hoverHeight &&
+              (u.def.role === 'heavy' || u.def.role === 'siege') &&
+              Math.floor(u.walkPhase / Math.PI) !== prevStep
+            ) {
               this.spawnDustWave(u.x - dir * 16, GROUND_Y, -dir * 38, 10, '#a8a29e');
             }
           }
@@ -791,38 +839,45 @@ export class GameEngine {
     const dir = attacker.team === 'player' ? 1 : -1;
     const def = attacker.def;
     const attackerFaction = this.getFaction(attacker.team);
-    const isCrit = this.random() < def.critChance;
+    const critChance = Math.min(0.85, def.critChance + getCritChanceBonus(attackerFaction.upgrades));
+    const critMult = CRIT_MULTIPLIER + getCritDamageBonus(attackerFaction.upgrades);
+    const isCrit = this.random() < critChance;
     const rawDamage =
-      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * (isCrit ? CRIT_MULTIPLIER : 1);
+      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * (isCrit ? critMult : 1);
 
     this.callbacks.onSound?.(def.attackSound);
 
+    const hoverOff = def.hoverHeight ?? 0;
     const originX = attacker.x + dir * (def.width * 0.56);
-    const originY = GROUND_Y - def.height * 0.88;
+    const originY = GROUND_Y - def.height * 0.88 - hoverOff;
     const targetX = target
       ? target.x
       : attacker.team === 'player'
         ? ENEMY_BASE_FRONT_X + 12
         : PLAYER_BASE_FRONT_X - 12;
-    const targetY = target ? GROUND_Y - target.def.height * 0.72 : GROUND_Y - 70;
+    const targetY = target
+      ? GROUND_Y - target.def.height * 0.72 - (target.def.hoverHeight ?? 0)
+      : GROUND_Y - 70;
 
-    // Instant Railgun or Interstellar Graviton piercing beam
-    if (def.projectile === 'railgun' || def.projectile === 'gravity_beam') {
+    // Instant Railgun, Interstellar Graviton, or Industrial Tesla Arc piercing beam
+    if (def.projectile === 'railgun' || def.projectile === 'gravity_beam' || def.projectile === 'tesla_arc') {
       const isGrav = def.projectile === 'gravity_beam';
-      const endX = originX + dir * (def.range + 45);
+      const isTesla = def.projectile === 'tesla_arc';
+      const endX = target && isTesla ? target.x : originX + dir * (def.range + 45);
+      const endY = target && isTesla ? targetY : originY;
       this.beams.push({
         uid: this.nextUid++,
         team: attacker.team,
-        style: isGrav ? 'gravity_beam' : 'railgun',
+        style: isGrav ? 'gravity_beam' : isTesla ? 'tesla_arc' : 'railgun',
         x1: originX,
         y1: originY,
         x2: endX,
-        y2: originY,
-        width: isGrav ? 7 : 5,
-        color: isGrav ? '#c084fc' : attacker.team === 'player' ? '#38bdf8' : '#fb7185',
-        life: isGrav ? 0.28 : 0.24,
-        maxLife: isGrav ? 0.28 : 0.24,
-        seed: this.random(),
+        y2: endY,
+        width: isGrav ? 7 : isTesla ? 6 : 5,
+        color: isGrav ? '#c084fc' : isTesla ? '#38bdf8' : attacker.team === 'player' ? '#38bdf8' : '#fb7185',
+        life: isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
+        maxLife: isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
+        seed: this.random() * 100,
       });
       this.spawnBurst(originX, originY, isGrav ? '#e879f9' : '#7dd3fc', 6, 110);
 
@@ -836,7 +891,30 @@ export class GameEngine {
         .sort((a, b) => (a.x - originX) * dir - (b.x - originX) * dir);
 
       let hits = 0;
+      let prevArcX = originX;
+      let prevArcY = originY;
       for (const victim of hitCandidates) {
+        if (isTesla && hits > 0) {
+          // Visible chaining lightning bolt jumping to the second shocked target!
+          const vx = victim.x;
+          const vy = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
+          this.beams.push({
+            uid: this.nextUid++,
+            team: attacker.team,
+            style: 'tesla_arc',
+            x1: prevArcX,
+            y1: prevArcY,
+            x2: vx,
+            y2: vy,
+            width: 5,
+            color: '#67e8f9',
+            life: 0.24,
+            maxLife: 0.24,
+            seed: this.random() * 100,
+          });
+        }
+        prevArcX = victim.x;
+        prevArcY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
         this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team);
         hits++;
         if (hits >= def.pierceCount) break;
@@ -940,12 +1018,18 @@ export class GameEngine {
         targetX,
       });
 
-      // Muzzle flash smoke for gunpowder/modern/tank weapons
-      if (def.projectile === 'bullet' || def.projectile === 'cannonball' || def.projectile === 'shell' || def.projectile === 'rocket') {
+      // Muzzle flash smoke for gunpowder/modern/tank/mortar weapons
+      if (
+        def.projectile === 'bullet' ||
+        def.projectile === 'cannonball' ||
+        def.projectile === 'shell' ||
+        def.projectile === 'mortar_shell' ||
+        def.projectile === 'rocket'
+      ) {
         this.spawnBurst(originX, originY, '#fde68a', 5, 80);
         this.spawnSmoke(originX, originY, 3);
       }
-      if (def.projectile === 'cannonball' || def.projectile === 'shell') {
+      if (def.projectile === 'cannonball' || def.projectile === 'shell' || def.projectile === 'mortar_shell') {
         this.callbacks.onShake?.(0.14);
       }
       return;
@@ -1106,20 +1190,29 @@ export class GameEngine {
       p.y += p.vy * dt;
       p.life += dt;
 
-      // Smoke trail for rockets / cannonballs / shells
-      if ((p.style === 'rocket' || p.style === 'cannonball' || p.style === 'shell') && this.random() < 0.65) {
+      // Smoke & fire trail for rockets / cannonballs / shells / mortars / grenades / totem fire
+      if (
+        (p.style === 'rocket' ||
+          p.style === 'cannonball' ||
+          p.style === 'shell' ||
+          p.style === 'mortar_shell' ||
+          p.style === 'grenade' ||
+          p.style === 'totem_fire') &&
+        this.random() < 0.68
+      ) {
+        const isFiery = p.style === 'totem_fire' || p.style === 'grenade';
         this.particles.push({
           x: p.x,
           y: p.y,
           vx: -p.vx * 0.08 + (this.random() - 0.5) * 16,
           vy: -10 - this.random() * 14,
-          size: p.style === 'rocket' ? 4.5 : 3.5,
-          color: p.style === 'rocket' ? '#e2e8f0' : '#94a3b8',
-          alpha: 0.6,
-          life: 0.3,
-          maxLife: 0.3,
+          size: p.style === 'rocket' || p.style === 'mortar_shell' ? 4.5 : 3.5,
+          color: isFiery ? '#fb923c' : p.style === 'rocket' ? '#e2e8f0' : '#94a3b8',
+          alpha: isFiery ? 0.78 : 0.6,
+          life: 0.28,
+          maxLife: 0.28,
           gravity: -15,
-          shape: 'smoke',
+          shape: isFiery ? 'circle' : 'smoke',
         });
       }
 
@@ -1133,14 +1226,17 @@ export class GameEngine {
             ? '#c084fc'
             : p.style === 'solar_orb'
               ? '#fbbf24'
-              : '#f97316';
+              : p.style === 'mortar_shell'
+                ? '#ef4444'
+                : '#f97316';
 
       // Check collision with enemy units
       for (const u of this.units) {
         if (u.team !== enemyTeam || u.state === 'dead') continue;
         if (p.hitUids.includes(u.uid)) continue;
         const halfW = u.def.width * 0.55 + 6;
-        const topY = GROUND_Y - u.def.height - 4;
+        const hoverOff = u.def.hoverHeight ?? 0;
+        const topY = GROUND_Y - u.def.height - 4 - hoverOff;
         if (p.x >= u.x - halfW && p.x <= u.x + halfW && p.y >= topY && p.y <= GROUND_Y + 6) {
           p.hitUids.push(u.uid);
           if (p.splashRadius > 0) {
@@ -1435,11 +1531,12 @@ export class GameEngine {
     victim.hitFlash = 1;
     victim.lastHitCrit = isCrit;
     victim.displayHpHold = Math.max(victim.displayHpHold, isCrit ? 0.24 : 0.16);
-    victim.knockbackVel += knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88);
+    victim.knockbackVel +=
+      knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88) * getKnockbackResistMult(victimFaction.upgrades);
 
     const hitDir = attackerTeam === 'player' ? 1 : -1;
     const impactX = victim.x - hitDir * Math.min(14, victim.def.width * 0.3);
-    const impactY = GROUND_Y - victim.def.height * 0.72;
+    const impactY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
 
     // Instant arcade hit-impact starburst & directional sparks on EVERY hit!
     const sparkColor = isCrit
@@ -1478,7 +1575,7 @@ export class GameEngine {
 
     this.addPopup(
       victim.x + (this.random() - 0.5) * 16,
-      GROUND_Y - victim.def.height * 1.48 - 10,
+      GROUND_Y - victim.def.height * 1.48 - 10 - (victim.def.hoverHeight ?? 0),
       isCrit ? `${finalDamage}!` : `${finalDamage}`,
       popupColor,
       isCrit ? 1.32 : 1.0,
@@ -1494,8 +1591,8 @@ export class GameEngine {
       const loser = this.getFaction(victim.team);
       const diff = DIFFICULTIES[this.difficulty];
 
-      const goldMult = attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1;
-      const xpMult = attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1;
+      const goldMult = (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades);
+      const xpMult = (attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1) * getKillXpMult(killer.upgrades);
 
       const rewardGold = Math.round(victim.def.killGold * goldMult);
       const rewardXp = Math.round(victim.def.killXp * xpMult);
@@ -1694,11 +1791,16 @@ export class GameEngine {
       color = id === 'steam_trooper' ? '#fb923c' : '#fbbf24';
       coreColor = '#fef9c3';
       radius = id === 'dino_rider' || id === 'sphinx_chariot' ? 48 : 36;
-    } else if (id === 'anubis_warrior') {
+    } else if (id === 'anubis_warrior' || id === 'scorpion_guard') {
       style = 'blade';
-      color = '#facc15';
+      color = id === 'scorpion_guard' ? '#4ade80' : '#facc15';
       coreColor = '#fef9c3';
-      radius = 38;
+      radius = id === 'scorpion_guard' ? 42 : 38;
+    } else if (id === 'centurion') {
+      style = 'blade';
+      color = attacker.team === 'player' ? '#60a5fa' : '#f87171';
+      coreColor = '#fef08a';
+      radius = 40;
     } else if (id === 'spearman' || id === 'chariot' || id === 'heavy_cavalry' || id === 'pikeman') {
       style = 'thrust';
       color = attacker.team === 'player' ? '#60a5fa' : '#f87171';

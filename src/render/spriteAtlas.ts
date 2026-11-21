@@ -1,3 +1,5 @@
+import { SPRITE_ATLAS_VERSION } from '../data/spriteManifest';
+
 /**
  * Pixel-art Sprite Sheet & JSON Atlas loader and crisp nearest-neighbor blitter.
  * Loads public/sprites/sprites_atlas.json + public/sprites/sprites_sheet.png.
@@ -21,6 +23,7 @@ export interface SpriteAtlasData {
     unitScale?: number;
     frameCount: number;
     version: number;
+    hash?: string;
   };
   frames: Record<string, SpriteFrame>;
 }
@@ -28,7 +31,7 @@ export interface SpriteAtlasData {
 /** 1 sprite pixel = 2 logical world units for bases, turrets, projectiles, and ground tiles */
 export const PIXEL_WORLD_SCALE = 2;
 
-/** HD 1:1 pixel density for all 31 detailed character & heavy war-machine sprites */
+/** HD 1:1 pixel density for all 40 detailed character & heavy war-machine sprites */
 export const UNIT_WORLD_SCALE = 1;
 
 let atlasData: SpriteAtlasData | null = null;
@@ -69,20 +72,23 @@ export function loadSpriteAtlas(basePath = './sprites/'): Promise<void> {
     return loadPromise;
   }
 
+  const bust = `?v=${encodeURIComponent(SPRITE_ATLAS_VERSION)}`;
+
   loadPromise = (async () => {
-    const res = await fetch(`${basePath}sprites_atlas.json`);
+    const res = await fetch(`${basePath}sprites_atlas.json${bust}`, { cache: 'no-cache' });
     if (!res.ok) {
       throw new Error(`Failed to load sprites_atlas.json (${res.status})`);
     }
     const parsed = (await res.json()) as SpriteAtlasData;
     atlasData = parsed;
 
+    const imgBust = parsed.meta.hash ? `?v=${encodeURIComponent(parsed.meta.hash)}` : bust;
     const img = new Image();
     img.decoding = 'sync';
     await new Promise<void>((resolve, reject) => {
       img.onload = () => resolve();
       img.onerror = (err) => reject(err);
-      img.src = `${basePath}${parsed.meta.image}`;
+      img.src = `${basePath}${parsed.meta.image}${imgBust}`;
     });
 
     sheetImage = img;

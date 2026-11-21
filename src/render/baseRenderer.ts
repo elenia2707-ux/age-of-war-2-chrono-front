@@ -109,7 +109,7 @@ export function renderBase(
   // Crisp In-World Pixel-Framed Fortress HP Bar with Delayed White Damage Trail!
   const barW = 148;
   const barH = 14;
-  const barY = -268;
+  const barY = -252;
   const hpFrac = Math.max(0, Math.min(1, hpRatio));
   const trailFrac = Math.max(hpFrac, Math.min(1, faction.displayBaseHp / Math.max(1, faction.baseMaxHp)));
   const fillW = Math.round(barW * hpFrac);

@@ -108,10 +108,10 @@ describe('GameEngine Core Simulation', () => {
     }
   });
 
-  it('applies all 4 gold spec upgrades (weapons, armor, economy, fortress) and preserves bonuses on evolve', () => {
+  it('applies all 8 gold spec upgrades up to Lv.10 and preserves bonuses on evolve', () => {
     const engine = new GameEngine();
     engine.startNewGame('normal', 314);
-    engine.player.gold = 100000;
+    engine.player.gold = 500000;
 
     // 1. Weapons upgrade increases attack damage dealt
     const baseTarget = engine.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
@@ -147,7 +147,35 @@ describe('GameEngine Core Simulation', () => {
     const freshUnit = engine.spawnUnit('player', UNIT_BY_ID.clubman);
     expect(freshUnit.maxHp).toBe(Math.round(UNIT_BY_ID.clubman.maxHp * (1 + 2 * 0.14)));
 
-    // 3. Economy upgrade boosts passive gold income and speeds up unit training
+    // 3. Attack Speed & Crit Mastery upgrades shorten attack cooldown and elevate crit output
+    expect(engine.buyUpgrade('player', 'attack_speed')).toBe(true);
+    expect(engine.buyUpgrade('player', 'attack_speed')).toBe(true);
+    expect(engine.buyUpgrade('player', 'crit_mastery')).toBe(true);
+    const fastAttacker = engine.spawnUnit('player', UNIT_BY_ID.clubman);
+    fastAttacker.x = 1600;
+    fastAttacker.attackCooldown = 0;
+    const dummyEnemy = engine.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    dummyEnemy.x = 1625;
+    dummyEnemy.attackCooldown = 10;
+    engine.step(0.05);
+    // Attack cooldown should be strictly faster than base 1 / attackRate
+    expect(fastAttacker.attackCooldown).toBeLessThan(1 / UNIT_BY_ID.clubman.attackRate);
+
+    // 4. Mobility upgrade boosts march speed
+    const walkerBefore = engine.spawnUnit('player', UNIT_BY_ID.clubman);
+    walkerBefore.x = 400;
+    engine.step(0.05);
+    const dxLv0 = walkerBefore.x - 400;
+    expect(engine.buyUpgrade('player', 'mobility')).toBe(true);
+    expect(engine.buyUpgrade('player', 'mobility')).toBe(true);
+    expect(engine.buyUpgrade('player', 'mobility')).toBe(true);
+    const walkerAfter = engine.spawnUnit('player', UNIT_BY_ID.clubman);
+    walkerAfter.x = 400;
+    engine.step(0.05);
+    const dxLv3 = walkerAfter.x - 400;
+    expect(dxLv3).toBeGreaterThan(dxLv0);
+
+    // 5. Economy upgrade boosts passive gold income and speeds up unit training
     const baseTrainTime = UNIT_BY_ID.dino_rider.trainTime;
     expect(engine.buyUpgrade('player', 'economy')).toBe(true);
     expect(engine.buyUpgrade('player', 'economy')).toBe(true);
@@ -158,31 +186,48 @@ describe('GameEngine Core Simulation', () => {
     // Passive gold should be > base 4G/s due to Lv.2 economy (+30% -> 5.2G/s)
     expect(engine.player.gold - goldBeforeStep).toBeGreaterThan(4.8);
 
-    // 4. Fortress upgrade boosts base max HP, repairs damaged base, and persists through evolve()
+    // 6. Bounty upgrade boosts kill gold & kill XP rewards
+    expect(engine.buyUpgrade('player', 'bounty')).toBe(true);
+    expect(engine.buyUpgrade('player', 'bounty')).toBe(true);
+    expect(engine.buyUpgrade('player', 'bounty')).toBe(true);
+    const weakEnemy = engine.spawnUnit('enemy', UNIT_BY_ID.clubman);
+    weakEnemy.x = 1800;
+    weakEnemy.hp = 1;
+    weakEnemy.attackCooldown = 10;
+    const slayer = engine.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    slayer.x = 1775;
+    slayer.attackCooldown = 0;
+    const xpBeforeKill = engine.player.xp;
+    engine.step(0.05);
+    expect(engine.player.xp - xpBeforeKill).toBeGreaterThan(UNIT_BY_ID.clubman.killXp);
+
+    // 7. Fortress upgrade boosts base max HP, repairs damaged base, reduces ult cooldown, and persists through evolve()
     engine.player.baseHp = 200;
     const prevBaseMaxHp = engine.player.baseMaxHp;
+    const prevUltMaxCd = engine.player.ultimateMaxCooldown;
     expect(engine.buyUpgrade('player', 'fortress')).toBe(true);
     expect(engine.player.baseMaxHp).toBeGreaterThan(prevBaseMaxHp);
     expect(engine.player.baseHp).toBeGreaterThan(200);
+    expect(engine.player.ultimateMaxCooldown).toBeLessThan(prevUltMaxCd);
 
     engine.player.xp = ERAS[0].evolveXp;
     expect(engine.evolve('player')).toBe(true);
-    // Era 1 baseMaxHp (820) * 1.1 (Lv.1 fortress) = 902
     expect(engine.player.baseMaxHp).toBe(Math.round(ERAS[1].baseMaxHp * 1.1));
+    expect(engine.player.ultimateMaxCooldown).toBeLessThan(ERAS[1].ultimate.cooldown);
 
-    // 5. Caps cleanly at Lv.8 and cannot buy past MAX
+    // 8. Caps cleanly at Lv.10 and cannot buy past MAX
     while (engine.buyUpgrade('player', 'weapons')) {
       // buy to max
     }
-    expect(engine.player.upgrades.weapons).toBe(8);
+    expect(engine.player.upgrades.weapons).toBe(10);
     expect(engine.getUpgradeCost('player', 'weapons')).toBeNull();
     expect(engine.buyUpgrade('player', 'weapons')).toBe(false);
   });
 
-  it('supports piercing railgun/gravity shots, 2x speed, pause, and victory/defeat resolution', () => {
+  it('supports tesla_arc chain lightning, railgun/gravity piercing, hover units, 2x speed, pause, and victory resolution', () => {
     const engine = new GameEngine();
     engine.startNewGame('normal', 999);
-    engine.player.eraIndex = 8;
+    engine.player.eraIndex = 5;
 
     // Pause freezes simulation time
     engine.setPaused(true);
@@ -196,7 +241,21 @@ describe('GameEngine Core Simulation', () => {
     expect(engine.elapsed).toBeCloseTo(0.1, 4);
     engine.setSpeed(1);
 
+    // Era 6 Tesla Coil Trooper chains lightning across 2 enemies!
+    const tesla = engine.spawnUnit('player', UNIT_BY_ID.tesla_coil_trooper);
+    tesla.x = 700;
+    tesla.attackCooldown = 0;
+    const t1 = engine.spawnUnit('enemy', UNIT_BY_ID.steam_trooper);
+    const t2 = engine.spawnUnit('enemy', UNIT_BY_ID.steam_trooper);
+    t1.x = 840;
+    t2.x = 890;
+    engine.step(0.05);
+    expect(t1.hp).toBeLessThan(t1.maxHp);
+    expect(t2.hp).toBeLessThan(t2.maxHp);
+    expect(engine.beams.some((b) => b.style === 'tesla_arc')).toBe(true);
+
     // Era 9 Railgun sniper pierces multiple enemy units in a line
+    engine.player.eraIndex = 8;
     const sniper = engine.spawnUnit('player', UNIT_BY_ID.railgun_sniper);
     sniper.x = 900;
     const e1 = engine.spawnUnit('enemy', UNIT_BY_ID.cyborg);
@@ -207,6 +266,10 @@ describe('GameEngine Core Simulation', () => {
     for (let t = 0; t < 10; t++) engine.step(0.05);
     expect(e1.hp).toBeLessThan(e1.maxHp);
     expect(e2.hp).toBeLessThan(e2.maxHp);
+
+    // Era 9 Hover Drone & Era 10 Star Archon have hoverHeight and fire cleanly
+    expect(UNIT_BY_ID.hover_drone.hoverHeight).toBeGreaterThan(0);
+    expect(UNIT_BY_ID.star_archon.hoverHeight).toBeGreaterThan(0);
 
     // Era 10 Gravity sniper also pierces multiple enemies cleanly
     engine.player.eraIndex = 9;

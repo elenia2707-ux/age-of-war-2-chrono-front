@@ -1186,3 +1186,139 @@ body {
     font-size: 13px;
   }
 }
+
+/* ============================================================================
+   8-UPGRADE PAGE SWITCHER (전투 <-> 지원) & SAFE ICON PLACEHOLDER
+   ============================================================================ */
+.upgrade-page-switch {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  width: 38px;
+  flex: 0 0 38px;
+}
+
+.upg-page-btn {
+  flex: 1;
+  border: 1px solid rgba(245, 189, 66, 0.28);
+  border-radius: 7px;
+  background: rgba(245, 189, 66, 0.08);
+  color: #cbd5e1;
+  font-size: 9.5px;
+  font-weight: 800;
+  cursor: pointer;
+  padding: 0 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+}
+
+.upg-page-btn.active {
+  background: rgba(245, 189, 66, 0.32);
+  border-color: rgba(250, 204, 21, 0.85);
+  color: #fef08a;
+}
+
+.card-sprite-placeholder {
+  display: block;
+  width: 34px;
+  height: 24px;
+  border-radius: 5px;
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.card-sprite-placeholder.upgrade-sprite {
+  width: 24px;
+  height: 20px;
+}
+
+/* ============================================================================
+   ULTRA-COMPACT SHORT LANDSCAPE (iPhone Safari in-app toolbar ~852x315px)
+   Ensures full road & soldiers' boots stay cleanly visible ABOVE #bottom-hud!
+   ============================================================================ */
+@media (max-height: 350px) {
+  #top-hud {
+    top: max(4px, var(--safe-top));
+  }
+  .top-left,
+  .minimap-shell,
+  .top-right {
+    height: 32px;
+  }
+  #minimap-canvas {
+    height: 14px;
+  }
+  .icon-btn {
+    width: 28px;
+    height: 24px;
+  }
+  #bottom-hud {
+    bottom: max(4px, var(--safe-bottom));
+    height: 62px;
+    gap: 5px;
+  }
+  .queue-bar {
+    bottom: calc(69px + var(--safe-bottom));
+    padding: 3px 5px;
+  }
+  .queue-slot {
+    width: 30px;
+    height: 26px;
+  }
+  .dock-left {
+    max-width: 556px;
+    padding: 3px;
+    gap: 4px;
+  }
+  .mode-tabs {
+    width: 52px;
+    flex: 0 0 52px;
+    gap: 2px;
+  }
+  .upgrade-page-switch {
+    width: 34px;
+    flex: 0 0 34px;
+    gap: 2px;
+  }
+  .upg-page-btn {
+    font-size: 9px;
+  }
+  .action-cards {
+    gap: 4px;
+  }
+  .action-card {
+    padding: 2px 3px 3px;
+  }
+  .card-sprite {
+    width: 48px;
+    height: 27px;
+  }
+  .card-sprite.upgrade-sprite {
+    width: 22px;
+    height: 19px;
+  }
+  .card-name {
+    font-size: 9px;
+  }
+  .card-effect {
+    font-size: 8px;
+  }
+  .card-cost {
+    font-size: 9px;
+  }
+  .power-btn {
+    width: 72px;
+    padding: 3px 4px;
+  }
+  .power-kicker {
+    font-size: 8.5px;
+  }
+  .power-label {
+    font-size: 10.5px;
+  }
+  .power-sub {
+    font-size: 9px;
+  }
+}

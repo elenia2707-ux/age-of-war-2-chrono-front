@@ -1,6 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import atlasRaw from '../../public/sprites/sprites_atlas.json';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID } from '../data/eras';
+import { SPRITE_ATLAS_VERSION } from '../data/spriteManifest';
+import { UPGRADES } from '../data/upgrades';
 import { GameEngine } from '../game/engine';
 import type { SpriteAtlasData } from '../render/spriteAtlas';
 import { selectUnitAnimFrame } from '../render/unitRenderer';
@@ -22,21 +24,23 @@ const HEAVY_UNITS = new Set([
 ]);
 
 describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
-  it('contains valid sprites_atlas.json covering all 10 eras, 31 units, 20 turrets, bases, projectiles, tiles, and upgrade icons', () => {
+  it('contains valid sprites_atlas.json covering all 10 eras, 40 units, 20 turrets, bases, projectiles, tiles, and 8 upgrade icons', () => {
     expect(atlas.meta.image).toBe('sprites_sheet.png');
     expect(atlas.meta.width).toBeGreaterThan(0);
     expect(atlas.meta.height).toBeGreaterThan(0);
     expect(atlas.meta.frameCount).toBe(Object.keys(atlas.frames).length);
+    expect(atlas.meta.hash).toBe(SPRITE_ATLAS_VERSION);
 
     const sheetW = atlas.meta.width;
     const sheetH = atlas.meta.height;
     const anims = ['walk_0', 'walk_1', 'walk_2', 'walk_3', 'attack_0', 'attack_1', 'attack_2', 'hurt_0', 'death_0'];
     const teams = ['player', 'enemy'];
 
-    // 1. All 31 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & texture safety
+    // 1. All 40 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & iOS texture safety
     expect(sheetW).toBeLessThanOrEqual(4096);
     expect(sheetH).toBeLessThanOrEqual(4096);
     expect(atlas.meta.unitScale).toBe(1);
+    expect(Object.keys(UNIT_BY_ID)).toHaveLength(40);
 
     for (const unitId of Object.keys(UNIT_BY_ID)) {
       for (const team of teams) {
@@ -57,8 +61,8 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
           } else {
             expect(f.w).toBeGreaterThanOrEqual(68);
             expect(f.w).toBeLessThanOrEqual(88);
-            expect(f.h).toBeGreaterThanOrEqual(68);
-            expect(f.h).toBeLessThanOrEqual(76);
+            expect(f.h).toBeGreaterThanOrEqual(60);
+            expect(f.h).toBeLessThanOrEqual(84);
           }
         }
       }
@@ -90,16 +94,19 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       }
     }
 
-    // 4. All projectile, ultimate, ground tile, prop & upgrade icon sprites
+    // 4. All projectile, ultimate, ground tile, prop & all 8 upgrade icon sprites
     const requiredMisc = [
       'proj/stone',
+      'proj/totem_fire',
       'proj/boulder',
       'proj/solar_orb',
       'proj/arrow',
       'proj/fire_arrow',
       'proj/bolt',
       'proj/bullet',
+      'proj/grenade',
       'proj/cannonball',
+      'proj/mortar_shell',
       'proj/shell',
       'proj/rocket',
       'proj/plasma/player',
@@ -113,10 +120,7 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
       'ult/bomber/enemy',
       'ult/zeppelin/player',
       'ult/zeppelin/enemy',
-      'icon/upg_weapons',
-      'icon/upg_armor',
-      'icon/upg_economy',
-      'icon/upg_fortress',
+      ...UPGRADES.map((u) => u.spriteKey),
       ...Array.from({ length: 10 }, (_, i) => `tile/ground_era_${i}`),
       ...Array.from({ length: 10 }, (_, i) => `prop/mid_${i}`),
       ...Array.from({ length: 10 }, (_, i) => `prop/fore_${i}`),

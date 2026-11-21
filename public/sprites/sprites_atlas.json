@@ -485,1528 +485,1584 @@
       "anchorY": 12,
       "h": 24,
       "w": 24,
-      "x": 1046,
-      "y": 2380
+      "x": 1586,
+      "y": 2758
+    },
+    "icon/upg_attack_speed": {
+      "anchorX": 12,
+      "anchorY": 12,
+      "h": 24,
+      "w": 24,
+      "x": 1612,
+      "y": 2758
+    },
+    "icon/upg_bounty": {
+      "anchorX": 12,
+      "anchorY": 12,
+      "h": 24,
+      "w": 24,
+      "x": 1638,
+      "y": 2758
+    },
+    "icon/upg_crit_mastery": {
+      "anchorX": 12,
+      "anchorY": 12,
+      "h": 24,
+      "w": 24,
+      "x": 1664,
+      "y": 2758
     },
     "icon/upg_economy": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 24,
-      "x": 1072,
-      "y": 2380
+      "x": 1690,
+      "y": 2758
     },
     "icon/upg_fortress": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 24,
-      "x": 1098,
-      "y": 2380
+      "x": 1716,
+      "y": 2758
+    },
+    "icon/upg_mobility": {
+      "anchorX": 12,
+      "anchorY": 12,
+      "h": 24,
+      "w": 24,
+      "x": 1742,
+      "y": 2758
     },
     "icon/upg_weapons": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 24,
-      "x": 1124,
-      "y": 2380
+      "x": 1768,
+      "y": 2758
     },
     "proj/antimatter/enemy": {
       "anchorX": 8,
       "anchorY": 8,
       "h": 16,
       "w": 16,
-      "x": 1562,
-      "y": 2380
+      "x": 2206,
+      "y": 2758
     },
     "proj/antimatter/player": {
       "anchorX": 8,
       "anchorY": 8,
       "h": 16,
       "w": 16,
-      "x": 1580,
-      "y": 2380
+      "x": 2224,
+      "y": 2758
     },
     "proj/arrow": {
       "anchorX": 9,
       "anchorY": 4,
       "h": 8,
       "w": 18,
-      "x": 1826,
-      "y": 2380
+      "x": 2520,
+      "y": 2758
     },
     "proj/bolt": {
       "anchorX": 9,
       "anchorY": 4,
       "h": 8,
       "w": 18,
-      "x": 1846,
-      "y": 2380
+      "x": 2540,
+      "y": 2758
     },
     "proj/bomb": {
       "anchorX": 10,
       "anchorY": 5,
       "h": 10,
       "w": 18,
-      "x": 1770,
-      "y": 2380
+      "x": 2444,
+      "y": 2758
     },
     "proj/boulder": {
       "anchorX": 7,
       "anchorY": 7,
       "h": 14,
       "w": 14,
-      "x": 1598,
-      "y": 2380
+      "x": 2242,
+      "y": 2758
     },
     "proj/bullet": {
       "anchorX": 8,
       "anchorY": 3,
       "h": 6,
       "w": 14,
-      "x": 1894,
-      "y": 2380
+      "x": 30,
+      "y": 2784
     },
     "proj/cannonball": {
       "anchorX": 6,
       "anchorY": 6,
       "h": 12,
       "w": 12,
-      "x": 1656,
-      "y": 2380
+      "x": 2330,
+      "y": 2758
     },
     "proj/cruise_missile": {
       "anchorX": 13,
       "anchorY": 6,
       "h": 12,
       "w": 24,
-      "x": 1630,
-      "y": 2380
+      "x": 2304,
+      "y": 2758
     },
     "proj/fire_arrow": {
       "anchorX": 10,
       "anchorY": 5,
       "h": 10,
       "w": 20,
-      "x": 1726,
-      "y": 2380
+      "x": 2400,
+      "y": 2758
+    },
+    "proj/grenade": {
+      "anchorX": 6,
+      "anchorY": 8,
+      "h": 14,
+      "w": 12,
+      "x": 2290,
+      "y": 2758
     },
     "proj/meteor": {
       "anchorX": 11,
       "anchorY": 11,
       "h": 22,
       "w": 22,
-      "x": 1150,
-      "y": 2380
+      "x": 1794,
+      "y": 2758
+    },
+    "proj/mortar_shell": {
+      "anchorX": 10,
+      "anchorY": 5,
+      "h": 10,
+      "w": 18,
+      "x": 2464,
+      "y": 2758
     },
     "proj/plasma/enemy": {
       "anchorX": 9,
       "anchorY": 5,
       "h": 10,
       "w": 16,
-      "x": 1790,
-      "y": 2380
+      "x": 2484,
+      "y": 2758
     },
     "proj/plasma/player": {
       "anchorX": 9,
       "anchorY": 5,
       "h": 10,
       "w": 16,
-      "x": 1808,
-      "y": 2380
+      "x": 2502,
+      "y": 2758
     },
     "proj/rocket": {
       "anchorX": 11,
       "anchorY": 5,
       "h": 10,
       "w": 20,
-      "x": 1748,
-      "y": 2380
+      "x": 2422,
+      "y": 2758
     },
     "proj/shell": {
       "anchorX": 8,
       "anchorY": 4,
       "h": 8,
       "w": 16,
-      "x": 1866,
-      "y": 2380
+      "x": 2,
+      "y": 2784
     },
     "proj/solar_orb": {
       "anchorX": 7,
       "anchorY": 7,
       "h": 14,
       "w": 14,
-      "x": 1614,
-      "y": 2380
+      "x": 2258,
+      "y": 2758
     },
     "proj/stone": {
       "anchorX": 4,
       "anchorY": 4,
       "h": 8,
       "w": 8,
-      "x": 1884,
-      "y": 2380
+      "x": 20,
+      "y": 2784
+    },
+    "proj/totem_fire": {
+      "anchorX": 7,
+      "anchorY": 7,
+      "h": 14,
+      "w": 14,
+      "x": 2274,
+      "y": 2758
     },
     "prop/fore_0": {
       "anchorX": 14,
       "anchorY": 16,
       "h": 18,
       "w": 28,
-      "x": 1266,
-      "y": 2380
+      "x": 1910,
+      "y": 2758
     },
     "prop/fore_1": {
       "anchorX": 14,
       "anchorY": 16,
       "h": 18,
       "w": 28,
-      "x": 1296,
-      "y": 2380
+      "x": 1940,
+      "y": 2758
     },
     "prop/fore_2": {
       "anchorX": 13,
       "anchorY": 14,
       "h": 16,
       "w": 26,
-      "x": 1450,
-      "y": 2380
+      "x": 2094,
+      "y": 2758
     },
     "prop/fore_3": {
       "anchorX": 13,
       "anchorY": 14,
       "h": 16,
       "w": 26,
-      "x": 1478,
-      "y": 2380
+      "x": 2122,
+      "y": 2758
     },
     "prop/fore_4": {
       "anchorX": 13,
       "anchorY": 14,
       "h": 16,
       "w": 26,
-      "x": 1506,
-      "y": 2380
+      "x": 2150,
+      "y": 2758
     },
     "prop/fore_5": {
       "anchorX": 14,
       "anchorY": 14,
       "h": 16,
       "w": 28,
-      "x": 1420,
-      "y": 2380
+      "x": 2064,
+      "y": 2758
     },
     "prop/fore_6": {
       "anchorX": 15,
       "anchorY": 14,
       "h": 16,
       "w": 30,
-      "x": 1356,
-      "y": 2380
+      "x": 2000,
+      "y": 2758
     },
     "prop/fore_7": {
       "anchorX": 15,
       "anchorY": 14,
       "h": 16,
       "w": 30,
-      "x": 1388,
-      "y": 2380
+      "x": 2032,
+      "y": 2758
     },
     "prop/fore_8": {
       "anchorX": 13,
       "anchorY": 14,
       "h": 16,
       "w": 26,
-      "x": 1534,
-      "y": 2380
+      "x": 2178,
+      "y": 2758
     },
     "prop/fore_9": {
       "anchorX": 14,
       "anchorY": 16,
       "h": 18,
       "w": 28,
-      "x": 1326,
-      "y": 2380
+      "x": 1970,
+      "y": 2758
     },
     "prop/mid_0": {
       "anchorX": 16,
       "anchorY": 40,
       "h": 42,
       "w": 32,
-      "x": 458,
-      "y": 2314
+      "x": 994,
+      "y": 2694
     },
     "prop/mid_1": {
       "anchorX": 17,
       "anchorY": 44,
       "h": 46,
       "w": 34,
-      "x": 296,
-      "y": 2314
+      "x": 832,
+      "y": 2694
     },
     "prop/mid_2": {
       "anchorX": 16,
       "anchorY": 40,
       "h": 42,
       "w": 32,
-      "x": 492,
-      "y": 2314
+      "x": 1028,
+      "y": 2694
     },
     "prop/mid_3": {
       "anchorX": 18,
       "anchorY": 42,
       "h": 44,
       "w": 36,
-      "x": 358,
-      "y": 2314
+      "x": 894,
+      "y": 2694
     },
     "prop/mid_4": {
       "anchorX": 18,
       "anchorY": 36,
       "h": 38,
       "w": 36,
-      "x": 526,
-      "y": 2314
+      "x": 1062,
+      "y": 2694
     },
     "prop/mid_5": {
       "anchorX": 16,
       "anchorY": 42,
       "h": 44,
       "w": 32,
-      "x": 396,
-      "y": 2314
+      "x": 932,
+      "y": 2694
     },
     "prop/mid_6": {
       "anchorX": 17,
       "anchorY": 24,
       "h": 26,
       "w": 34,
-      "x": 680,
-      "y": 2314
+      "x": 1216,
+      "y": 2694
     },
     "prop/mid_7": {
       "anchorX": 13,
       "anchorY": 42,
       "h": 44,
       "w": 26,
-      "x": 430,
-      "y": 2314
+      "x": 966,
+      "y": 2694
     },
     "prop/mid_8": {
       "anchorX": 12,
       "anchorY": 44,
       "h": 46,
       "w": 24,
-      "x": 332,
-      "y": 2314
+      "x": 868,
+      "y": 2694
     },
     "prop/mid_9": {
       "anchorX": 14,
       "anchorY": 46,
       "h": 48,
       "w": 28,
-      "x": 266,
-      "y": 2314
+      "x": 802,
+      "y": 2694
     },
     "tile/ground_era_0": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2148,
-      "y": 2242
+      "x": 1186,
+      "y": 2622
     },
     "tile/ground_era_1": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2214,
-      "y": 2242
+      "x": 1252,
+      "y": 2622
     },
     "tile/ground_era_2": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2280,
-      "y": 2242
+      "x": 1318,
+      "y": 2622
     },
     "tile/ground_era_3": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2346,
-      "y": 2242
+      "x": 1384,
+      "y": 2622
     },
     "tile/ground_era_4": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2412,
-      "y": 2242
+      "x": 1450,
+      "y": 2622
     },
     "tile/ground_era_5": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2478,
-      "y": 2242
+      "x": 1516,
+      "y": 2622
     },
     "tile/ground_era_6": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 2,
-      "y": 2314
+      "x": 1582,
+      "y": 2622
     },
     "tile/ground_era_7": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 68,
-      "y": 2314
+      "x": 1648,
+      "y": 2622
     },
     "tile/ground_era_8": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 134,
-      "y": 2314
+      "x": 1714,
+      "y": 2622
     },
     "tile/ground_era_9": {
       "anchorX": 0,
       "anchorY": 0,
       "h": 64,
       "w": 64,
-      "x": 200,
-      "y": 2314
+      "x": 1780,
+      "y": 2622
     },
     "turret/arrow_tower/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 716,
-      "y": 2314
+      "x": 1252,
+      "y": 2694
     },
     "turret/arrow_tower/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 752,
-      "y": 2314
+      "x": 1288,
+      "y": 2694
     },
     "turret/arrow_tower/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 788,
-      "y": 2314
+      "x": 1324,
+      "y": 2694
     },
     "turret/arrow_tower/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 824,
-      "y": 2314
+      "x": 1360,
+      "y": 2694
     },
     "turret/ballista/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 860,
-      "y": 2314
+      "x": 1396,
+      "y": 2694
     },
     "turret/ballista/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 896,
-      "y": 2314
+      "x": 1432,
+      "y": 2694
     },
     "turret/ballista/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 932,
-      "y": 2314
+      "x": 1468,
+      "y": 2694
     },
     "turret/ballista/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 968,
-      "y": 2314
+      "x": 1504,
+      "y": 2694
     },
     "turret/boiler_mortar/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1004,
-      "y": 2314
+      "x": 1540,
+      "y": 2694
     },
     "turret/boiler_mortar/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1040,
-      "y": 2314
+      "x": 1576,
+      "y": 2694
     },
     "turret/boiler_mortar/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1076,
-      "y": 2314
+      "x": 1612,
+      "y": 2694
     },
     "turret/boiler_mortar/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1112,
-      "y": 2314
+      "x": 1648,
+      "y": 2694
     },
     "turret/bone_catapult/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1148,
-      "y": 2314
+      "x": 1684,
+      "y": 2694
     },
     "turret/bone_catapult/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1184,
-      "y": 2314
+      "x": 1720,
+      "y": 2694
     },
     "turret/bone_catapult/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1220,
-      "y": 2314
+      "x": 1756,
+      "y": 2694
     },
     "turret/bone_catapult/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1256,
-      "y": 2314
+      "x": 1792,
+      "y": 2694
     },
     "turret/crossbow_bastion/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1292,
-      "y": 2314
+      "x": 1828,
+      "y": 2694
     },
     "turret/crossbow_bastion/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1328,
-      "y": 2314
+      "x": 1864,
+      "y": 2694
     },
     "turret/crossbow_bastion/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1364,
-      "y": 2314
+      "x": 1900,
+      "y": 2694
     },
     "turret/crossbow_bastion/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1400,
-      "y": 2314
+      "x": 1936,
+      "y": 2694
     },
     "turret/fortress_cannon/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1436,
-      "y": 2314
+      "x": 1972,
+      "y": 2694
     },
     "turret/fortress_cannon/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1472,
-      "y": 2314
+      "x": 2008,
+      "y": 2694
     },
     "turret/fortress_cannon/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1508,
-      "y": 2314
+      "x": 2044,
+      "y": 2694
     },
     "turret/fortress_cannon/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1544,
-      "y": 2314
+      "x": 2080,
+      "y": 2694
     },
     "turret/howitzer_turret/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1580,
-      "y": 2314
+      "x": 2116,
+      "y": 2694
     },
     "turret/howitzer_turret/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1616,
-      "y": 2314
+      "x": 2152,
+      "y": 2694
     },
     "turret/howitzer_turret/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1652,
-      "y": 2314
+      "x": 2188,
+      "y": 2694
     },
     "turret/howitzer_turret/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1688,
-      "y": 2314
+      "x": 2224,
+      "y": 2694
     },
     "turret/ion_cannon/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1724,
-      "y": 2314
+      "x": 2260,
+      "y": 2694
     },
     "turret/ion_cannon/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1760,
-      "y": 2314
+      "x": 2296,
+      "y": 2694
     },
     "turret/ion_cannon/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1796,
-      "y": 2314
+      "x": 2332,
+      "y": 2694
     },
     "turret/ion_cannon/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1832,
-      "y": 2314
+      "x": 2368,
+      "y": 2694
     },
     "turret/keep_trebuchet/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1868,
-      "y": 2314
+      "x": 2404,
+      "y": 2694
     },
     "turret/keep_trebuchet/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1904,
-      "y": 2314
+      "x": 2440,
+      "y": 2694
     },
     "turret/keep_trebuchet/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1940,
-      "y": 2314
+      "x": 2476,
+      "y": 2694
     },
     "turret/keep_trebuchet/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1976,
-      "y": 2314
+      "x": 2512,
+      "y": 2694
     },
     "turret/mg_nest/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2012,
-      "y": 2314
+      "x": 2,
+      "y": 2758
     },
     "turret/mg_nest/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2048,
-      "y": 2314
+      "x": 38,
+      "y": 2758
     },
     "turret/mg_nest/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2084,
-      "y": 2314
+      "x": 74,
+      "y": 2758
     },
     "turret/mg_nest/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2120,
-      "y": 2314
+      "x": 110,
+      "y": 2758
     },
     "turret/missile_pod/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2156,
-      "y": 2314
+      "x": 146,
+      "y": 2758
     },
     "turret/missile_pod/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2192,
-      "y": 2314
+      "x": 182,
+      "y": 2758
     },
     "turret/missile_pod/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2228,
-      "y": 2314
+      "x": 218,
+      "y": 2758
     },
     "turret/missile_pod/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2264,
-      "y": 2314
+      "x": 254,
+      "y": 2758
     },
     "turret/musket_battery/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2300,
-      "y": 2314
+      "x": 290,
+      "y": 2758
     },
     "turret/musket_battery/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2336,
-      "y": 2314
+      "x": 326,
+      "y": 2758
     },
     "turret/musket_battery/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2372,
-      "y": 2314
+      "x": 362,
+      "y": 2758
     },
     "turret/musket_battery/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2408,
-      "y": 2314
+      "x": 398,
+      "y": 2758
     },
     "turret/obelisk_beam/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2444,
-      "y": 2314
+      "x": 434,
+      "y": 2758
     },
     "turret/obelisk_beam/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2480,
-      "y": 2314
+      "x": 470,
+      "y": 2758
     },
     "turret/obelisk_beam/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2516,
-      "y": 2314
+      "x": 506,
+      "y": 2758
     },
     "turret/obelisk_beam/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 2,
-      "y": 2380
+      "x": 542,
+      "y": 2758
     },
     "turret/plasma_repeater/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 38,
-      "y": 2380
+      "x": 578,
+      "y": 2758
     },
     "turret/plasma_repeater/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 74,
-      "y": 2380
+      "x": 614,
+      "y": 2758
     },
     "turret/plasma_repeater/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 110,
-      "y": 2380
+      "x": 650,
+      "y": 2758
     },
     "turret/plasma_repeater/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 146,
-      "y": 2380
+      "x": 686,
+      "y": 2758
     },
     "turret/platform/enemy": {
       "anchorX": 13,
       "anchorY": 3,
       "h": 10,
       "w": 26,
-      "x": 1670,
-      "y": 2380
+      "x": 2344,
+      "y": 2758
     },
     "turret/platform/player": {
       "anchorX": 13,
       "anchorY": 3,
       "h": 10,
       "w": 26,
-      "x": 1698,
-      "y": 2380
+      "x": 2372,
+      "y": 2758
     },
     "turret/prism_spire/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 182,
-      "y": 2380
+      "x": 722,
+      "y": 2758
     },
     "turret/prism_spire/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 218,
-      "y": 2380
+      "x": 758,
+      "y": 2758
     },
     "turret/prism_spire/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 254,
-      "y": 2380
+      "x": 794,
+      "y": 2758
     },
     "turret/prism_spire/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 290,
-      "y": 2380
+      "x": 830,
+      "y": 2758
     },
     "turret/rock_dropper/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 326,
-      "y": 2380
+      "x": 866,
+      "y": 2758
     },
     "turret/rock_dropper/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 362,
-      "y": 2380
+      "x": 902,
+      "y": 2758
     },
     "turret/rock_dropper/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 398,
-      "y": 2380
+      "x": 938,
+      "y": 2758
     },
     "turret/rock_dropper/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 434,
-      "y": 2380
+      "x": 974,
+      "y": 2758
     },
     "turret/scarab_catapult/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 470,
-      "y": 2380
+      "x": 1010,
+      "y": 2758
     },
     "turret/scarab_catapult/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 506,
-      "y": 2380
+      "x": 1046,
+      "y": 2758
     },
     "turret/scarab_catapult/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 542,
-      "y": 2380
+      "x": 1082,
+      "y": 2758
     },
     "turret/scarab_catapult/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 578,
-      "y": 2380
+      "x": 1118,
+      "y": 2758
     },
     "turret/singularity_cannon/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 614,
-      "y": 2380
+      "x": 1154,
+      "y": 2758
     },
     "turret/singularity_cannon/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 650,
-      "y": 2380
+      "x": 1190,
+      "y": 2758
     },
     "turret/singularity_cannon/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 686,
-      "y": 2380
+      "x": 1226,
+      "y": 2758
     },
     "turret/singularity_cannon/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 722,
-      "y": 2380
+      "x": 1262,
+      "y": 2758
     },
     "turret/steam_repeater/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 758,
-      "y": 2380
+      "x": 1298,
+      "y": 2758
     },
     "turret/steam_repeater/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 794,
-      "y": 2380
+      "x": 1334,
+      "y": 2758
     },
     "turret/steam_repeater/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 830,
-      "y": 2380
+      "x": 1370,
+      "y": 2758
     },
     "turret/steam_repeater/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 866,
-      "y": 2380
+      "x": 1406,
+      "y": 2758
     },
     "turret/vulcan_ciws/enemy/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 902,
-      "y": 2380
+      "x": 1442,
+      "y": 2758
     },
     "turret/vulcan_ciws/enemy/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 938,
-      "y": 2380
+      "x": 1478,
+      "y": 2758
     },
     "turret/vulcan_ciws/player/fire": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 974,
-      "y": 2380
+      "x": 1514,
+      "y": 2758
     },
     "turret/vulcan_ciws/player/idle": {
       "anchorX": 12,
       "anchorY": 12,
       "h": 24,
       "w": 34,
-      "x": 1010,
-      "y": 2380
+      "x": 1550,
+      "y": 2758
     },
     "ult/bomber/enemy": {
       "anchorX": 22,
       "anchorY": 11,
       "h": 20,
       "w": 44,
-      "x": 1174,
-      "y": 2380
+      "x": 1818,
+      "y": 2758
     },
     "ult/bomber/player": {
       "anchorX": 22,
       "anchorY": 11,
       "h": 20,
       "w": 44,
-      "x": 1220,
-      "y": 2380
+      "x": 1864,
+      "y": 2758
     },
     "ult/zeppelin/enemy": {
       "anchorX": 28,
       "anchorY": 14,
       "h": 28,
       "w": 56,
-      "x": 564,
-      "y": 2314
+      "x": 1100,
+      "y": 2694
     },
     "ult/zeppelin/player": {
       "anchorX": 28,
       "anchorY": 14,
       "h": 28,
       "w": 56,
-      "x": 622,
-      "y": 2314
+      "x": 1158,
+      "y": 2694
     },
     "unit/anubis_warrior/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 938,
-      "y": 1514
+      "x": 1016,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1014,
-      "y": 1514
+      "x": 1092,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1090,
-      "y": 1514
+      "x": 1168,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1166,
-      "y": 1514
+      "x": 1244,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1242,
-      "y": 1514
+      "x": 1320,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1318,
-      "y": 1514
+      "x": 1396,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1394,
-      "y": 1514
+      "x": 1472,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1470,
-      "y": 1514
+      "x": 1548,
+      "y": 1822
     },
     "unit/anubis_warrior/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1546,
-      "y": 1514
+      "x": 1624,
+      "y": 1822
     },
     "unit/anubis_warrior/player/attack_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1622,
-      "y": 1514
+      "x": 1700,
+      "y": 1822
     },
     "unit/anubis_warrior/player/attack_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1698,
-      "y": 1514
+      "x": 1776,
+      "y": 1822
     },
     "unit/anubis_warrior/player/attack_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1774,
-      "y": 1514
+      "x": 1852,
+      "y": 1822
     },
     "unit/anubis_warrior/player/death_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1850,
-      "y": 1514
+      "x": 1928,
+      "y": 1822
     },
     "unit/anubis_warrior/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1926,
-      "y": 1514
+      "x": 2004,
+      "y": 1822
     },
     "unit/anubis_warrior/player/walk_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2002,
-      "y": 1514
+      "x": 2080,
+      "y": 1822
     },
     "unit/anubis_warrior/player/walk_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2078,
-      "y": 1514
+      "x": 2156,
+      "y": 1822
     },
     "unit/anubis_warrior/player/walk_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2154,
-      "y": 1514
+      "x": 2232,
+      "y": 1822
     },
     "unit/anubis_warrior/player/walk_3": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2230,
-      "y": 1514
+      "x": 2308,
+      "y": 1822
     },
     "unit/archer/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1978,
-      "y": 2170
+      "x": 1066,
+      "y": 2550
     },
     "unit/archer/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2052,
-      "y": 2170
+      "x": 1140,
+      "y": 2550
     },
     "unit/archer/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2126,
-      "y": 2170
+      "x": 1214,
+      "y": 2550
     },
     "unit/archer/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2200,
-      "y": 2170
+      "x": 1288,
+      "y": 2550
     },
     "unit/archer/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2274,
-      "y": 2170
+      "x": 1362,
+      "y": 2550
     },
     "unit/archer/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2348,
-      "y": 2170
+      "x": 1436,
+      "y": 2550
     },
     "unit/archer/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2422,
-      "y": 2170
+      "x": 1510,
+      "y": 2550
     },
     "unit/archer/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2,
-      "y": 2242
+      "x": 1584,
+      "y": 2550
     },
     "unit/archer/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 76,
-      "y": 2242
+      "x": 1658,
+      "y": 2550
     },
     "unit/archer/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 150,
-      "y": 2242
+      "x": 1732,
+      "y": 2550
     },
     "unit/archer/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 224,
-      "y": 2242
+      "x": 1806,
+      "y": 2550
     },
     "unit/archer/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 298,
-      "y": 2242
+      "x": 1880,
+      "y": 2550
     },
     "unit/archer/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 372,
-      "y": 2242
+      "x": 1954,
+      "y": 2550
     },
     "unit/archer/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 446,
-      "y": 2242
+      "x": 2028,
+      "y": 2550
     },
     "unit/archer/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 520,
-      "y": 2242
+      "x": 2102,
+      "y": 2550
     },
     "unit/archer/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 594,
-      "y": 2242
+      "x": 2176,
+      "y": 2550
     },
     "unit/archer/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 668,
-      "y": 2242
+      "x": 2250,
+      "y": 2550
     },
     "unit/archer/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 742,
-      "y": 2242
+      "x": 2324,
+      "y": 2550
     },
     "unit/at_rocket/enemy/attack_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2098,
-      "y": 1810
+      "x": 1202,
+      "y": 2190
     },
     "unit/at_rocket/enemy/attack_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2176,
-      "y": 1810
+      "x": 1280,
+      "y": 2190
     },
     "unit/at_rocket/enemy/attack_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2254,
-      "y": 1810
+      "x": 1358,
+      "y": 2190
     },
     "unit/at_rocket/enemy/death_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2332,
-      "y": 1810
+      "x": 1436,
+      "y": 2190
     },
     "unit/at_rocket/enemy/hurt_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2410,
-      "y": 1810
+      "x": 1514,
+      "y": 2190
     },
     "unit/at_rocket/enemy/walk_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2,
-      "y": 1882
+      "x": 1592,
+      "y": 2190
     },
     "unit/at_rocket/enemy/walk_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 80,
-      "y": 1882
+      "x": 1670,
+      "y": 2190
     },
     "unit/at_rocket/enemy/walk_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 158,
-      "y": 1882
+      "x": 1748,
+      "y": 2190
     },
     "unit/at_rocket/enemy/walk_3": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 236,
-      "y": 1882
+      "x": 1826,
+      "y": 2190
     },
     "unit/at_rocket/player/attack_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 314,
-      "y": 1882
+      "x": 1904,
+      "y": 2190
     },
     "unit/at_rocket/player/attack_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 392,
-      "y": 1882
+      "x": 1982,
+      "y": 2190
     },
     "unit/at_rocket/player/attack_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 470,
-      "y": 1882
+      "x": 2060,
+      "y": 2190
     },
     "unit/at_rocket/player/death_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 548,
-      "y": 1882
+      "x": 2138,
+      "y": 2190
     },
     "unit/at_rocket/player/hurt_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 626,
-      "y": 1882
+      "x": 2216,
+      "y": 2190
     },
     "unit/at_rocket/player/walk_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 704,
-      "y": 1882
+      "x": 2294,
+      "y": 2190
     },
     "unit/at_rocket/player/walk_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 782,
-      "y": 1882
+      "x": 2372,
+      "y": 2190
     },
     "unit/at_rocket/player/walk_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 860,
-      "y": 1882
+      "x": 2450,
+      "y": 2190
     },
     "unit/at_rocket/player/walk_3": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 938,
-      "y": 1882
+      "x": 2,
+      "y": 2262
     },
     "unit/catapult/enemy/attack_0": {
       "anchorX": 62,
@@ -2151,6 +2207,150 @@
       "w": 124,
       "x": 2,
       "y": 1228
+    },
+    "unit/centurion/enemy/attack_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2,
+      "y": 1596
+    },
+    "unit/centurion/enemy/attack_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 82,
+      "y": 1596
+    },
+    "unit/centurion/enemy/attack_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 162,
+      "y": 1596
+    },
+    "unit/centurion/enemy/death_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 242,
+      "y": 1596
+    },
+    "unit/centurion/enemy/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 322,
+      "y": 1596
+    },
+    "unit/centurion/enemy/walk_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 402,
+      "y": 1596
+    },
+    "unit/centurion/enemy/walk_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 482,
+      "y": 1596
+    },
+    "unit/centurion/enemy/walk_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 562,
+      "y": 1596
+    },
+    "unit/centurion/enemy/walk_3": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 642,
+      "y": 1596
+    },
+    "unit/centurion/player/attack_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 722,
+      "y": 1596
+    },
+    "unit/centurion/player/attack_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 802,
+      "y": 1596
+    },
+    "unit/centurion/player/attack_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 882,
+      "y": 1596
+    },
+    "unit/centurion/player/death_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 962,
+      "y": 1596
+    },
+    "unit/centurion/player/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1042,
+      "y": 1596
+    },
+    "unit/centurion/player/walk_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1122,
+      "y": 1596
+    },
+    "unit/centurion/player/walk_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1202,
+      "y": 1596
+    },
+    "unit/centurion/player/walk_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1282,
+      "y": 1596
+    },
+    "unit/centurion/player/walk_3": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1362,
+      "y": 1596
     },
     "unit/chariot/enemy/attack_0": {
       "anchorX": 64,
@@ -2301,144 +2501,144 @@
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1142,
-      "y": 1588
+      "x": 1218,
+      "y": 1896
     },
     "unit/clubman/enemy/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1216,
-      "y": 1588
+      "x": 1292,
+      "y": 1896
     },
     "unit/clubman/enemy/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1290,
-      "y": 1588
+      "x": 1366,
+      "y": 1896
     },
     "unit/clubman/enemy/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1364,
-      "y": 1588
+      "x": 1440,
+      "y": 1896
     },
     "unit/clubman/enemy/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1438,
-      "y": 1588
+      "x": 1514,
+      "y": 1896
     },
     "unit/clubman/enemy/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1512,
-      "y": 1588
+      "x": 1588,
+      "y": 1896
     },
     "unit/clubman/enemy/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1586,
-      "y": 1588
+      "x": 1662,
+      "y": 1896
     },
     "unit/clubman/enemy/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1660,
-      "y": 1588
+      "x": 1736,
+      "y": 1896
     },
     "unit/clubman/enemy/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1734,
-      "y": 1588
+      "x": 1810,
+      "y": 1896
     },
     "unit/clubman/player/attack_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1808,
-      "y": 1588
+      "x": 1884,
+      "y": 1896
     },
     "unit/clubman/player/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1882,
-      "y": 1588
+      "x": 1958,
+      "y": 1896
     },
     "unit/clubman/player/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1956,
-      "y": 1588
+      "x": 2032,
+      "y": 1896
     },
     "unit/clubman/player/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2030,
-      "y": 1588
+      "x": 2106,
+      "y": 1896
     },
     "unit/clubman/player/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2104,
-      "y": 1588
+      "x": 2180,
+      "y": 1896
     },
     "unit/clubman/player/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2178,
-      "y": 1588
+      "x": 2254,
+      "y": 1896
     },
     "unit/clubman/player/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2252,
-      "y": 1588
+      "x": 2328,
+      "y": 1896
     },
     "unit/clubman/player/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2326,
-      "y": 1588
+      "x": 2402,
+      "y": 1896
     },
     "unit/clubman/player/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2400,
-      "y": 1588
+      "x": 2476,
+      "y": 1896
     },
     "unit/colossus_mech/enemy/attack_0": {
       "anchorX": 69,
@@ -2589,288 +2789,288 @@
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 816,
-      "y": 2242
+      "x": 2398,
+      "y": 2550
     },
     "unit/crossbowman/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 890,
-      "y": 2242
+      "x": 2472,
+      "y": 2550
     },
     "unit/crossbowman/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 964,
-      "y": 2242
+      "x": 2,
+      "y": 2622
     },
     "unit/crossbowman/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1038,
-      "y": 2242
+      "x": 76,
+      "y": 2622
     },
     "unit/crossbowman/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1112,
-      "y": 2242
+      "x": 150,
+      "y": 2622
     },
     "unit/crossbowman/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1186,
-      "y": 2242
+      "x": 224,
+      "y": 2622
     },
     "unit/crossbowman/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1260,
-      "y": 2242
+      "x": 298,
+      "y": 2622
     },
     "unit/crossbowman/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1334,
-      "y": 2242
+      "x": 372,
+      "y": 2622
     },
     "unit/crossbowman/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1408,
-      "y": 2242
+      "x": 446,
+      "y": 2622
     },
     "unit/crossbowman/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1482,
-      "y": 2242
+      "x": 520,
+      "y": 2622
     },
     "unit/crossbowman/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1556,
-      "y": 2242
+      "x": 594,
+      "y": 2622
     },
     "unit/crossbowman/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1630,
-      "y": 2242
+      "x": 668,
+      "y": 2622
     },
     "unit/crossbowman/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1704,
-      "y": 2242
+      "x": 742,
+      "y": 2622
     },
     "unit/crossbowman/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1778,
-      "y": 2242
+      "x": 816,
+      "y": 2622
     },
     "unit/crossbowman/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1852,
-      "y": 2242
+      "x": 890,
+      "y": 2622
     },
     "unit/crossbowman/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 1926,
-      "y": 2242
+      "x": 964,
+      "y": 2622
     },
     "unit/crossbowman/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2000,
-      "y": 2242
+      "x": 1038,
+      "y": 2622
     },
     "unit/crossbowman/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 72,
-      "x": 2074,
-      "y": 2242
+      "x": 1112,
+      "y": 2622
     },
     "unit/cyborg/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1328,
-      "y": 1954
+      "x": 392,
+      "y": 2334
     },
     "unit/cyborg/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1404,
-      "y": 1954
+      "x": 468,
+      "y": 2334
     },
     "unit/cyborg/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1480,
-      "y": 1954
+      "x": 544,
+      "y": 2334
     },
     "unit/cyborg/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1556,
-      "y": 1954
+      "x": 620,
+      "y": 2334
     },
     "unit/cyborg/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1632,
-      "y": 1954
+      "x": 696,
+      "y": 2334
     },
     "unit/cyborg/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1708,
-      "y": 1954
+      "x": 772,
+      "y": 2334
     },
     "unit/cyborg/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1784,
-      "y": 1954
+      "x": 848,
+      "y": 2334
     },
     "unit/cyborg/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1860,
-      "y": 1954
+      "x": 924,
+      "y": 2334
     },
     "unit/cyborg/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1936,
-      "y": 1954
+      "x": 1000,
+      "y": 2334
     },
     "unit/cyborg/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2012,
-      "y": 1954
+      "x": 1076,
+      "y": 2334
     },
     "unit/cyborg/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2088,
-      "y": 1954
+      "x": 1152,
+      "y": 2334
     },
     "unit/cyborg/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2164,
-      "y": 1954
+      "x": 1228,
+      "y": 2334
     },
     "unit/cyborg/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2240,
-      "y": 1954
+      "x": 1304,
+      "y": 2334
     },
     "unit/cyborg/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2316,
-      "y": 1954
+      "x": 1380,
+      "y": 2334
     },
     "unit/cyborg/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2392,
-      "y": 1954
+      "x": 1456,
+      "y": 2334
     },
     "unit/cyborg/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2468,
-      "y": 1954
+      "x": 1532,
+      "y": 2334
     },
     "unit/cyborg/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2,
-      "y": 2026
+      "x": 1608,
+      "y": 2334
     },
     "unit/cyborg/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 78,
-      "y": 2026
+      "x": 1684,
+      "y": 2334
     },
     "unit/dino_rider/enemy/attack_0": {
       "anchorX": 58,
@@ -3309,432 +3509,576 @@
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 154,
-      "y": 2026
+      "x": 1760,
+      "y": 2334
     },
     "unit/flamethrower/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 230,
-      "y": 2026
+      "x": 1836,
+      "y": 2334
     },
     "unit/flamethrower/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 306,
-      "y": 2026
+      "x": 1912,
+      "y": 2334
     },
     "unit/flamethrower/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 382,
-      "y": 2026
+      "x": 1988,
+      "y": 2334
     },
     "unit/flamethrower/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 458,
-      "y": 2026
+      "x": 2064,
+      "y": 2334
     },
     "unit/flamethrower/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 534,
-      "y": 2026
+      "x": 2140,
+      "y": 2334
     },
     "unit/flamethrower/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 610,
-      "y": 2026
+      "x": 2216,
+      "y": 2334
     },
     "unit/flamethrower/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 686,
-      "y": 2026
+      "x": 2292,
+      "y": 2334
     },
     "unit/flamethrower/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 762,
-      "y": 2026
+      "x": 2368,
+      "y": 2334
     },
     "unit/flamethrower/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 838,
-      "y": 2026
+      "x": 2444,
+      "y": 2334
     },
     "unit/flamethrower/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 914,
-      "y": 2026
+      "x": 2,
+      "y": 2406
     },
     "unit/flamethrower/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 990,
-      "y": 2026
+      "x": 78,
+      "y": 2406
     },
     "unit/flamethrower/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1066,
-      "y": 2026
+      "x": 154,
+      "y": 2406
     },
     "unit/flamethrower/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1142,
-      "y": 2026
+      "x": 230,
+      "y": 2406
     },
     "unit/flamethrower/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1218,
-      "y": 2026
+      "x": 306,
+      "y": 2406
     },
     "unit/flamethrower/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1294,
-      "y": 2026
+      "x": 382,
+      "y": 2406
     },
     "unit/flamethrower/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1370,
-      "y": 2026
+      "x": 458,
+      "y": 2406
     },
     "unit/flamethrower/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1446,
-      "y": 2026
+      "x": 534,
+      "y": 2406
     },
     "unit/gatling_gunner/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1016,
-      "y": 1882
+      "x": 80,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1094,
-      "y": 1882
+      "x": 158,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1172,
-      "y": 1882
+      "x": 236,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1250,
-      "y": 1882
+      "x": 314,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1328,
-      "y": 1882
+      "x": 392,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1406,
-      "y": 1882
+      "x": 470,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1484,
-      "y": 1882
+      "x": 548,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1562,
-      "y": 1882
+      "x": 626,
+      "y": 2262
     },
     "unit/gatling_gunner/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1640,
-      "y": 1882
+      "x": 704,
+      "y": 2262
     },
     "unit/gatling_gunner/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1718,
-      "y": 1882
+      "x": 782,
+      "y": 2262
     },
     "unit/gatling_gunner/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1796,
-      "y": 1882
+      "x": 860,
+      "y": 2262
     },
     "unit/gatling_gunner/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1874,
-      "y": 1882
+      "x": 938,
+      "y": 2262
     },
     "unit/gatling_gunner/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1952,
-      "y": 1882
+      "x": 1016,
+      "y": 2262
     },
     "unit/gatling_gunner/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2030,
-      "y": 1882
+      "x": 1094,
+      "y": 2262
     },
     "unit/gatling_gunner/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2108,
-      "y": 1882
+      "x": 1172,
+      "y": 2262
     },
     "unit/gatling_gunner/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2186,
-      "y": 1882
+      "x": 1250,
+      "y": 2262
     },
     "unit/gatling_gunner/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2264,
-      "y": 1882
+      "x": 1328,
+      "y": 2262
     },
     "unit/gatling_gunner/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2342,
-      "y": 1882
+      "x": 1406,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2420,
-      "y": 1882
+      "x": 1484,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 2,
-      "y": 1954
+      "x": 1562,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 80,
-      "y": 1954
+      "x": 1640,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 158,
-      "y": 1954
+      "x": 1718,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 236,
-      "y": 1954
+      "x": 1796,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 314,
-      "y": 1954
+      "x": 1874,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 392,
-      "y": 1954
+      "x": 1952,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 470,
-      "y": 1954
+      "x": 2030,
+      "y": 2262
     },
     "unit/gravity_sniper/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 548,
-      "y": 1954
+      "x": 2108,
+      "y": 2262
     },
     "unit/gravity_sniper/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 626,
-      "y": 1954
+      "x": 2186,
+      "y": 2262
     },
     "unit/gravity_sniper/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 704,
-      "y": 1954
+      "x": 2264,
+      "y": 2262
     },
     "unit/gravity_sniper/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 782,
-      "y": 1954
+      "x": 2342,
+      "y": 2262
     },
     "unit/gravity_sniper/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 860,
-      "y": 1954
+      "x": 2420,
+      "y": 2262
     },
     "unit/gravity_sniper/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 938,
-      "y": 1954
+      "x": 2,
+      "y": 2334
     },
     "unit/gravity_sniper/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1016,
-      "y": 1954
+      "x": 80,
+      "y": 2334
     },
     "unit/gravity_sniper/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1094,
-      "y": 1954
+      "x": 158,
+      "y": 2334
     },
     "unit/gravity_sniper/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1172,
-      "y": 1954
+      "x": 236,
+      "y": 2334
     },
     "unit/gravity_sniper/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 76,
-      "x": 1250,
-      "y": 1954
+      "x": 314,
+      "y": 2334
+    },
+    "unit/grenadier/enemy/attack_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1806,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/attack_1": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1884,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/attack_2": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1962,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/death_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2040,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2118,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/walk_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2196,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/walk_1": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2274,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/walk_2": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2352,
+      "y": 1672
+    },
+    "unit/grenadier/enemy/walk_3": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2430,
+      "y": 1672
+    },
+    "unit/grenadier/player/attack_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2,
+      "y": 1748
+    },
+    "unit/grenadier/player/attack_1": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 80,
+      "y": 1748
+    },
+    "unit/grenadier/player/attack_2": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 158,
+      "y": 1748
+    },
+    "unit/grenadier/player/death_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 236,
+      "y": 1748
+    },
+    "unit/grenadier/player/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 314,
+      "y": 1748
+    },
+    "unit/grenadier/player/walk_0": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 392,
+      "y": 1748
+    },
+    "unit/grenadier/player/walk_1": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 470,
+      "y": 1748
+    },
+    "unit/grenadier/player/walk_2": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 548,
+      "y": 1748
+    },
+    "unit/grenadier/player/walk_3": {
+      "anchorX": 30,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 626,
+      "y": 1748
     },
     "unit/heavy_cavalry/enemy/attack_0": {
       "anchorX": 63,
@@ -3880,149 +4224,293 @@
       "x": 898,
       "y": 800
     },
+    "unit/hover_drone/enemy/attack_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 1846,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/attack_1": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 1926,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/attack_2": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2006,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/death_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2086,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2166,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/walk_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2246,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/walk_1": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2326,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/walk_2": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2406,
+      "y": 2622
+    },
+    "unit/hover_drone/enemy/walk_3": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 2,
+      "y": 2694
+    },
+    "unit/hover_drone/player/attack_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 82,
+      "y": 2694
+    },
+    "unit/hover_drone/player/attack_1": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 162,
+      "y": 2694
+    },
+    "unit/hover_drone/player/attack_2": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 242,
+      "y": 2694
+    },
+    "unit/hover_drone/player/death_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 322,
+      "y": 2694
+    },
+    "unit/hover_drone/player/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 402,
+      "y": 2694
+    },
+    "unit/hover_drone/player/walk_0": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 482,
+      "y": 2694
+    },
+    "unit/hover_drone/player/walk_1": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 562,
+      "y": 2694
+    },
+    "unit/hover_drone/player/walk_2": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 642,
+      "y": 2694
+    },
+    "unit/hover_drone/player/walk_3": {
+      "anchorX": 36,
+      "anchorY": 59,
+      "h": 62,
+      "w": 78,
+      "x": 722,
+      "y": 2694
+    },
     "unit/knight/enemy/attack_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1522,
-      "y": 2026
+      "x": 610,
+      "y": 2406
     },
     "unit/knight/enemy/attack_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1598,
-      "y": 2026
+      "x": 686,
+      "y": 2406
     },
     "unit/knight/enemy/attack_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1674,
-      "y": 2026
+      "x": 762,
+      "y": 2406
     },
     "unit/knight/enemy/death_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1750,
-      "y": 2026
+      "x": 838,
+      "y": 2406
     },
     "unit/knight/enemy/hurt_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1826,
-      "y": 2026
+      "x": 914,
+      "y": 2406
     },
     "unit/knight/enemy/walk_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1902,
-      "y": 2026
+      "x": 990,
+      "y": 2406
     },
     "unit/knight/enemy/walk_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1978,
-      "y": 2026
+      "x": 1066,
+      "y": 2406
     },
     "unit/knight/enemy/walk_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2054,
-      "y": 2026
+      "x": 1142,
+      "y": 2406
     },
     "unit/knight/enemy/walk_3": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2130,
-      "y": 2026
+      "x": 1218,
+      "y": 2406
     },
     "unit/knight/player/attack_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2206,
-      "y": 2026
+      "x": 1294,
+      "y": 2406
     },
     "unit/knight/player/attack_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2282,
-      "y": 2026
+      "x": 1370,
+      "y": 2406
     },
     "unit/knight/player/attack_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2358,
-      "y": 2026
+      "x": 1446,
+      "y": 2406
     },
     "unit/knight/player/death_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2434,
-      "y": 2026
+      "x": 1522,
+      "y": 2406
     },
     "unit/knight/player/hurt_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2,
-      "y": 2098
+      "x": 1598,
+      "y": 2406
     },
     "unit/knight/player/walk_0": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 78,
-      "y": 2098
+      "x": 1674,
+      "y": 2406
     },
     "unit/knight/player/walk_1": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 154,
-      "y": 2098
+      "x": 1750,
+      "y": 2406
     },
     "unit/knight/player/walk_2": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 230,
-      "y": 2098
+      "x": 1826,
+      "y": 2406
     },
     "unit/knight/player/walk_3": {
       "anchorX": 30,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 306,
-      "y": 2098
+      "x": 1902,
+      "y": 2406
     },
     "unit/mbt/enemy/attack_0": {
       "anchorX": 64,
@@ -4168,149 +4656,293 @@
       "x": 2082,
       "y": 1326
     },
+    "unit/mortar_team/enemy/attack_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 1734,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/attack_1": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 1820,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/attack_2": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 1906,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/death_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 1992,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2078,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/walk_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2164,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/walk_1": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2250,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/walk_2": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2336,
+      "y": 2044
+    },
+    "unit/mortar_team/enemy/walk_3": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2422,
+      "y": 2044
+    },
+    "unit/mortar_team/player/attack_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 2,
+      "y": 2118
+    },
+    "unit/mortar_team/player/attack_1": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 88,
+      "y": 2118
+    },
+    "unit/mortar_team/player/attack_2": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 174,
+      "y": 2118
+    },
+    "unit/mortar_team/player/death_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 260,
+      "y": 2118
+    },
+    "unit/mortar_team/player/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 346,
+      "y": 2118
+    },
+    "unit/mortar_team/player/walk_0": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 432,
+      "y": 2118
+    },
+    "unit/mortar_team/player/walk_1": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 518,
+      "y": 2118
+    },
+    "unit/mortar_team/player/walk_2": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 604,
+      "y": 2118
+    },
+    "unit/mortar_team/player/walk_3": {
+      "anchorX": 36,
+      "anchorY": 67,
+      "h": 70,
+      "w": 84,
+      "x": 690,
+      "y": 2118
+    },
     "unit/musketeer/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 382,
-      "y": 2098
+      "x": 1978,
+      "y": 2406
     },
     "unit/musketeer/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 458,
-      "y": 2098
+      "x": 2054,
+      "y": 2406
     },
     "unit/musketeer/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 534,
-      "y": 2098
+      "x": 2130,
+      "y": 2406
     },
     "unit/musketeer/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 610,
-      "y": 2098
+      "x": 2206,
+      "y": 2406
     },
     "unit/musketeer/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 686,
-      "y": 2098
+      "x": 2282,
+      "y": 2406
     },
     "unit/musketeer/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 762,
-      "y": 2098
+      "x": 2358,
+      "y": 2406
     },
     "unit/musketeer/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 838,
-      "y": 2098
+      "x": 2434,
+      "y": 2406
     },
     "unit/musketeer/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 914,
-      "y": 2098
+      "x": 2,
+      "y": 2478
     },
     "unit/musketeer/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 990,
-      "y": 2098
+      "x": 78,
+      "y": 2478
     },
     "unit/musketeer/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1066,
-      "y": 2098
+      "x": 154,
+      "y": 2478
     },
     "unit/musketeer/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1142,
-      "y": 2098
+      "x": 230,
+      "y": 2478
     },
     "unit/musketeer/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1218,
-      "y": 2098
+      "x": 306,
+      "y": 2478
     },
     "unit/musketeer/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1294,
-      "y": 2098
+      "x": 382,
+      "y": 2478
     },
     "unit/musketeer/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1370,
-      "y": 2098
+      "x": 458,
+      "y": 2478
     },
     "unit/musketeer/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1446,
-      "y": 2098
+      "x": 534,
+      "y": 2478
     },
     "unit/musketeer/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1522,
-      "y": 2098
+      "x": 610,
+      "y": 2478
     },
     "unit/musketeer/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1598,
-      "y": 2098
+      "x": 686,
+      "y": 2478
     },
     "unit/musketeer/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1674,
-      "y": 2098
+      "x": 762,
+      "y": 2478
     },
     "unit/omega_titan/enemy/attack_0": {
       "anchorX": 68,
@@ -4461,864 +5093,1296 @@
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 1660,
-      "y": 1736
+      "x": 776,
+      "y": 2118
     },
     "unit/pikeman/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 1742,
-      "y": 1736
+      "x": 858,
+      "y": 2118
     },
     "unit/pikeman/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 1824,
-      "y": 1736
+      "x": 940,
+      "y": 2118
     },
     "unit/pikeman/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 1906,
-      "y": 1736
+      "x": 1022,
+      "y": 2118
     },
     "unit/pikeman/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 1988,
-      "y": 1736
+      "x": 1104,
+      "y": 2118
     },
     "unit/pikeman/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2070,
-      "y": 1736
+      "x": 1186,
+      "y": 2118
     },
     "unit/pikeman/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2152,
-      "y": 1736
+      "x": 1268,
+      "y": 2118
     },
     "unit/pikeman/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2234,
-      "y": 1736
+      "x": 1350,
+      "y": 2118
     },
     "unit/pikeman/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2316,
-      "y": 1736
+      "x": 1432,
+      "y": 2118
     },
     "unit/pikeman/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2398,
-      "y": 1736
+      "x": 1514,
+      "y": 2118
     },
     "unit/pikeman/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 2,
-      "y": 1810
+      "x": 1596,
+      "y": 2118
     },
     "unit/pikeman/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 84,
-      "y": 1810
+      "x": 1678,
+      "y": 2118
     },
     "unit/pikeman/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 166,
-      "y": 1810
+      "x": 1760,
+      "y": 2118
     },
     "unit/pikeman/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 248,
-      "y": 1810
+      "x": 1842,
+      "y": 2118
     },
     "unit/pikeman/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 330,
-      "y": 1810
+      "x": 1924,
+      "y": 2118
     },
     "unit/pikeman/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 412,
-      "y": 1810
+      "x": 2006,
+      "y": 2118
     },
     "unit/pikeman/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 494,
-      "y": 1810
+      "x": 2088,
+      "y": 2118
     },
     "unit/pikeman/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 80,
-      "x": 576,
-      "y": 1810
+      "x": 2170,
+      "y": 2118
     },
     "unit/railgun_sniper/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 658,
-      "y": 1810
+      "x": 2252,
+      "y": 2118
     },
     "unit/railgun_sniper/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 738,
-      "y": 1810
+      "x": 2332,
+      "y": 2118
     },
     "unit/railgun_sniper/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 818,
-      "y": 1810
+      "x": 2412,
+      "y": 2118
     },
     "unit/railgun_sniper/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 898,
-      "y": 1810
+      "x": 2,
+      "y": 2190
     },
     "unit/railgun_sniper/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 978,
-      "y": 1810
+      "x": 82,
+      "y": 2190
     },
     "unit/railgun_sniper/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1058,
-      "y": 1810
+      "x": 162,
+      "y": 2190
     },
     "unit/railgun_sniper/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1138,
-      "y": 1810
+      "x": 242,
+      "y": 2190
     },
     "unit/railgun_sniper/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1218,
-      "y": 1810
+      "x": 322,
+      "y": 2190
     },
     "unit/railgun_sniper/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1298,
-      "y": 1810
+      "x": 402,
+      "y": 2190
     },
     "unit/railgun_sniper/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1378,
-      "y": 1810
+      "x": 482,
+      "y": 2190
     },
     "unit/railgun_sniper/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1458,
-      "y": 1810
+      "x": 562,
+      "y": 2190
     },
     "unit/railgun_sniper/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1538,
-      "y": 1810
+      "x": 642,
+      "y": 2190
     },
     "unit/railgun_sniper/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1618,
-      "y": 1810
+      "x": 722,
+      "y": 2190
     },
     "unit/railgun_sniper/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1698,
-      "y": 1810
+      "x": 802,
+      "y": 2190
     },
     "unit/railgun_sniper/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1778,
-      "y": 1810
+      "x": 882,
+      "y": 2190
     },
     "unit/railgun_sniper/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1858,
-      "y": 1810
+      "x": 962,
+      "y": 2190
     },
     "unit/railgun_sniper/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 1938,
-      "y": 1810
+      "x": 1042,
+      "y": 2190
     },
     "unit/railgun_sniper/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 78,
-      "x": 2018,
-      "y": 1810
+      "x": 1122,
+      "y": 2190
     },
     "unit/rifleman/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1750,
-      "y": 2098
+      "x": 838,
+      "y": 2478
     },
     "unit/rifleman/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1826,
-      "y": 2098
+      "x": 914,
+      "y": 2478
     },
     "unit/rifleman/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1902,
-      "y": 2098
+      "x": 990,
+      "y": 2478
     },
     "unit/rifleman/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1978,
-      "y": 2098
+      "x": 1066,
+      "y": 2478
     },
     "unit/rifleman/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2054,
-      "y": 2098
+      "x": 1142,
+      "y": 2478
     },
     "unit/rifleman/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2130,
-      "y": 2098
+      "x": 1218,
+      "y": 2478
     },
     "unit/rifleman/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2206,
-      "y": 2098
+      "x": 1294,
+      "y": 2478
     },
     "unit/rifleman/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2282,
-      "y": 2098
+      "x": 1370,
+      "y": 2478
     },
     "unit/rifleman/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2358,
-      "y": 2098
+      "x": 1446,
+      "y": 2478
     },
     "unit/rifleman/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2434,
-      "y": 2098
+      "x": 1522,
+      "y": 2478
     },
     "unit/rifleman/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 2,
-      "y": 2170
+      "x": 1598,
+      "y": 2478
     },
     "unit/rifleman/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 78,
-      "y": 2170
+      "x": 1674,
+      "y": 2478
     },
     "unit/rifleman/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 154,
-      "y": 2170
+      "x": 1750,
+      "y": 2478
     },
     "unit/rifleman/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 230,
-      "y": 2170
+      "x": 1826,
+      "y": 2478
     },
     "unit/rifleman/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 306,
-      "y": 2170
+      "x": 1902,
+      "y": 2478
     },
     "unit/rifleman/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 382,
-      "y": 2170
+      "x": 1978,
+      "y": 2478
     },
     "unit/rifleman/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 458,
-      "y": 2170
+      "x": 2054,
+      "y": 2478
     },
     "unit/rifleman/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 534,
-      "y": 2170
+      "x": 2130,
+      "y": 2478
+    },
+    "unit/riot_juggernaut/enemy/attack_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1034,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/attack_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1118,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/attack_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1202,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/death_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1286,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1370,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/walk_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1454,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/walk_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1538,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/walk_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1622,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/enemy/walk_3": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1706,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/attack_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1790,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/attack_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1874,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/attack_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 1958,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/death_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2042,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/hurt_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2126,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/walk_0": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2210,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/walk_1": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2294,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/walk_2": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2378,
+      "y": 1514
+    },
+    "unit/riot_juggernaut/player/walk_3": {
+      "anchorX": 30,
+      "anchorY": 71,
+      "h": 74,
+      "w": 82,
+      "x": 2462,
+      "y": 1514
+    },
+    "unit/scorpion_guard/enemy/attack_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 704,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/attack_1": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 782,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/attack_2": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 860,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/death_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 938,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1016,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/walk_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1094,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/walk_1": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1172,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/walk_2": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1250,
+      "y": 1748
+    },
+    "unit/scorpion_guard/enemy/walk_3": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1328,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/attack_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1406,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/attack_1": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1484,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/attack_2": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1562,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/death_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1640,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1718,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/walk_0": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1796,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/walk_1": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1874,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/walk_2": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 1952,
+      "y": 1748
+    },
+    "unit/scorpion_guard/player/walk_3": {
+      "anchorX": 29,
+      "anchorY": 69,
+      "h": 72,
+      "w": 76,
+      "x": 2030,
+      "y": 1748
+    },
+    "unit/shaman/enemy/attack_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 402,
+      "y": 1672
+    },
+    "unit/shaman/enemy/attack_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 480,
+      "y": 1672
+    },
+    "unit/shaman/enemy/attack_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 558,
+      "y": 1672
+    },
+    "unit/shaman/enemy/death_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 636,
+      "y": 1672
+    },
+    "unit/shaman/enemy/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 714,
+      "y": 1672
+    },
+    "unit/shaman/enemy/walk_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 792,
+      "y": 1672
+    },
+    "unit/shaman/enemy/walk_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 870,
+      "y": 1672
+    },
+    "unit/shaman/enemy/walk_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 948,
+      "y": 1672
+    },
+    "unit/shaman/enemy/walk_3": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1026,
+      "y": 1672
+    },
+    "unit/shaman/player/attack_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1104,
+      "y": 1672
+    },
+    "unit/shaman/player/attack_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1182,
+      "y": 1672
+    },
+    "unit/shaman/player/attack_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1260,
+      "y": 1672
+    },
+    "unit/shaman/player/death_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1338,
+      "y": 1672
+    },
+    "unit/shaman/player/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1416,
+      "y": 1672
+    },
+    "unit/shaman/player/walk_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1494,
+      "y": 1672
+    },
+    "unit/shaman/player/walk_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1572,
+      "y": 1672
+    },
+    "unit/shaman/player/walk_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1650,
+      "y": 1672
+    },
+    "unit/shaman/player/walk_3": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 76,
+      "x": 1728,
+      "y": 1672
     },
     "unit/slinger/enemy/attack_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2474,
-      "y": 1588
+      "x": 2,
+      "y": 1970
     },
     "unit/slinger/enemy/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2,
-      "y": 1662
+      "x": 76,
+      "y": 1970
     },
     "unit/slinger/enemy/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 76,
-      "y": 1662
+      "x": 150,
+      "y": 1970
     },
     "unit/slinger/enemy/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 150,
-      "y": 1662
+      "x": 224,
+      "y": 1970
     },
     "unit/slinger/enemy/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 224,
-      "y": 1662
+      "x": 298,
+      "y": 1970
     },
     "unit/slinger/enemy/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 298,
-      "y": 1662
+      "x": 372,
+      "y": 1970
     },
     "unit/slinger/enemy/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 372,
-      "y": 1662
+      "x": 446,
+      "y": 1970
     },
     "unit/slinger/enemy/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 446,
-      "y": 1662
+      "x": 520,
+      "y": 1970
     },
     "unit/slinger/enemy/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 520,
-      "y": 1662
+      "x": 594,
+      "y": 1970
     },
     "unit/slinger/player/attack_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 594,
-      "y": 1662
+      "x": 668,
+      "y": 1970
     },
     "unit/slinger/player/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 668,
-      "y": 1662
+      "x": 742,
+      "y": 1970
     },
     "unit/slinger/player/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 742,
-      "y": 1662
+      "x": 816,
+      "y": 1970
     },
     "unit/slinger/player/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 816,
-      "y": 1662
+      "x": 890,
+      "y": 1970
     },
     "unit/slinger/player/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 890,
-      "y": 1662
+      "x": 964,
+      "y": 1970
     },
     "unit/slinger/player/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 964,
-      "y": 1662
+      "x": 1038,
+      "y": 1970
     },
     "unit/slinger/player/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1038,
-      "y": 1662
+      "x": 1112,
+      "y": 1970
     },
     "unit/slinger/player/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1112,
-      "y": 1662
+      "x": 1186,
+      "y": 1970
     },
     "unit/slinger/player/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1186,
-      "y": 1662
+      "x": 1260,
+      "y": 1970
     },
     "unit/spearman/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 76,
-      "y": 1736
+      "x": 150,
+      "y": 2044
     },
     "unit/spearman/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 164,
-      "y": 1736
+      "x": 238,
+      "y": 2044
     },
     "unit/spearman/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 252,
-      "y": 1736
+      "x": 326,
+      "y": 2044
     },
     "unit/spearman/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 340,
-      "y": 1736
+      "x": 414,
+      "y": 2044
     },
     "unit/spearman/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 428,
-      "y": 1736
+      "x": 502,
+      "y": 2044
     },
     "unit/spearman/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 516,
-      "y": 1736
+      "x": 590,
+      "y": 2044
     },
     "unit/spearman/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 604,
-      "y": 1736
+      "x": 678,
+      "y": 2044
     },
     "unit/spearman/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 692,
-      "y": 1736
+      "x": 766,
+      "y": 2044
     },
     "unit/spearman/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 780,
-      "y": 1736
+      "x": 854,
+      "y": 2044
     },
     "unit/spearman/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 868,
-      "y": 1736
+      "x": 942,
+      "y": 2044
     },
     "unit/spearman/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 956,
-      "y": 1736
+      "x": 1030,
+      "y": 2044
     },
     "unit/spearman/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1044,
-      "y": 1736
+      "x": 1118,
+      "y": 2044
     },
     "unit/spearman/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1132,
-      "y": 1736
+      "x": 1206,
+      "y": 2044
     },
     "unit/spearman/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1220,
-      "y": 1736
+      "x": 1294,
+      "y": 2044
     },
     "unit/spearman/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1308,
-      "y": 1736
+      "x": 1382,
+      "y": 2044
     },
     "unit/spearman/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1396,
-      "y": 1736
+      "x": 1470,
+      "y": 2044
     },
     "unit/spearman/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1484,
-      "y": 1736
+      "x": 1558,
+      "y": 2044
     },
     "unit/spearman/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 86,
-      "x": 1572,
-      "y": 1736
+      "x": 1646,
+      "y": 2044
     },
     "unit/spec_ops/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 610,
-      "y": 2170
+      "x": 2206,
+      "y": 2478
     },
     "unit/spec_ops/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 686,
-      "y": 2170
+      "x": 2282,
+      "y": 2478
     },
     "unit/spec_ops/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 762,
-      "y": 2170
+      "x": 2358,
+      "y": 2478
     },
     "unit/spec_ops/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 838,
-      "y": 2170
+      "x": 2434,
+      "y": 2478
     },
     "unit/spec_ops/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 914,
-      "y": 2170
+      "x": 2,
+      "y": 2550
     },
     "unit/spec_ops/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 990,
-      "y": 2170
+      "x": 78,
+      "y": 2550
     },
     "unit/spec_ops/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1066,
-      "y": 2170
+      "x": 154,
+      "y": 2550
     },
     "unit/spec_ops/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1142,
-      "y": 2170
+      "x": 230,
+      "y": 2550
     },
     "unit/spec_ops/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1218,
-      "y": 2170
+      "x": 306,
+      "y": 2550
     },
     "unit/spec_ops/player/attack_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1294,
-      "y": 2170
+      "x": 382,
+      "y": 2550
     },
     "unit/spec_ops/player/attack_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1370,
-      "y": 2170
+      "x": 458,
+      "y": 2550
     },
     "unit/spec_ops/player/attack_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1446,
-      "y": 2170
+      "x": 534,
+      "y": 2550
     },
     "unit/spec_ops/player/death_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1522,
-      "y": 2170
+      "x": 610,
+      "y": 2550
     },
     "unit/spec_ops/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1598,
-      "y": 2170
+      "x": 686,
+      "y": 2550
     },
     "unit/spec_ops/player/walk_0": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1674,
-      "y": 2170
+      "x": 762,
+      "y": 2550
     },
     "unit/spec_ops/player/walk_1": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1750,
-      "y": 2170
+      "x": 838,
+      "y": 2550
     },
     "unit/spec_ops/player/walk_2": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1826,
-      "y": 2170
+      "x": 914,
+      "y": 2550
     },
     "unit/spec_ops/player/walk_3": {
       "anchorX": 29,
       "anchorY": 67,
       "h": 70,
       "w": 74,
-      "x": 1902,
-      "y": 2170
+      "x": 990,
+      "y": 2550
     },
     "unit/sphinx_chariot/enemy/attack_0": {
       "anchorX": 63,
@@ -5464,149 +6528,293 @@
       "x": 818,
       "y": 910
     },
+    "unit/star_archon/enemy/attack_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2018,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/attack_1": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2104,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/attack_2": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2190,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/death_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2276,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2362,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/walk_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2448,
+      "y": 1420
+    },
+    "unit/star_archon/enemy/walk_1": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 2,
+      "y": 1514
+    },
+    "unit/star_archon/enemy/walk_2": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 88,
+      "y": 1514
+    },
+    "unit/star_archon/enemy/walk_3": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 174,
+      "y": 1514
+    },
+    "unit/star_archon/player/attack_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 260,
+      "y": 1514
+    },
+    "unit/star_archon/player/attack_1": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 346,
+      "y": 1514
+    },
+    "unit/star_archon/player/attack_2": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 432,
+      "y": 1514
+    },
+    "unit/star_archon/player/death_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 518,
+      "y": 1514
+    },
+    "unit/star_archon/player/hurt_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 604,
+      "y": 1514
+    },
+    "unit/star_archon/player/walk_0": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 690,
+      "y": 1514
+    },
+    "unit/star_archon/player/walk_1": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 776,
+      "y": 1514
+    },
+    "unit/star_archon/player/walk_2": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 862,
+      "y": 1514
+    },
+    "unit/star_archon/player/walk_3": {
+      "anchorX": 36,
+      "anchorY": 77,
+      "h": 80,
+      "w": 84,
+      "x": 948,
+      "y": 1514
+    },
     "unit/steam_trooper/enemy/attack_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2306,
-      "y": 1514
+      "x": 2384,
+      "y": 1822
     },
     "unit/steam_trooper/enemy/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2382,
-      "y": 1514
+      "x": 2460,
+      "y": 1822
     },
     "unit/steam_trooper/enemy/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2458,
-      "y": 1514
+      "x": 2,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 2,
-      "y": 1588
+      "x": 78,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 78,
-      "y": 1588
+      "x": 154,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 154,
-      "y": 1588
+      "x": 230,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 230,
-      "y": 1588
+      "x": 306,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 306,
-      "y": 1588
+      "x": 382,
+      "y": 1896
     },
     "unit/steam_trooper/enemy/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 382,
-      "y": 1588
+      "x": 458,
+      "y": 1896
     },
     "unit/steam_trooper/player/attack_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 458,
-      "y": 1588
+      "x": 534,
+      "y": 1896
     },
     "unit/steam_trooper/player/attack_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 534,
-      "y": 1588
+      "x": 610,
+      "y": 1896
     },
     "unit/steam_trooper/player/attack_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 610,
-      "y": 1588
+      "x": 686,
+      "y": 1896
     },
     "unit/steam_trooper/player/death_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 686,
-      "y": 1588
+      "x": 762,
+      "y": 1896
     },
     "unit/steam_trooper/player/hurt_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 762,
-      "y": 1588
+      "x": 838,
+      "y": 1896
     },
     "unit/steam_trooper/player/walk_0": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 838,
-      "y": 1588
+      "x": 914,
+      "y": 1896
     },
     "unit/steam_trooper/player/walk_1": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 914,
-      "y": 1588
+      "x": 990,
+      "y": 1896
     },
     "unit/steam_trooper/player/walk_2": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 990,
-      "y": 1588
+      "x": 1066,
+      "y": 1896
     },
     "unit/steam_trooper/player/walk_3": {
       "anchorX": 30,
       "anchorY": 69,
       "h": 72,
       "w": 74,
-      "x": 1066,
-      "y": 1588
+      "x": 1142,
+      "y": 1896
     },
     "unit/steam_walker/enemy/attack_0": {
       "anchorX": 64,
@@ -5757,297 +6965,442 @@
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1260,
-      "y": 1662
+      "x": 1334,
+      "y": 1970
     },
     "unit/sun_priest/enemy/attack_1": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1334,
-      "y": 1662
+      "x": 1408,
+      "y": 1970
     },
     "unit/sun_priest/enemy/attack_2": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1408,
-      "y": 1662
+      "x": 1482,
+      "y": 1970
     },
     "unit/sun_priest/enemy/death_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1482,
-      "y": 1662
+      "x": 1556,
+      "y": 1970
     },
     "unit/sun_priest/enemy/hurt_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1556,
-      "y": 1662
+      "x": 1630,
+      "y": 1970
     },
     "unit/sun_priest/enemy/walk_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1630,
-      "y": 1662
+      "x": 1704,
+      "y": 1970
     },
     "unit/sun_priest/enemy/walk_1": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1704,
-      "y": 1662
+      "x": 1778,
+      "y": 1970
     },
     "unit/sun_priest/enemy/walk_2": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1778,
-      "y": 1662
+      "x": 1852,
+      "y": 1970
     },
     "unit/sun_priest/enemy/walk_3": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1852,
-      "y": 1662
+      "x": 1926,
+      "y": 1970
     },
     "unit/sun_priest/player/attack_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 1926,
-      "y": 1662
+      "x": 2000,
+      "y": 1970
     },
     "unit/sun_priest/player/attack_1": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2000,
-      "y": 1662
+      "x": 2074,
+      "y": 1970
     },
     "unit/sun_priest/player/attack_2": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2074,
-      "y": 1662
+      "x": 2148,
+      "y": 1970
     },
     "unit/sun_priest/player/death_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2148,
-      "y": 1662
+      "x": 2222,
+      "y": 1970
     },
     "unit/sun_priest/player/hurt_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2222,
-      "y": 1662
+      "x": 2296,
+      "y": 1970
     },
     "unit/sun_priest/player/walk_0": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2296,
-      "y": 1662
+      "x": 2370,
+      "y": 1970
     },
     "unit/sun_priest/player/walk_1": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2370,
-      "y": 1662
+      "x": 2444,
+      "y": 1970
     },
     "unit/sun_priest/player/walk_2": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
-      "x": 2444,
-      "y": 1662
+      "x": 2,
+      "y": 2044
     },
     "unit/sun_priest/player/walk_3": {
       "anchorX": 28,
       "anchorY": 69,
       "h": 72,
       "w": 72,
+      "x": 76,
+      "y": 2044
+    },
+    "unit/tesla_coil_trooper/enemy/attack_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1442,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/attack_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1522,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/attack_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1602,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/death_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1682,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1762,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/walk_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1842,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/walk_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 1922,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/walk_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2002,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/enemy/walk_3": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2082,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/player/attack_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2162,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/player/attack_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2242,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/player/attack_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2322,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/player/death_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 2402,
+      "y": 1596
+    },
+    "unit/tesla_coil_trooper/player/hurt_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
       "x": 2,
-      "y": 1736
+      "y": 1672
+    },
+    "unit/tesla_coil_trooper/player/walk_0": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 82,
+      "y": 1672
+    },
+    "unit/tesla_coil_trooper/player/walk_1": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 162,
+      "y": 1672
+    },
+    "unit/tesla_coil_trooper/player/walk_2": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 242,
+      "y": 1672
+    },
+    "unit/tesla_coil_trooper/player/walk_3": {
+      "anchorX": 29,
+      "anchorY": 71,
+      "h": 74,
+      "w": 78,
+      "x": 322,
+      "y": 1672
     },
     "unit/void_templar/enemy/attack_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2018,
-      "y": 1420
+      "x": 2108,
+      "y": 1748
     },
     "unit/void_templar/enemy/attack_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2096,
-      "y": 1420
+      "x": 2186,
+      "y": 1748
     },
     "unit/void_templar/enemy/attack_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2174,
-      "y": 1420
+      "x": 2264,
+      "y": 1748
     },
     "unit/void_templar/enemy/death_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2252,
-      "y": 1420
+      "x": 2342,
+      "y": 1748
     },
     "unit/void_templar/enemy/hurt_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2330,
-      "y": 1420
+      "x": 2420,
+      "y": 1748
     },
     "unit/void_templar/enemy/walk_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2408,
-      "y": 1420
+      "x": 2,
+      "y": 1822
     },
     "unit/void_templar/enemy/walk_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 2,
-      "y": 1514
+      "x": 80,
+      "y": 1822
     },
     "unit/void_templar/enemy/walk_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 80,
-      "y": 1514
+      "x": 158,
+      "y": 1822
     },
     "unit/void_templar/enemy/walk_3": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 158,
-      "y": 1514
+      "x": 236,
+      "y": 1822
     },
     "unit/void_templar/player/attack_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 236,
-      "y": 1514
+      "x": 314,
+      "y": 1822
     },
     "unit/void_templar/player/attack_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 314,
-      "y": 1514
+      "x": 392,
+      "y": 1822
     },
     "unit/void_templar/player/attack_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 392,
-      "y": 1514
+      "x": 470,
+      "y": 1822
     },
     "unit/void_templar/player/death_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 470,
-      "y": 1514
+      "x": 548,
+      "y": 1822
     },
     "unit/void_templar/player/hurt_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 548,
-      "y": 1514
+      "x": 626,
+      "y": 1822
     },
     "unit/void_templar/player/walk_0": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 626,
-      "y": 1514
+      "x": 704,
+      "y": 1822
     },
     "unit/void_templar/player/walk_1": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 704,
-      "y": 1514
+      "x": 782,
+      "y": 1822
     },
     "unit/void_templar/player/walk_2": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 782,
-      "y": 1514
+      "x": 860,
+      "y": 1822
     },
     "unit/void_templar/player/walk_3": {
       "anchorX": 29,
       "anchorY": 69,
       "h": 72,
       "w": 76,
-      "x": 860,
-      "y": 1514
+      "x": 938,
+      "y": 1822
     }
   },
   "meta": {
-    "frameCount": 755,
-    "height": 2406,
+    "frameCount": 924,
+    "hash": "f10c15b8bf",
+    "height": 2794,
     "image": "sprites_sheet.png",
     "pixelScale": 2,
     "unitScale": 1,
-    "version": 2,
+    "version": 3,
     "width": 2560
   }
 }

@@ -225,4 +225,39 @@ def gen_projectiles() -> dict[str, tuple[PixelCanvas, int, int]]:
     out['ult/zeppelin/player'] = (c.swap_team('player'), 28, 14)
     out['ult/zeppelin/enemy'] = (c.swap_team('enemy'), 28, 14)
 
+    # 18. Tribal Shaman Blazing Totem Fire Orb (14x14)
+    c = PixelCanvas(14, 14)
+    c.shaded_ellipse(7, 7, 5, 5, FIRE)
+    c.shaded_ellipse(7, 7, 3, 3, SOLAR_GOLD)
+    c.px(6, 6, WHITE)
+    c.px(7, 7, WHITE)
+    c.px(3, 5, FIRE[3])
+    c.px(11, 9, FIRE[3])
+    c.add_outline(INK)
+    out['proj/totem_fire'] = (c, 7, 7)
+
+    # 19. Gunpowder Era Iron Grenade with Sparking Fuse (12x14)
+    c = PixelCanvas(12, 14)
+    c.shaded_ellipse(6, 8, 4, 4, CHARCOAL)
+    c.px(4, 6, STEEL[4])
+    c.rect(5, 3, 2, 2, BRONZE[3])
+    c.px(7, 2, FIRE[2])
+    c.px(8, 1, FIRE[3])
+    c.px(9, 2, WHITE)
+    c.add_outline(INK)
+    out['proj/grenade'] = (c, 6, 8)
+
+    # 20. World War Finned Mortar Bomb Shell (18x10)
+    c = PixelCanvas(18, 10)
+    # Tail stabilizer fins
+    c.rect(1, 2, 3, 6, DARK_STEEL[2])
+    c.rect(2, 4, 3, 2, IRON[3])
+    # Olive bomb body + red explosive nose band
+    c.shaded_ellipse(10, 5, 5, 3.5, OLIVE)
+    c.rect(12, 2, 2, 6, FIRE[2])
+    c.poly([(14, 3), (17, 5), (14, 7)], STEEL[3])
+    c.px(10, 3, OLIVE[4])
+    c.add_outline(INK)
+    out['proj/mortar_shell'] = (c, 10, 5)
+
     return out
