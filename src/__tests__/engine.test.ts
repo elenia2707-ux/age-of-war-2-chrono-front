@@ -224,6 +224,135 @@ describe('GameEngine Core Simulation', () => {
     expect(engine.buyUpgrade('player', 'weapons')).toBe(false);
   });
 
+  it('applies all 8 newly added spec upgrades (armor_pierce, regeneration, lifesteal, thorns, range_optics, siege_craft, ultimate_power, discount)', () => {
+    // 1. Discount reduces unit & turret gold costs cleanly
+    const engDisc = new GameEngine();
+    engDisc.startNewGame('normal', 601);
+    engDisc.player.gold = 100000;
+    const baseUnitCost = engDisc.getEffectiveUnitCost('player', UNIT_BY_ID.dino_rider.cost);
+    const baseTurretCost = engDisc.getEffectiveTurretCost('player', ERAS[0].turrets[0].cost);
+    for (let i = 0; i < 4; i++) expect(engDisc.buyUpgrade('player', 'discount')).toBe(true);
+    const discUnitCost = engDisc.getEffectiveUnitCost('player', UNIT_BY_ID.dino_rider.cost);
+    const discTurretCost = engDisc.getEffectiveTurretCost('player', ERAS[0].turrets[0].cost);
+    expect(discUnitCost).toBeLessThan(baseUnitCost);
+    expect(discTurretCost).toBeLessThan(baseTurretCost);
+    const goldBeforeQueue = engDisc.player.gold;
+    expect(engDisc.enqueueUnit('player', 'dino_rider')).toBe(true);
+    expect(engDisc.player.gold).toBe(goldBeforeQueue - discUnitCost);
+
+    // 2. Regeneration passively heals injured units over time
+    const engRegen = new GameEngine();
+    engRegen.startNewGame('normal', 602);
+    engRegen.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engRegen.buyUpgrade('player', 'regeneration')).toBe(true);
+    const injured = engRegen.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    injured.x = 600;
+    injured.hp = injured.maxHp * 0.5;
+    const hpBeforeRegen = injured.hp;
+    for (let t = 0; t < 20; t++) engRegen.step(0.05);
+    expect(injured.hp).toBeGreaterThan(hpBeforeRegen);
+
+    // 3. Lifesteal heals attacking unit when dealing damage
+    const engLife = new GameEngine();
+    engLife.startNewGame('normal', 603);
+    engLife.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engLife.buyUpgrade('player', 'lifesteal')).toBe(true);
+    const leecher = engLife.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    leecher.x = 1000;
+    leecher.hp = leecher.maxHp * 0.5;
+    leecher.attackCooldown = 0;
+    const dummy = engLife.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    dummy.x = 1030;
+    dummy.attackCooldown = 10;
+    const leechHpBefore = leecher.hp;
+    engLife.step(0.05);
+    expect(leecher.hp).toBeGreaterThan(leechHpBefore);
+
+    // 4. Thorns reflects melee damage back onto enemy attackers without infinite recursion
+    const engThorns = new GameEngine();
+    engThorns.startNewGame('normal', 604);
+    engThorns.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engThorns.buyUpgrade('player', 'thorns')).toBe(true);
+    const defender = engThorns.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    defender.x = 1000;
+    defender.attackCooldown = 10;
+    const meleeEnemy = engThorns.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    meleeEnemy.x = 1030;
+    meleeEnemy.attackCooldown = 0;
+    const enemyHpBefore = meleeEnemy.hp;
+    engThorns.step(0.05);
+    expect(meleeEnemy.hp).toBeLessThan(enemyHpBefore);
+
+    // 5. Armor Pierce shreds enemy armor for higher net damage against heavily armored targets
+    const engNoPierce = new GameEngine();
+    engNoPierce.startNewGame('normal', 605);
+    const tBase = engNoPierce.spawnUnit('enemy', UNIT_BY_ID.heavy_cavalry);
+    tBase.x = 1030;
+    tBase.attackCooldown = 10;
+    const aBase = engNoPierce.spawnUnit('player', UNIT_BY_ID.knight);
+    aBase.x = 1000;
+    aBase.attackCooldown = 0;
+    engNoPierce.step(0.05);
+    const dmgNoPierce = tBase.maxHp - tBase.hp;
+
+    const engPierce = new GameEngine();
+    engPierce.startNewGame('normal', 605);
+    engPierce.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engPierce.buyUpgrade('player', 'armor_pierce')).toBe(true);
+    const tPierced = engPierce.spawnUnit('enemy', UNIT_BY_ID.heavy_cavalry);
+    tPierced.x = 1030;
+    tPierced.attackCooldown = 10;
+    const aPierced = engPierce.spawnUnit('player', UNIT_BY_ID.knight);
+    aPierced.x = 1000;
+    aPierced.attackCooldown = 0;
+    engPierce.step(0.05);
+    const dmgWithPierce = tPierced.maxHp - tPierced.hp;
+    expect(dmgWithPierce).toBeGreaterThan(dmgNoPierce);
+
+    // 6. Range Optics lets ranged units engage from further away
+    const engRange = new GameEngine();
+    engRange.startNewGame('normal', 606);
+    engRange.player.gold = 100000;
+    for (let i = 0; i < 6; i++) expect(engRange.buyUpgrade('player', 'range_optics')).toBe(true);
+    const shooter = engRange.spawnUnit('player', UNIT_BY_ID.slinger);
+    shooter.x = 700;
+    shooter.attackCooldown = 0;
+    const farEnemy = engRange.spawnUnit('enemy', UNIT_BY_ID.clubman);
+    // Base slinger range is 175; place enemy at +205px so ONLY upgraded optics can shoot immediately
+    farEnemy.x = 700 + UNIT_BY_ID.slinger.range + 28;
+    farEnemy.attackCooldown = 10;
+    engRange.step(0.05);
+    expect(engRange.projectiles.length).toBeGreaterThan(0);
+
+    // 7. Siege Craft boosts damage dealt against enemy base
+    const engNoSiege = new GameEngine();
+    engNoSiege.startNewGame('normal', 607);
+    const sBase = engNoSiege.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    sBase.x = 2155;
+    sBase.attackCooldown = 0;
+    engNoSiege.step(0.05);
+    const baseDmgLv0 = engNoSiege.enemy.baseMaxHp - engNoSiege.enemy.baseHp;
+
+    const engSiege = new GameEngine();
+    engSiege.startNewGame('normal', 607);
+    engSiege.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engSiege.buyUpgrade('player', 'siege_craft')).toBe(true);
+    const sUpg = engSiege.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    sUpg.x = 2155;
+    sUpg.attackCooldown = 0;
+    engSiege.step(0.05);
+    const baseDmgLv5 = engSiege.enemy.baseMaxHp - engSiege.enemy.baseHp;
+    expect(baseDmgLv5).toBeGreaterThan(baseDmgLv0);
+
+    // 8. Ultimate Power reduces ultimate max cooldown and increases ultimate strike damage
+    const engUlt = new GameEngine();
+    engUlt.startNewGame('normal', 608);
+    engUlt.player.gold = 100000;
+    const ultCdBefore = engUlt.player.ultimateMaxCooldown;
+    for (let i = 0; i < 4; i++) expect(engUlt.buyUpgrade('player', 'ultimate_power')).toBe(true);
+    expect(engUlt.player.ultimateMaxCooldown).toBeLessThan(ultCdBefore);
+  });
+
   it('supports tesla_arc chain lightning, railgun/gravity piercing, hover units, 2x speed, pause, and victory resolution', () => {
     const engine = new GameEngine();
     engine.startNewGame('normal', 999);

@@ -181,19 +181,87 @@ export class EnemyAI {
     // Cap target upgrade level gracefully by both difficulty ceiling and era progression
     const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + 1));
 
-    // Tactical priority order across all 8 upgrades based on live battlefield pressure
+    // Tactical priority order across all 16 upgrades based on live battlefield pressure
     let priority: UpgradeId[];
     if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
-      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets + faster ult)
-      priority = ['fortress', 'armor', 'weapons', 'attack_speed', 'mobility', 'crit_mastery', 'economy', 'bounty'];
+      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets), regen, thorns, armor
+      priority = [
+        'fortress',
+        'armor',
+        'regeneration',
+        'thorns',
+        'weapons',
+        'lifesteal',
+        'ultimate_power',
+        'attack_speed',
+        'range_optics',
+        'armor_pierce',
+        'siege_craft',
+        'mobility',
+        'crit_mastery',
+        'discount',
+        'economy',
+        'bounty',
+      ];
     } else if (enemy.upgrades.economy < Math.min(eraCap, 3) && !underThreat) {
-      // Early/mid economic & bounty snowballing
-      priority = ['economy', 'bounty', 'weapons', 'armor', 'attack_speed', 'mobility', 'crit_mastery', 'fortress'];
+      // Early/mid economic, discount & bounty snowballing
+      priority = [
+        'economy',
+        'discount',
+        'bounty',
+        'weapons',
+        'armor',
+        'regeneration',
+        'attack_speed',
+        'range_optics',
+        'lifesteal',
+        'armor_pierce',
+        'mobility',
+        'crit_mastery',
+        'siege_craft',
+        'thorns',
+        'ultimate_power',
+        'fortress',
+      ];
     } else if (activeAllies >= 3) {
-      // Active push -> scale frontline combat DPS, crit & march momentum
-      priority = ['weapons', 'attack_speed', 'crit_mastery', 'armor', 'mobility', 'bounty', 'economy', 'fortress'];
+      // Active push -> scale DPS, pierce, siege, lifesteal & march momentum
+      priority = [
+        'weapons',
+        'attack_speed',
+        'armor_pierce',
+        'siege_craft',
+        'crit_mastery',
+        'lifesteal',
+        'range_optics',
+        'armor',
+        'mobility',
+        'ultimate_power',
+        'regeneration',
+        'thorns',
+        'discount',
+        'bounty',
+        'economy',
+        'fortress',
+      ];
     } else {
-      priority = ['armor', 'weapons', 'attack_speed', 'mobility', 'crit_mastery', 'economy', 'bounty', 'fortress'];
+      priority = [
+        'armor',
+        'weapons',
+        'regeneration',
+        'attack_speed',
+        'range_optics',
+        'thorns',
+        'armor_pierce',
+        'lifesteal',
+        'mobility',
+        'crit_mastery',
+        'discount',
+        'siege_craft',
+        'economy',
+        'bounty',
+        'ultimate_power',
+        'fortress',
+      ];
     }
 
     for (const id of priority) {

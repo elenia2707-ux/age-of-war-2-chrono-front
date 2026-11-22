@@ -113,11 +113,11 @@ export function getUpgradeIconUrl(upgradeId: UpgradeId): string {
   return url;
 }
 
-/** Render handcrafted Flash-cartoon icon centered at (0, 0) for each of the 8 Gold Upgrades */
+/** Render handcrafted HD Flash-cartoon icon centered at (0, 0) for all 16 Gold Spec Upgrades */
 export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: UpgradeId): void {
   switch (id) {
+    // ---- OFFENSE (공격) ----
     case 'weapons': {
-      // Gleaming crossed golden-hilted broadswords!
       for (const dir of [-1, 1] as const) {
         ctx.save();
         ctx.scale(dir, 1);
@@ -134,15 +134,84 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
           '#e2e8f0',
           { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.3 },
         );
-        drawCelRoundRect(ctx, -11, 9, 22, 5.5, 2, '#facc15', { highlight: '#fef08a', lineWidth: 2.0 });
-        drawCelRoundRect(ctx, -3, 14, 6, 11, 2, '#92400e', { lineWidth: 2.0 });
+        drawCelRoundRect(ctx, -11, 9, 22, 5.5, 2, '#facc15', { highlight: '#fef08a', shadow: '#b45309', lineWidth: 2.0 });
+        drawCelRoundRect(ctx, -3, 14, 6, 11, 2, '#92400e', { shadow: '#451a03', lineWidth: 2.0 });
         ctx.restore();
       }
       break;
     }
 
+    case 'attack_speed': {
+      drawCelPoly(
+        ctx,
+        [
+          [4, -27],
+          [-17, 2],
+          [-2, 2],
+          [-8, 27],
+          [18, -4],
+          [2, -4],
+        ],
+        '#facc15',
+        { highlight: '#fef9c3', shadow: '#ea580c', lineWidth: 2.6 },
+      );
+      break;
+    }
+
+    case 'crit_mastery': {
+      drawCelEllipse(ctx, 0, 0, 22, 22, '#ef4444', { highlight: '#fca5a5', shadow: '#991b1b', lineWidth: 2.5 });
+      drawCelEllipse(ctx, 0, 0, 14, 14, '#fef08a', { lineWidth: 2.0 });
+      drawCelEllipse(ctx, 0, 0, 6.5, 6.5, '#dc2626', { lineWidth: 1.8 });
+      setInkStyle(ctx, 2.8, '#0f172a');
+      ctx.beginPath();
+      ctx.moveTo(-27, 0);
+      ctx.lineTo(-10, 0);
+      ctx.moveTo(10, 0);
+      ctx.lineTo(27, 0);
+      ctx.moveTo(0, -27);
+      ctx.lineTo(0, -10);
+      ctx.moveTo(0, 10);
+      ctx.lineTo(0, 27);
+      ctx.stroke();
+      break;
+    }
+
+    case 'armor_pierce': {
+      // Glowing cyan armor-piercing spearhead shattering a steel shield!
+      drawCelPoly(
+        ctx,
+        [
+          [-16, -20],
+          [8, -20],
+          [8, 4],
+          [-4, 22],
+          [-16, 4],
+        ],
+        '#64748b',
+        { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 2.3 },
+      );
+      // Piercing glowing lance cutting diagonally across!
+      ctx.save();
+      ctx.rotate(-0.62);
+      drawCelPoly(
+        ctx,
+        [
+          [-26, -3],
+          [10, -4.5],
+          [28, 0],
+          [10, 4.5],
+          [-26, 3],
+        ],
+        '#38bdf8',
+        { highlight: '#ffffff', shadow: '#0284c7', lineWidth: 2.2 },
+      );
+      ctx.restore();
+      drawEnergyOrb(ctx, 6, -4, 6, '#fde047', '#ffffff');
+      break;
+    }
+
+    // ---- DEFENSE (방어) ----
     case 'armor': {
-      // Heroic golden-trimmed royal blue fortress shield!
       drawCelPoly(
         ctx,
         [
@@ -171,45 +240,96 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
       break;
     }
 
-    case 'attack_speed': {
-      // Blazing golden-cyan comic lightning bolt!
+    case 'regeneration': {
+      // Radiant emerald healing heart + crisp white vitality cross!
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, 23);
+      ctx.bezierCurveTo(-28, 6, -28, -22, -10, -22);
+      ctx.bezierCurveTo(-3, -22, 0, -14, 0, -11);
+      ctx.bezierCurveTo(0, -14, 3, -22, 10, -22);
+      ctx.bezierCurveTo(28, -22, 28, 6, 0, 23);
+      ctx.closePath();
+      const g = ctx.createLinearGradient(0, -22, 0, 23);
+      g.addColorStop(0, '#86efac');
+      g.addColorStop(0.45, '#22c55e');
+      g.addColorStop(1, '#15803d');
+      ctx.fillStyle = g;
+      ctx.fill();
+      setInkStyle(ctx, 2.5);
+      ctx.stroke();
+      ctx.restore();
+      drawCelRoundRect(ctx, -4, -10, 8, 20, 2, '#ffffff', { lineWidth: 1.6 });
+      drawCelRoundRect(ctx, -10, -4, 20, 8, 2, '#ffffff', { lineWidth: 1.6 });
+      break;
+    }
+
+    case 'lifesteal': {
+      // Crimson-violet glowing vampire drop & twin fangs!
+      ctx.save();
+      ctx.beginPath();
+      ctx.moveTo(0, -26);
+      ctx.bezierCurveTo(22, -4, 22, 22, 0, 24);
+      ctx.bezierCurveTo(-22, 22, -22, -4, 0, -26);
+      ctx.closePath();
+      const grad = ctx.createLinearGradient(-12, -22, 12, 24);
+      grad.addColorStop(0, '#fb7185');
+      grad.addColorStop(0.45, '#dc2626');
+      grad.addColorStop(1, '#581c87');
+      ctx.fillStyle = grad;
+      ctx.fill();
+      setInkStyle(ctx, 2.5);
+      ctx.stroke();
+      ctx.restore();
+      // Gleaming white fangs biting over crimson orb
       drawCelPoly(
         ctx,
         [
-          [4, -27],
-          [-17, 2],
-          [-2, 2],
-          [-8, 27],
-          [18, -4],
-          [2, -4],
+          [-13, -6],
+          [-7, 10],
+          [-2, -6],
         ],
-        '#facc15',
-        { highlight: '#fef9c3', shadow: '#ea580c', lineWidth: 2.6 },
+        '#ffffff',
+        { shadow: '#cbd5e1', lineWidth: 1.8 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [2, -6],
+          [7, 10],
+          [13, -6],
+        ],
+        '#ffffff',
+        { shadow: '#cbd5e1', lineWidth: 1.8 },
       );
       break;
     }
 
-    case 'crit_mastery': {
-      // Glowing crimson-gold bullseye reticle & starburst!
-      drawCelEllipse(ctx, 0, 0, 22, 22, '#ef4444', { highlight: '#fca5a5', shadow: '#991b1b', lineWidth: 2.5 });
-      drawCelEllipse(ctx, 0, 0, 14, 14, '#fef08a', { lineWidth: 2.0 });
-      drawCelEllipse(ctx, 0, 0, 6.5, 6.5, '#dc2626', { lineWidth: 1.8 });
-      setInkStyle(ctx, 2.8, '#0f172a');
-      ctx.beginPath();
-      ctx.moveTo(-27, 0);
-      ctx.lineTo(-10, 0);
-      ctx.moveTo(10, 0);
-      ctx.lineTo(27, 0);
-      ctx.moveTo(0, -27);
-      ctx.lineTo(0, -10);
-      ctx.moveTo(0, 10);
-      ctx.lineTo(0, 27);
-      ctx.stroke();
+    case 'thorns': {
+      // Spiked steel-and-crimson thorny buckler shield!
+      for (let i = 0; i < 8; i++) {
+        const a = (i / 8) * Math.PI * 2;
+        ctx.save();
+        ctx.rotate(a);
+        drawCelPoly(
+          ctx,
+          [
+            [14, -4],
+            [27, 0],
+            [14, 4],
+          ],
+          '#e2e8f0',
+          { highlight: '#ffffff', shadow: '#64748b', lineWidth: 1.8 },
+        );
+        ctx.restore();
+      }
+      drawCelEllipse(ctx, 0, 0, 16, 16, '#b91c1c', { highlight: '#f87171', shadow: '#450a0a', lineWidth: 2.4 });
+      drawCelEllipse(ctx, 0, 0, 7, 7, '#facc15', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 1.8 });
       break;
     }
 
+    // ---- TACTICS (전술) ----
     case 'mobility': {
-      // Heroic winged battle boot!
       drawCelPoly(
         ctx,
         [
@@ -224,7 +344,6 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
         { highlight: '#60a5fa', shadow: '#1e3a8a', lineWidth: 2.5 },
       );
       drawCelRoundRect(ctx, -17, 15, 40, 6.5, 2.5, '#78350f', { lineWidth: 2.0 });
-      // Sweeping golden speed wing
       drawCelPoly(
         ctx,
         [
@@ -235,13 +354,50 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
           [-14, 6],
         ],
         '#facc15',
-        { highlight: '#fef08a', lineWidth: 2.1 },
+        { highlight: '#fef08a', shadow: '#b45309', lineWidth: 2.1 },
       );
       break;
     }
 
+    case 'range_optics': {
+      // Sleek golden sniper spyglass / laser optics lens!
+      ctx.save();
+      ctx.rotate(-0.48);
+      drawCelRoundRect(ctx, -24, -6, 18, 12, 3, '#b45309', { highlight: '#fde047', shadow: '#78350f', lineWidth: 2.1 });
+      drawCelRoundRect(ctx, -8, -8.5, 20, 17, 3, '#d97706', { highlight: '#fef08a', shadow: '#78350f', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, 10, -11, 14, 22, 4, '#334155', { highlight: '#94a3b8', shadow: '#0f172a', lineWidth: 2.2 });
+      drawCelEllipse(ctx, 22, 0, 4.5, 9.5, '#38bdf8', { highlight: '#ffffff', shadow: '#0284c7', lineWidth: 1.8 });
+      ctx.restore();
+      break;
+    }
+
+    case 'siege_craft': {
+      // Heavy blazing golden-iron siege warhammer!
+      ctx.save();
+      ctx.rotate(-0.55);
+      drawCelRoundRect(ctx, -4, -6, 8, 30, 2.5, '#854d0e', { highlight: '#ca8a04', shadow: '#451a03', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, -21, -24, 42, 20, 4, '#475569', { highlight: '#cbd5e1', shadow: '#0f172a', lineWidth: 2.5 });
+      drawCelRoundRect(ctx, -18, -24, 8, 20, 2, '#f97316', { highlight: '#fef08a', lineWidth: 1.7 });
+      drawCelRoundRect(ctx, 10, -24, 8, 20, 2, '#f97316', { highlight: '#fef08a', lineWidth: 1.7 });
+      ctx.restore();
+      break;
+    }
+
+    case 'ultimate_power': {
+      // Radiant violet-gold supernova starburst meteor crest!
+      const pts: [number, number][] = [];
+      for (let i = 0; i < 16; i++) {
+        const a = (i / 16) * Math.PI * 2 - Math.PI / 2;
+        const r = i % 2 === 0 ? 25 : 11;
+        pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+      }
+      drawCelPoly(ctx, pts, '#a855f7', { highlight: '#f5d0fe', shadow: '#581c87', lineWidth: 2.3 });
+      drawEnergyOrb(ctx, 0, 0, 9.5, '#facc15', '#ffffff');
+      break;
+    }
+
+    // ---- EMPIRE (제국) ----
     case 'economy': {
-      // Gleaming stacked gold coins + upward surge arrow!
       for (let i = 0; i < 3; i++) {
         drawCelEllipse(ctx, -8, 15 - i * 9, 15, 7, '#f59e0b', {
           highlight: '#fef08a',
@@ -249,7 +405,6 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
           lineWidth: 2.1,
         });
       }
-      // Vibrant emerald up-arrow
       drawCelPoly(
         ctx,
         [
@@ -268,7 +423,6 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
     }
 
     case 'bounty': {
-      // Royal golden war crown & treasure chest gleam!
       drawCelPoly(
         ctx,
         [
@@ -283,13 +437,37 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
         '#facc15',
         { highlight: '#fef08a', shadow: '#b45309', lineWidth: 2.5 },
       );
-      drawCelRoundRect(ctx, -22, 12, 44, 9, 3, '#d97706', { highlight: '#fde047', lineWidth: 2.1 });
+      drawCelRoundRect(ctx, -22, 12, 44, 9, 3, '#d97706', { highlight: '#fde047', shadow: '#78350f', lineWidth: 2.1 });
       drawEnergyOrb(ctx, 0, 5, 5.2, '#38bdf8', '#ffffff');
       break;
     }
 
+    case 'discount': {
+      // Gleaming gold coin paired with emerald downward cost-cut arrow!
+      drawCelEllipse(ctx, -7, -2, 18, 18, '#f59e0b', {
+        highlight: '#fef08a',
+        shadow: '#b45309',
+        lineWidth: 2.5,
+      });
+      drawCelEllipse(ctx, -7, -2, 12, 12, '#eab308', { highlight: '#fef9c3', lineWidth: 1.5 });
+      drawCelPoly(
+        ctx,
+        [
+          [15, 25],
+          [28, 7],
+          [21, 7],
+          [21, -18],
+          [9, -18],
+          [9, 7],
+          [2, 7],
+        ],
+        '#22c55e',
+        { highlight: '#86efac', shadow: '#15803d', lineWidth: 2.3 },
+      );
+      break;
+    }
+
     case 'fortress': {
-      // Crenellated blue-gold castle bastion tower!
       drawCelRoundRect(ctx, -18, -12, 36, 34, 4, '#94a3b8', {
         highlight: '#f1f5f9',
         shadow: '#475569',

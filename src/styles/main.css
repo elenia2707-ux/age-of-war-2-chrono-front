@@ -438,7 +438,7 @@ body {
   pointer-events: auto;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 528px;
+  max-width: 572px;
   border-radius: var(--radius-md);
   padding: 4px;
   display: flex;
@@ -1191,21 +1191,21 @@ body {
 }
 
 /* ============================================================================
-   8-UPGRADE PAGE SWITCHER (전투 <-> 지원) & SAFE ICON PLACEHOLDER
+   16-UPGRADE 4-CATEGORY 2x2 SWITCHER (공격 · 방어 · 전술 · 제국)
    ============================================================================ */
 .upgrade-page-switch {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  grid-template-rows: repeat(2, 1fr);
   gap: 3px;
-  width: 38px;
-  flex: 0 0 38px;
+  width: 68px;
+  flex: 0 0 68px;
 }
 
 .upg-page-btn {
-  flex: 1;
-  border: 1px solid rgba(245, 189, 66, 0.28);
-  border-radius: 7px;
-  background: rgba(245, 189, 66, 0.08);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
+  border-radius: 6px;
+  background: rgba(255, 255, 255, 0.06);
   color: #cbd5e1;
   font-size: 9.5px;
   font-weight: 800;
@@ -1215,12 +1215,34 @@ body {
   align-items: center;
   justify-content: center;
   line-height: 1;
-  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
+  transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
 }
 
-.upg-page-btn.active {
-  background: rgba(245, 189, 66, 0.32);
-  border-color: rgba(250, 204, 21, 0.85);
+.upg-page-btn:active {
+  transform: scale(0.94);
+}
+
+.upg-page-btn.cat-offense.active {
+  background: rgba(249, 115, 22, 0.34);
+  border-color: rgba(251, 146, 60, 0.92);
+  color: #fed7aa;
+}
+
+.upg-page-btn.cat-defense.active {
+  background: rgba(34, 197, 94, 0.32);
+  border-color: rgba(74, 222, 128, 0.92);
+  color: #dcfce7;
+}
+
+.upg-page-btn.cat-tactics.active {
+  background: rgba(168, 85, 247, 0.34);
+  border-color: rgba(192, 132, 252, 0.92);
+  color: #f3e8ff;
+}
+
+.upg-page-btn.cat-empire.active {
+  background: rgba(245, 189, 66, 0.34);
+  border-color: rgba(250, 204, 21, 0.92);
   color: #fef08a;
 }
 
@@ -1271,7 +1293,7 @@ body {
     height: 26px;
   }
   .dock-left {
-    max-width: 556px;
+    max-width: 584px;
     padding: 3px;
     gap: 4px;
   }
@@ -1281,12 +1303,12 @@ body {
     gap: 2px;
   }
   .upgrade-page-switch {
-    width: 34px;
-    flex: 0 0 34px;
+    width: 60px;
+    flex: 0 0 60px;
     gap: 2px;
   }
   .upg-page-btn {
-    font-size: 9px;
+    font-size: 8.8px;
   }
   .action-cards {
     gap: 4px;

@@ -6,7 +6,9 @@ import {
   drawCelPoly,
   drawCelRoundRect,
   drawEnergyOrb,
+  drawGearWheel,
   drawInkLimb,
+  drawRivetStrip,
   drawTankTreads,
   getTeamPalette,
   setInkStyle,
@@ -843,11 +845,12 @@ function drawSteamWalker(
     shadow: '#92400e',
     lineWidth: 2.5,
   });
+  drawRivetStrip(ctx, -14, hipY - 2, 12, hipY - 2, 5, 1.3);
   // Team painted armor plate + glowing amber pilot porthole
-  drawCelRoundRect(ctx, -12, hipY - 24, 24, 10, 3, pal.main, { highlight: pal.light, lineWidth: 1.9 });
-  drawCelEllipse(ctx, 13, hipY - 14, 6.5, 6.5, '#38bdf8', { highlight: '#ffffff', lineWidth: 2.0 });
-  // Spinning decorative brass gear on hull side
-  drawCelEllipse(ctx, -7, hipY - 6, 7.5, 7.5, '#f59e0b', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 1.8 });
+  drawCelRoundRect(ctx, -12, hipY - 24, 24, 10, 3, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 1.9 });
+  drawCelEllipse(ctx, 13, hipY - 14, 6.5, 6.5, '#38bdf8', { highlight: '#ffffff', shadow: '#0369a1', lineWidth: 2.0 });
+  // Real rotating toothed brass clockwork gear on hull side!
+  drawGearWheel(ctx, -8, hipY - 6, 8.2, p.walkPhase * 1.4, 8, '#facc15', '#fef08a', '#b45309');
 
   // Heavy side-mounted brass steampunk rotary cannon!
   const rx = -recoil * 6;
@@ -873,7 +876,6 @@ function drawMortarTeam(
   const recoil = p.attackAnim > 0.3 ? Math.sin(((p.attackAnim - 0.3) / 0.7) * Math.PI) : 0;
 
   ctx.save();
-  // Mortar operator kneeling/marching behind tube
   ctx.save();
   ctx.translate(-12, 0);
   drawCartoonHumanoid(ctx, {
@@ -896,7 +898,6 @@ function drawMortarTeam(
       drawCelRoundRect(c, hx - hr - 1, hy - 4.8, hr * 2 + 2.5, 2.6, 1, pal.main, { lineWidth: 1.2 });
     },
     drawWeapon: (c) => {
-      // Holding finned mortar bomb!
       if (!firing) {
         drawCelEllipse(c, 5, -4, 4.5, 6.2, '#475569', { highlight: '#cbd5e1', lineWidth: 1.6 });
       }
@@ -904,14 +905,11 @@ function drawMortarTeam(
   });
   ctx.restore();
 
-  // Heavy angled trench mortar tube + bipod legs in front!
   if (p.deathProgress < 0.4) {
     const mx = 10;
     const drop = recoil * 3.5;
     drawCelRoundRect(ctx, mx - 8, -5, 16, 5, 2, '#334155', { lineWidth: 1.8 });
-    // Bipod support
     drawInkLimb(ctx, mx + 6, -18, mx + 12, -2, 3.0, '#475569', 2.2);
-    // Angled olive-steel mortar barrel
     ctx.save();
     ctx.translate(mx - 2, -5 + drop);
     ctx.rotate(-0.82);
@@ -947,10 +945,8 @@ function drawEarlyTank(
   }
 
   ctx.translate(0, bob);
-  // Iconic riveted WWI/II lozenge tread hull
   drawTankTreads(ctx, -37, -21, 74, 21, p.walkPhase, 5, '#292524', '#57534e');
 
-  // Armored sloped riveted hull
   drawCelPoly(
     ctx,
     [
@@ -964,27 +960,25 @@ function drawEarlyTank(
     '#5c6b45',
     { highlight: '#849668', shadow: '#354026', lineWidth: 2.5 },
   );
+  drawRivetStrip(ctx, -26, -21, 26, -21, 7, 1.2);
 
-  // Bold team stripe & star insignia on side sponson
-  drawCelRoundRect(ctx, -18, -32, 34, 9, 2.5, pal.main, { highlight: pal.light, lineWidth: 1.8 });
+  drawCelRoundRect(ctx, -18, -32, 34, 9, 2.5, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 1.8 });
   drawCelEllipse(ctx, -1, -27.5, 4.2, 4.2, '#f8fafc', { lineWidth: 1.3 });
 
-  // Rounded vintage tank turret + commander cupola
   drawCelRoundRect(ctx, -15, -51, 29, 17, 6, '#4d5d38', {
     highlight: '#798c5c',
     shadow: '#2b361e',
     lineWidth: 2.4,
   });
-  drawCelRoundRect(ctx, -10, -56, 11, 6, 2, '#3d4a2c', { lineWidth: 1.8 });
+  drawCelRoundRect(ctx, -10, -56, 11, 6, 2, '#3d4a2c', { highlight: '#798c5c', lineWidth: 1.8 });
 
-  // Recoiling vintage tank cannon barrel!
   const rx = -recoil * 7;
   drawCelRoundRect(ctx, 11 + rx, -46, 29, 7, 2.2, '#334155', {
     highlight: '#94a3b8',
     shadow: '#0f172a',
     lineWidth: 2.2,
   });
-  drawCelRoundRect(ctx, 35 + rx, -47.5, 6, 10, 1.5, '#1e293b', { lineWidth: 1.8 });
+  drawCelRoundRect(ctx, 35 + rx, -47.5, 6, 10, 1.5, '#1e293b', { highlight: '#64748b', lineWidth: 1.8 });
 
   if (firing) {
     drawCartoonMuzzleFlash(ctx, 45 + rx, -42.5, 17, '#f97316', '#fef08a');
@@ -1010,10 +1004,8 @@ function drawModernMBT(
   }
 
   ctx.translate(0, bob);
-  // Heavy 6-wheel modern composite tank tracks
   drawTankTreads(ctx, -41, -19, 82, 19, p.walkPhase, 6, '#1e293b', '#475569');
 
-  // Sleek sloped Abrams-style reactive armor side-skirt chassis
   drawCelPoly(
     ctx,
     [
@@ -1027,21 +1019,24 @@ function drawModernMBT(
     '#64748b',
     { highlight: '#cbd5e1', shadow: '#334155', lineWidth: 2.5 },
   );
-  // Reactive armor skirt blocks
+  // Reactive ERA armor skirt blocks with bolts
   for (let i = 0; i < 5; i++) {
-    drawCelRoundRect(ctx, -33 + i * 13, -24, 11, 8, 1.5, '#475569', { lineWidth: 1.5 });
+    drawCelRoundRect(ctx, -33 + i * 13, -24, 11, 8, 1.5, '#475569', {
+      highlight: '#94a3b8',
+      shadow: '#1e293b',
+      lineWidth: 1.5,
+    });
   }
-  // Bold team stripe
-  drawCelRoundRect(ctx, -30, -31, 56, 5.5, 1.5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+  drawCelRoundRect(ctx, -30, -31, 56, 5.5, 1.5, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 1.5 });
+  // Headlight glow on front glacis
+  drawEnergyOrb(ctx, 37, -23, 2.4, '#fef08a', '#ffffff');
 
-  // Whip radio antenna
   setInkStyle(ctx, 1.8, '#0f172a');
   ctx.beginPath();
   ctx.moveTo(-22, -47);
   ctx.lineTo(-27 - Math.sin(p.walkPhase) * 2, -64);
   ctx.stroke();
 
-  // Angular wedge modern composite turret!
   drawCelPoly(
     ctx,
     [
@@ -1054,19 +1049,23 @@ function drawModernMBT(
     '#475569',
     { highlight: '#94a3b8', shadow: '#1e293b', lineWidth: 2.5 },
   );
-  // Glowing modern thermal targeter optic
-  drawCelRoundRect(ctx, 6, -54, 9, 6, 1.8, '#1e293b', { lineWidth: 1.6 });
+  drawRivetStrip(ctx, -18, -46, 12, -46, 5, 1.1);
+  // Smoke grenade launcher cluster & glowing modern thermal targeter optic
+  drawCelRoundRect(ctx, 6, -54, 9, 6, 1.8, '#1e293b', { highlight: '#475569', lineWidth: 1.6 });
   ctx.fillStyle = pal.glow;
   ctx.fillRect(10.5, -52.5, 3.5, 3);
 
-  // Long 120mm smoothbore recoiling main cannon with bore evacuator!
   const rx = -recoil * 8;
   drawCelRoundRect(ctx, 18 + rx, -44.5, 38, 6.2, 1.8, '#334155', {
     highlight: '#cbd5e1',
     shadow: '#0f172a',
     lineWidth: 2.2,
   });
-  drawCelRoundRect(ctx, 32 + rx, -46.2, 11, 9.6, 2.5, '#475569', { highlight: '#94a3b8', lineWidth: 1.8 });
+  drawCelRoundRect(ctx, 32 + rx, -46.2, 11, 9.6, 2.5, '#475569', {
+    highlight: '#94a3b8',
+    shadow: '#1e293b',
+    lineWidth: 1.8,
+  });
 
   if (firing) {
     drawCartoonMuzzleFlash(ctx, 60 + rx, -41.5, 19, '#f97316', '#fef08a');

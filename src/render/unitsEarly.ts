@@ -1164,7 +1164,7 @@ function drawDinoRider(
   drawInkLimb(ctx, -10 - stride * 9, -12, -4 - stride * 11, -3, 6.2, '#166534', 3.4);
   drawCelEllipse(ctx, -1 - stride * 11, -2.5, 6, 3.2, '#166534', { lineWidth: 1.8 });
 
-  // Swishing curved tail
+  // Swishing curved tail with jagged prehistoric ridge spikes!
   ctx.save();
   ctx.beginPath();
   ctx.moveTo(-12, bodyY + 2);
@@ -1177,33 +1177,59 @@ function drawDinoRider(
   ctx.stroke();
   ctx.restore();
 
-  // Main muscular dino torso + cream belly
+  // Amber dinosaur dorsal spikes along tail & neck
+  for (let sp = 0; sp < 3; sp++) {
+    const sx = -16 - sp * 7;
+    const sy = bodyY - 3 - sp * 2 + tailWag * (0.25 + sp * 0.25);
+    drawCelPoly(
+      ctx,
+      [
+        [sx - 3, sy + 2],
+        [sx - 1, sy - 6],
+        [sx + 3, sy + 2],
+      ],
+      '#f59e0b',
+      { highlight: '#fef08a', lineWidth: 1.4 },
+    );
+  }
+
+  // Main muscular dino torso + cream belly + darker dorsal stripes
   drawCelEllipse(ctx, 0, bodyY + 2, 20, 12.5, '#22c55e', {
     highlight: '#86efac',
     shadow: '#15803d',
     lineWidth: 2.3,
     rotation: -0.14,
   });
-  drawCelEllipse(ctx, 2, bodyY + 7.5, 13, 6.2, '#fef08a', { lineWidth: 1.6 });
+  ctx.fillStyle = 'rgba(21, 128, 61, 0.5)';
+  ctx.beginPath();
+  ctx.ellipse(-6, bodyY - 2, 4.5, 2.4, -0.3, 0, Math.PI * 2);
+  ctx.ellipse(5, bodyY - 3, 5.2, 2.5, -0.2, 0, Math.PI * 2);
+  ctx.fill();
+  drawCelEllipse(ctx, 2, bodyY + 7.5, 13, 6.2, '#fef08a', { shadow: '#eab308', lineWidth: 1.6 });
 
-  // Saddle & team war-paint blanket
+  // Saddle & team war-paint blanket with gold buckle
   drawCelRoundRect(ctx, -11, bodyY - 10, 18, 9, 3, pal.main, {
     highlight: pal.light,
     shadow: pal.dark,
     lineWidth: 2.0,
   });
+  drawCelRoundRect(ctx, -5, bodyY - 4, 6, 4.5, 1, '#facc15', { highlight: '#fef08a', lineWidth: 1.2 });
 
   // Muscular neck + fierce snapping dino head!
   ctx.save();
   ctx.translate(15, bodyY - 6);
   ctx.rotate(-0.18 + bite * 0.35);
-  drawCelRoundRect(ctx, -4, -14, 12, 16, 5, '#22c55e', { highlight: '#86efac', lineWidth: 2.1 });
-  // Upper snout
+  drawCelRoundRect(ctx, -4, -14, 12, 16, 5, '#22c55e', { highlight: '#86efac', shadow: '#15803d', lineWidth: 2.1 });
+  // Upper snout with nostril & ridge brow
   drawCelRoundRect(ctx, 2, -22, 22, 11.5, 5, '#22c55e', {
     highlight: '#86efac',
     shadow: '#15803d',
     lineWidth: 2.2,
   });
+  ctx.fillStyle = '#14532d';
+  ctx.beginPath();
+  ctx.arc(20, -18, 1.4, 0, Math.PI * 2);
+  ctx.fill();
   // Lower jaw snaps open on attack!
   ctx.save();
   ctx.translate(6, -11);

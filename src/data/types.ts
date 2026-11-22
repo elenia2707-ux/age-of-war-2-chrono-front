@@ -39,16 +39,28 @@ export type UltimateKind =
   | 'black_hole';
 
 export type UpgradeId =
+  // Offense (공격)
   | 'weapons'
-  | 'armor'
   | 'attack_speed'
   | 'crit_mastery'
+  | 'armor_pierce'
+  // Defense (방어)
+  | 'armor'
+  | 'regeneration'
+  | 'lifesteal'
+  | 'thorns'
+  // Tactics (전술)
   | 'mobility'
+  | 'range_optics'
+  | 'siege_craft'
+  | 'ultimate_power'
+  // Empire (제국)
   | 'economy'
   | 'bounty'
+  | 'discount'
   | 'fortress';
 
-export type UpgradeCategory = 'combat' | 'support';
+export type UpgradeCategory = 'offense' | 'defense' | 'tactics' | 'empire';
 
 export type UpgradeLevels = Record<UpgradeId, number>;
 

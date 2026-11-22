@@ -6,19 +6,29 @@ import {
   createInitialUpgrades,
   getArmorHpMult,
   getArmorMitigationBonus,
+  getArmorPierceFraction,
   getAttackSpeedMult,
   getBaseMaxHpMult,
+  getCostDiscountMult,
   getCritChanceBonus,
   getCritDamageBonus,
   getGoldIncomeMult,
   getKillGoldMult,
   getKillXpMult,
   getKnockbackResistMult,
+  getLifestealRatio,
   getMoveSpeedMult,
   getNextUpgradeCost,
+  getProjectileSpeedMult,
+  getRangeMult,
+  getRegenRatePerSec,
+  getSiegeDamageMult,
+  getSplashRadiusMult,
+  getThornsReflectRatio,
   getTrainSpeedMult,
   getTurretDamageMult,
   getUltimateCooldownMult,
+  getUltimateDamageMult,
   getWeaponDamageMult,
 } from '../data/upgrades';
 import type {
@@ -197,6 +207,16 @@ export class GameEngine {
     };
   }
 
+  public getEffectiveUnitCost(team: Team, baseCost: number): number {
+    const faction = this.getFaction(team);
+    return Math.max(1, Math.round(baseCost * getCostDiscountMult(faction.upgrades)));
+  }
+
+  public getEffectiveTurretCost(team: Team, baseCost: number): number {
+    const faction = this.getFaction(team);
+    return Math.max(1, Math.round(baseCost * getCostDiscountMult(faction.upgrades)));
+  }
+
   public enqueueUnit(team: Team, unitId: UnitVisualKind): boolean {
     if (this.status !== 'playing') return false;
     const faction = this.getFaction(team);
@@ -204,14 +224,15 @@ export class GameEngine {
     const def = era.units.find((u) => u.id === unitId);
     if (!def) return false;
     if (faction.queue.length >= MAX_QUEUE_SIZE) return false;
-    if (faction.gold < def.cost) return false;
+    const effCost = this.getEffectiveUnitCost(team, def.cost);
+    if (faction.gold < effCost) return false;
 
     const effectiveTrainTime = def.trainTime / getTrainSpeedMult(faction.upgrades);
-    faction.gold -= def.cost;
+    faction.gold -= effCost;
     faction.queue.push({
       unitId: def.id,
       eraIndex: def.eraIndex,
-      cost: def.cost,
+      cost: effCost,
       trainTime: effectiveTrainTime,
       remaining: effectiveTrainTime,
     });
@@ -247,6 +268,21 @@ export class GameEngine {
 
     const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
     const def = UPGRADE_BY_ID[id];
+    const era = getEra(faction.eraIndex);
+
+    const syncUltCooldown = () => {
+      const nextUltMax = Math.max(
+        10,
+        Math.round(era.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+      );
+      if (faction.ultimateMaxCooldown > 0 && faction.ultimateCooldown > 0) {
+        faction.ultimateCooldown = Math.min(
+          nextUltMax,
+          faction.ultimateCooldown * (nextUltMax / faction.ultimateMaxCooldown),
+        );
+      }
+      faction.ultimateMaxCooldown = nextUltMax;
+    };
 
     if (id === 'armor') {
       // Scale existing live allied units immediately so upgrading mid-battle feels punchy
@@ -263,7 +299,6 @@ export class GameEngine {
       }
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#60a5fa', 1.18, 'heal');
     } else if (id === 'fortress') {
-      const era = getEra(faction.eraIndex);
       const nextBaseMaxHp = Math.round(era.baseMaxHp * getBaseMaxHpMult(faction.upgrades));
       const maxGain = Math.max(0, nextBaseMaxHp - prevBaseMaxHp);
       const repair = Math.round(nextBaseMaxHp * FORTRESS_UPGRADE_REPAIR_RATIO);
@@ -271,35 +306,24 @@ export class GameEngine {
       const beforeHp = faction.baseHp;
       faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + maxGain + repair);
       faction.displayBaseHp = Math.max(faction.displayBaseHp, faction.baseHp);
-      const nextUltMax = Math.max(10, Math.round(era.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10);
-      if (faction.ultimateMaxCooldown > 0 && faction.ultimateCooldown > 0) {
-        faction.ultimateCooldown = Math.min(
-          nextUltMax,
-          faction.ultimateCooldown * (nextUltMax / faction.ultimateMaxCooldown),
-        );
-      }
-      faction.ultimateMaxCooldown = nextUltMax;
+      syncUltCooldown();
       const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
       this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.26, 'heal');
-    } else if (
-      id === 'weapons' ||
-      id === 'attack_speed' ||
-      id === 'crit_mastery' ||
-      id === 'mobility'
-    ) {
+    } else if (id === 'ultimate_power') {
+      syncUltCooldown();
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#f472b6', 1.22, 'crit');
+    } else if (def.category === 'offense' || def.category === 'defense' || def.category === 'tactics') {
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           u.upgradeFlash = 1;
         }
       }
       const col =
-        id === 'weapons'
+        def.category === 'offense'
           ? '#fb923c'
-          : id === 'attack_speed'
-            ? '#38bdf8'
-            : id === 'crit_mastery'
-              ? '#fde047'
-              : '#4ade80';
+          : def.category === 'defense'
+            ? '#4ade80'
+            : '#c084fc';
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, col, 1.18, 'crit');
     } else {
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.18, 'gold');
@@ -344,7 +368,9 @@ export class GameEngine {
     const faction = this.getFaction(team);
     const era = getEra(faction.eraIndex);
     const def = era.turrets.find((t) => t.id === turretId);
-    if (!def || faction.gold < def.cost) return false;
+    if (!def) return false;
+    const effCost = this.getEffectiveTurretCost(team, def.cost);
+    if (faction.gold < effCost) return false;
 
     let slotIndex = -1;
     if (
@@ -364,12 +390,12 @@ export class GameEngine {
     }
     if (slotIndex === -1) return false;
 
-    faction.gold -= def.cost;
+    faction.gold -= effCost;
     faction.turrets[slotIndex] = {
       slotIndex,
       turretId: def.id,
       eraIndex: def.eraIndex,
-      cost: def.cost,
+      cost: effCost,
       cooldown: 0.2,
       aimAngle: team === 'player' ? 0 : Math.PI,
       recoil: 0,
@@ -506,16 +532,16 @@ export class GameEngine {
       const dir: 1 | -1 = team === 'player' ? 1 : -1;
       const startX = dir === 1 ? -140 : WORLD_WIDTH + 140;
       active.planes = [
-        { x: startX, y: 78, speed: 680, dir, kind: 'bomber' },
-        { x: startX - dir * 110, y: 108, speed: 680, dir, kind: 'bomber' },
-        { x: startX - dir * 215, y: 88, speed: 680, dir, kind: 'bomber' },
+        { x: startX, y: 98, speed: 680, dir, kind: 'bomber' },
+        { x: startX - dir * 110, y: 126, speed: 680, dir, kind: 'bomber' },
+        { x: startX - dir * 215, y: 108, speed: 680, dir, kind: 'bomber' },
       ];
     } else if (def.kind === 'zeppelin_raid') {
       const dir: 1 | -1 = team === 'player' ? 1 : -1;
       const startX = dir === 1 ? -160 : WORLD_WIDTH + 160;
       active.planes = [
-        { x: startX, y: 74, speed: 540, dir, kind: 'zeppelin' },
-        { x: startX - dir * 170, y: 104, speed: 540, dir, kind: 'zeppelin' },
+        { x: startX, y: 104, speed: 540, dir, kind: 'zeppelin' },
+        { x: startX - dir * 175, y: 134, speed: 540, dir, kind: 'zeppelin' },
       ];
     }
 
@@ -719,6 +745,8 @@ export class GameEngine {
       const teamFaction = this.getFaction(team);
       const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades);
       const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades);
+      const rangeMult = getRangeMult(teamFaction.upgrades);
+      const regenRate = getRegenRatePerSec(teamFaction.upgrades);
 
       for (let i = 0; i < allies.length; i++) {
         const u = allies[i];
@@ -726,6 +754,26 @@ export class GameEngine {
         if (u.upgradeFlash > 0) u.upgradeFlash = Math.max(0, u.upgradeFlash - dt * 1.9);
         if (u.attackCooldown > 0) u.attackCooldown = Math.max(0, u.attackCooldown - dt);
         if (u.attackAnim > 0) u.attackAnim = Math.max(0, u.attackAnim - dt * 3.4);
+
+        // Battlefield Regeneration upgrade heals wounded allied units steadily
+        if (regenRate > 0 && u.hp < u.maxHp) {
+          u.hp = Math.min(u.maxHp, u.hp + u.maxHp * regenRate * dt);
+          if (this.random() < dt * 1.6) {
+            this.particles.push({
+              x: u.x + (this.random() - 0.5) * 16,
+              y: GROUND_Y - u.def.height * 0.65 - (u.def.hoverHeight ?? 0),
+              vx: (this.random() - 0.5) * 14,
+              vy: -32 - this.random() * 18,
+              size: 3.4,
+              color: '#4ade80',
+              alpha: 0.9,
+              life: 0.35,
+              maxLife: 0.35,
+              gravity: -12,
+              shape: 'circle',
+            });
+          }
+        }
 
         // Fighting-game delayed white/gold HP drain bar on units
         if (u.displayHpHold > 0) {
@@ -759,9 +807,10 @@ export class GameEngine {
           }
         }
 
+        const effectiveRange = u.def.range > 45 ? u.def.range * rangeMult : u.def.range;
         const distToEnemyBase = (enemyBaseFront - u.x) * dir - u.def.width * 0.5;
-        const inRangeOfUnit = target !== null && minEnemyDist <= u.def.range;
-        const inRangeOfBase = distToEnemyBase <= u.def.range;
+        const inRangeOfUnit = target !== null && minEnemyDist <= effectiveRange;
+        const inRangeOfBase = distToEnemyBase <= effectiveRange;
 
         if (inRangeOfUnit || inRangeOfBase) {
           u.state = 'attack';
@@ -803,7 +852,7 @@ export class GameEngine {
             u.x = nextX;
             const prevStep = Math.floor(u.walkPhase / Math.PI);
             u.walkPhase += dt * (effSpeed * 0.16);
-            // Heavy war-machines & cavalry kick up subtle pixel road dust as they stride!
+            // Heavy war-machines & cavalry kick up subtle road dust as they stride!
             if (
               !u.def.hoverHeight &&
               (u.def.role === 'heavy' || u.def.role === 'siege') &&
@@ -840,6 +889,10 @@ export class GameEngine {
     const isCrit = this.random() < critChance;
     const rawDamage =
       def.damage * getWeaponDamageMult(attackerFaction.upgrades) * (isCrit ? critMult : 1);
+    const rangeMult = getRangeMult(attackerFaction.upgrades);
+    const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
+    const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
+    const effRange = def.range > 45 ? def.range * rangeMult : def.range;
 
     this.callbacks.onSound?.(def.attackSound);
 
@@ -859,7 +912,7 @@ export class GameEngine {
     if (def.projectile === 'railgun' || def.projectile === 'gravity_beam' || def.projectile === 'tesla_arc') {
       const isGrav = def.projectile === 'gravity_beam';
       const isTesla = def.projectile === 'tesla_arc';
-      const endX = target && isTesla ? target.x : originX + dir * (def.range + 45);
+      const endX = target && isTesla ? target.x : originX + dir * (effRange + 45);
       const endY = target && isTesla ? targetY : originY;
       this.beams.push({
         uid: this.nextUid++,
@@ -882,7 +935,7 @@ export class GameEngine {
         .filter((u) => u.team !== attacker.team && u.state !== 'dead')
         .filter((u) => {
           const rel = (u.x - originX) * dir;
-          return rel >= -10 && rel <= def.range + 45;
+          return rel >= -10 && rel <= effRange + 45;
         })
         .sort((a, b) => (a.x - originX) * dir - (b.x - originX) * dir);
 
@@ -891,7 +944,6 @@ export class GameEngine {
       let prevArcY = originY;
       for (const victim of hitCandidates) {
         if (isTesla && hits > 0) {
-          // Visible chaining lightning bolt jumping to the second shocked target!
           const vx = victim.x;
           const vy = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
           this.beams.push({
@@ -911,7 +963,7 @@ export class GameEngine {
         }
         prevArcX = victim.x;
         prevArcY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
-        this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team);
+        this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
         hits++;
         if (hits >= def.pierceCount) break;
       }
@@ -928,7 +980,7 @@ export class GameEngine {
 
     // Flamethrower jet: cone blast hitting enemies in range
     if (def.projectile === 'flame') {
-      const endX = originX + dir * (def.range + 15);
+      const endX = originX + dir * (effRange + 15);
       this.beams.push({
         uid: this.nextUid++,
         team: attacker.team,
@@ -945,7 +997,7 @@ export class GameEngine {
       });
       for (let p = 0; p < 5; p++) {
         this.particles.push({
-          x: originX + dir * (10 + this.random() * def.range * 0.7),
+          x: originX + dir * (10 + this.random() * effRange * 0.7),
           y: originY + (this.random() - 0.5) * 18,
           vx: dir * (120 + this.random() * 140),
           vy: -30 - this.random() * 50,
@@ -963,8 +1015,8 @@ export class GameEngine {
       for (const victim of this.units) {
         if (victim.team === attacker.team || victim.state === 'dead') continue;
         const rel = (victim.x - originX) * dir;
-        if (rel >= -10 && rel <= def.range + 28) {
-          this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team);
+        if (rel >= -10 && rel <= effRange + 28) {
+          this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
           hitAny = true;
         }
       }
@@ -981,11 +1033,11 @@ export class GameEngine {
 
     // Ranged Projectile
     if (def.projectile) {
-      const speed = def.projectileSpeed ?? 420;
+      const speed = (def.projectileSpeed ?? 420) * projSpeedMult;
       const gravity = def.projectileArc ?? 200;
       const dx = targetX - originX;
       const dy = targetY - originY;
-      const flightTime = Math.max(0.12, Math.abs(dx) / speed);
+      const flightTime = Math.max(0.11, Math.abs(dx) / speed);
       const vx = dx / flightTime;
       const vy = (dy - 0.5 * gravity * flightTime * flightTime) / flightTime;
 
@@ -1001,7 +1053,7 @@ export class GameEngine {
         vy,
         gravity,
         damage: rawDamage,
-        splashRadius: def.splashRadius,
+        splashRadius: def.splashRadius > 0 ? def.splashRadius * splashMult : 0,
         armorPierce: def.armorPierce,
         isCrit,
         baseDamageMult: def.baseDamageMult,
@@ -1038,13 +1090,14 @@ export class GameEngine {
           target.x,
           attacker.team,
           rawDamage,
-          def.splashRadius,
+          def.splashRadius * splashMult,
           def.armorPierce,
           isCrit,
           dir * def.knockback,
+          attacker,
         );
       } else {
-        this.applyDamageToUnit(target, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team);
+        this.applyDamageToUnit(target, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
       }
       const impactY = GROUND_Y - target.def.height * 0.72;
       this.spawnBurst(
@@ -1071,6 +1124,9 @@ export class GameEngine {
   private updateTurrets(faction: FactionState, dt: number): void {
     const enemyTeam: Team = faction.team === 'player' ? 'enemy' : 'player';
     const dir = faction.team === 'player' ? 1 : -1;
+    const rangeMult = getRangeMult(faction.upgrades);
+    const projSpeedMult = getProjectileSpeedMult(faction.upgrades);
+    const splashMult = getSplashRadiusMult(faction.upgrades);
 
     for (let i = 0; i < faction.turretSlots; i++) {
       const turret = faction.turrets[i];
@@ -1081,6 +1137,7 @@ export class GameEngine {
       if (turret.recoil > 0) turret.recoil = Math.max(0, turret.recoil - dt * 5);
 
       const pos = this.getTurretWorldPosition(faction.team, i);
+      const effTurretRange = def.range * rangeMult;
 
       // Acquire closest enemy unit within turret range
       let bestTarget: UnitEntity | null = null;
@@ -1088,7 +1145,7 @@ export class GameEngine {
       for (const u of this.units) {
         if (u.team !== enemyTeam || u.state === 'dead') continue;
         const dx = (u.x - pos.x) * dir;
-        if (dx >= -20 && dx <= def.range && dx < bestDist) {
+        if (dx >= -20 && dx <= effTurretRange && dx < bestDist) {
           bestDist = dx;
           bestTarget = u;
         }
@@ -1132,14 +1189,14 @@ export class GameEngine {
           tx,
           faction.team,
           scaledTurretDamage,
-          def.splashRadius,
+          def.splashRadius * splashMult,
           def.armorPierce,
           false,
           dir * (isGrav ? 95 : 75),
         );
         this.spawnRing(tx, ty, isGrav ? '#c084fc' : '#38bdf8', def.splashRadius * 0.6);
       } else {
-        const flightTime = Math.max(0.14, Math.hypot(aimDx, aimDy) / def.projectileSpeed);
+        const flightTime = Math.max(0.12, Math.hypot(aimDx, aimDy) / (def.projectileSpeed * projSpeedMult));
         const vx = aimDx / flightTime;
         const vy = (aimDy - 0.5 * def.projectileArc * flightTime * flightTime) / flightTime;
 
@@ -1155,7 +1212,7 @@ export class GameEngine {
           vy,
           gravity: def.projectileArc,
           damage: scaledTurretDamage,
-          splashRadius: def.splashRadius,
+          splashRadius: def.splashRadius > 0 ? def.splashRadius * splashMult : 0,
           armorPierce: def.armorPierce,
           isCrit: false,
           baseDamageMult: 1,
@@ -1322,11 +1379,14 @@ export class GameEngine {
 
         if (ord.y >= ord.targetY) {
           ord.impacted = true;
+          const casterFaction = this.getFaction(ult.team);
+          const ultDmg = ult.def.damagePerStrike * getUltimateDamageMult(casterFaction.upgrades);
+          const ultRad = ult.def.radius * getSplashRadiusMult(casterFaction.upgrades);
           this.applySplashDamage(
             ord.targetX,
             ult.team,
-            ult.def.damagePerStrike,
-            ult.def.radius,
+            ultDmg,
+            ultRad,
             true,
             false,
             dir * 95,
@@ -1360,6 +1420,10 @@ export class GameEngine {
 
   private launchUltimateStrike(ult: ActiveUltimate, targetX: number, dir: 1 | -1): void {
     const kind = ult.def.kind;
+    const casterFaction = this.getFaction(ult.team);
+    const ultDmg = ult.def.damagePerStrike * getUltimateDamageMult(casterFaction.upgrades);
+    const ultRad = ult.def.radius * getSplashRadiusMult(casterFaction.upgrades);
+
     if (kind === 'lightning') {
       this.beams.push({
         uid: this.nextUid++,
@@ -1375,7 +1439,7 @@ export class GameEngine {
         maxLife: 0.44,
         seed: this.random() * 1000,
       });
-      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 80);
+      this.applySplashDamage(targetX, ult.team, ultDmg, ultRad, true, true, dir * 80);
       this.spawnExplosion(targetX, GROUND_Y - 6, ult.def.radius * 0.9, '#38bdf8');
       this.callbacks.onSound?.('railgun');
       return;
@@ -1396,7 +1460,7 @@ export class GameEngine {
         maxLife: 0.65,
         seed: this.random() * 1000,
       });
-      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 75);
+      this.applySplashDamage(targetX, ult.team, ultDmg, ultRad, true, true, dir * 75);
       this.spawnExplosion(targetX, GROUND_Y - 6, ult.def.radius * 0.95, '#fbbf24');
       this.callbacks.onSound?.('laser');
       return;
@@ -1417,7 +1481,7 @@ export class GameEngine {
         maxLife: 0.85,
         seed: this.random() * 1000,
       });
-      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 110);
+      this.applySplashDamage(targetX, ult.team, ultDmg, ultRad, true, true, dir * 110);
       this.spawnExplosion(targetX, GROUND_Y - 8, ult.def.radius * 1.15, '#22d3ee');
       this.callbacks.onSound?.('explosion');
       return;
@@ -1438,7 +1502,7 @@ export class GameEngine {
         maxLife: 0.92,
         seed: this.random() * 1000,
       });
-      this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, -dir * 40);
+      this.applySplashDamage(targetX, ult.team, ultDmg, ultRad, true, true, -dir * 40);
       this.spawnExplosion(targetX, GROUND_Y - 12, ult.def.radius * 1.2, '#c084fc');
       this.callbacks.onSound?.('explosion');
       return;
@@ -1486,6 +1550,7 @@ export class GameEngine {
     armorPierce: boolean,
     isCrit: boolean,
     knockback: number,
+    attackerUnit?: UnitEntity,
   ): void {
     const enemyTeam: Team = attackerTeam === 'player' ? 'enemy' : 'player';
     for (const u of this.units) {
@@ -1493,7 +1558,15 @@ export class GameEngine {
       const dist = Math.abs(u.x - centerX);
       if (dist <= radius + u.def.width * 0.4) {
         const falloff = Math.max(0.45, 1 - (dist / Math.max(1, radius + 24)) * 0.5);
-        this.applyDamageToUnit(u, damage * falloff, armorPierce, isCrit, knockback * falloff, attackerTeam);
+        this.applyDamageToUnit(
+          u,
+          damage * falloff,
+          armorPierce,
+          isCrit,
+          knockback * falloff,
+          attackerTeam,
+          attackerUnit,
+        );
       }
     }
   }
@@ -1505,18 +1578,48 @@ export class GameEngine {
     isCrit: boolean,
     knockbackImpulse: number,
     attackerTeam: Team,
+    attackerUnit?: UnitEntity,
+    isThornsReflect = false,
   ): void {
     if (victim.state === 'dead') return;
     const victimFaction = this.getFaction(victim.team);
-    const totalArmor = Math.min(0.5, victim.def.armor + getArmorMitigationBonus(victimFaction.upgrades));
-    const effectiveArmor = armorPierce ? totalArmor * 0.4 : totalArmor;
-    const finalDamage = Math.max(1, Math.round(rawDamage * (1 - effectiveArmor)));
+    const attackerFaction = this.getFaction(attackerTeam);
+
+    const totalArmor = Math.min(0.55, victim.def.armor + getArmorMitigationBonus(victimFaction.upgrades));
+    const pierceFraction = getArmorPierceFraction(attackerFaction.upgrades, armorPierce);
+    const effectiveArmor = totalArmor * (1 - pierceFraction);
+
+    // Siege Craft deals bonus damage against Heavy & Siege juggernauts/vehicles/mechs!
+    const heavyBonus =
+      victim.def.role === 'heavy' || victim.def.role === 'siege'
+        ? getSiegeDamageMult(attackerFaction.upgrades)
+        : 1;
+
+    const finalDamage = Math.max(1, Math.round(rawDamage * heavyBonus * (1 - effectiveArmor)));
     victim.hp -= finalDamage;
     victim.hitFlash = 1;
     victim.lastHitCrit = isCrit;
     victim.displayHpHold = Math.max(victim.displayHpHold, isCrit ? 0.24 : 0.16);
     victim.knockbackVel +=
       knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88) * getKnockbackResistMult(victimFaction.upgrades);
+
+    // Lifesteal heals the living attacker unit on damage dealt!
+    if (!isThornsReflect && attackerUnit && attackerUnit.state !== 'dead') {
+      const lsRatio = getLifestealRatio(attackerFaction.upgrades);
+      if (lsRatio > 0 && attackerUnit.hp < attackerUnit.maxHp) {
+        const healAmt = Math.max(1, finalDamage * lsRatio);
+        attackerUnit.hp = Math.min(attackerUnit.maxHp, attackerUnit.hp + healAmt);
+      }
+    }
+
+    // Thorns armor reflects melee strike damage back to the melee attacker!
+    if (!isThornsReflect && attackerUnit && attackerUnit.state !== 'dead' && !attackerUnit.def.projectile) {
+      const thornsRatio = getThornsReflectRatio(victimFaction.upgrades);
+      if (thornsRatio > 0) {
+        const reflectDmg = Math.max(1, Math.round(finalDamage * thornsRatio));
+        this.applyDamageToUnit(attackerUnit, reflectDmg, true, false, 0, victim.team, undefined, true);
+      }
+    }
 
     const hitDir = attackerTeam === 'player' ? 1 : -1;
     const impactX = victim.x - hitDir * Math.min(14, victim.def.width * 0.3);
@@ -1525,11 +1628,13 @@ export class GameEngine {
     // Instant arcade hit-impact starburst & directional sparks on EVERY hit!
     const sparkColor = isCrit
       ? '#fde047'
-      : victim.def.isMechanical
-        ? '#fef08a'
-        : armorPierce
-          ? '#67e8f9'
-          : '#ffedd5';
+      : isThornsReflect
+        ? '#f43f5e'
+        : victim.def.isMechanical
+          ? '#fef08a'
+          : armorPierce
+            ? '#67e8f9'
+            : '#ffedd5';
     this.spawnFlashStar(impactX, impactY, sparkColor, isCrit ? 24 : 14);
     this.spawnDirectionalSparks(impactX, impactY, hitDir, sparkColor, isCrit ? 9 : 4, isCrit ? 220 : 145);
 
@@ -1607,7 +1712,7 @@ export class GameEngine {
   private applyDamageToBase(targetTeam: Team, rawDamage: number, isCrit: boolean, attackerTeam: Team): void {
     const defender = this.getFaction(targetTeam);
     const attacker = this.getFaction(attackerTeam);
-    const dmg = Math.max(1, Math.round(rawDamage));
+    const dmg = Math.max(1, Math.round(rawDamage * getSiegeDamageMult(attacker.upgrades)));
     defender.baseHp = Math.max(0, defender.baseHp - dmg);
     defender.baseHitFlash = 1;
 

@@ -14,6 +14,10 @@ import {
   drawCelPoly,
   drawCelRoundRect,
   drawEnergyOrb,
+  drawGearWheel,
+  drawRivetStrip,
+  drawStoneMasonry,
+  drawWallTorch,
   getTeamPalette,
   setInkStyle,
 } from './cartoonPrimitives';
@@ -233,7 +237,7 @@ function drawTeamFlag(
 }
 
 // ============================================================================
-// 10 MONUMENTAL CARTOON ERA FORTRESSES (facing +X, origin bottom-center)
+// 10 MONUMENTAL HD CARTOON ERA FORTRESSES (facing +X, origin bottom-center)
 // ============================================================================
 function drawEraFortress(
   ctx: CanvasRenderingContext2D,
@@ -244,7 +248,7 @@ function drawEraFortress(
 ): void {
   switch (eraIndex) {
     case 0: {
-      // Era 1: Prehistoric Giant Mammoth-Skull Cave & Totem Mound
+      // Era 1: Prehistoric Mammoth-Skull Cave Mound + Glowing Torch & Palisade
       drawCelPoly(
         ctx,
         [
@@ -256,10 +260,12 @@ function drawEraFortress(
           [82, -76],
           [86, 0],
         ],
-        '#785942',
-        { highlight: '#a17c5b', shadow: '#4a3525', lineWidth: 2.8 },
+        '#7c5d44',
+        { highlight: '#ad8764', shadow: '#453020', lineWidth: 2.8 },
       );
-      // Grassy moss top cap
+      // Organic rock cliff strata & cracks
+      drawStoneMasonry(ctx, -78, -165, 130, 88, 4, 4, 'rgba(35,20,10,0.2)', 'rgba(255,235,200,0.12)');
+      // Lush moss & grass overhang cap
       drawCelPoly(
         ctx,
         [
@@ -267,13 +273,13 @@ function drawEraFortress(
           [-48, -202],
           [12, -210],
           [46, -176],
-          [20, -168],
-          [-26, -178],
+          [20, -166],
+          [-26, -176],
         ],
         '#4d7c0f',
-        { highlight: '#84cc16', lineWidth: 2.2 },
+        { highlight: '#a3e635', shadow: '#365314', lineWidth: 2.2 },
       );
-      // Giant Stone Archway Cave Entrance
+      // Giant Stone Archway Cave Entrance with inner warmth
       drawCelPoly(
         ctx,
         [
@@ -283,7 +289,7 @@ function drawEraFortress(
           [74, -64],
           [78, 0],
         ],
-        '#1c1917',
+        '#171412',
         { lineWidth: 2.6 },
       );
       // Mammoth tusks framing entrance!
@@ -296,7 +302,7 @@ function drawEraFortress(
           [24, -64],
         ],
         '#fef3c7',
-        { highlight: '#ffffff', lineWidth: 2.0 },
+        { highlight: '#ffffff', shadow: '#d6c3a5', lineWidth: 2.0 },
       );
       drawCelPoly(
         ctx,
@@ -307,19 +313,24 @@ function drawEraFortress(
           [66, -60],
         ],
         '#fef3c7',
-        { highlight: '#ffffff', lineWidth: 2.0 },
+        { highlight: '#ffffff', shadow: '#d6c3a5', lineWidth: 2.0 },
       );
-      // Team wooden palisade logs & fluttering tribal totem banner
+      // Timber palisade logs bound with rope + flickering cave torch!
       for (let i = 0; i < 4; i++) {
-        drawCelRoundRect(ctx, -78 + i * 16, -72, 13, 72, 4, '#78350f', { highlight: '#b45309', lineWidth: 2.0 });
+        drawCelRoundRect(ctx, -78 + i * 16, -72, 13, 72, 4, '#78350f', {
+          highlight: '#b45309',
+          shadow: '#451a03',
+          lineWidth: 2.0,
+        });
       }
+      drawCelRoundRect(ctx, -80, -48, 66, 6, 2, '#d97706', { highlight: '#fef08a', lineWidth: 1.5 });
+      drawWallTorch(ctx, 4, -76, time, 1.05);
       drawTeamFlag(ctx, -20, -204, pal, time);
       break;
     }
 
     case 1: {
-      // Era 2: Golden Giza Pyramid Temple Fortress & Obelisk
-      // Rear golden obelisk tower
+      // Era 2: Golden Giza Pyramid Temple Fortress + Obelisk + Twin Braziers
       drawCelPoly(
         ctx,
         [
@@ -340,9 +351,8 @@ function drawEraFortress(
           [-46, -202],
         ],
         '#facc15',
-        { highlight: '#ffffff', lineWidth: 2.1 },
+        { highlight: '#ffffff', shadow: '#b45309', lineWidth: 2.1 },
       );
-      // Stepped sandstone temple pyramid body
       drawCelPoly(
         ctx,
         [
@@ -354,6 +364,7 @@ function drawEraFortress(
         '#eab308',
         { highlight: '#fef08a', shadow: '#a16207', lineWidth: 2.8 },
       );
+      drawStoneMasonry(ctx, -62, -172, 118, 152, 6, 4, 'rgba(120,53,15,0.2)', 'rgba(255,250,210,0.18)');
       // Horizontal sandstone tiers
       setInkStyle(ctx, 1.8, '#92400e');
       for (let y = -40; y >= -160; y -= 32) {
@@ -363,7 +374,7 @@ function drawEraFortress(
         ctx.lineTo(82 - shrink * 1.4, y);
         ctx.stroke();
       }
-      // Royal turquoise/team temple pylon portal
+      // Royal turquoise/team temple pylon portal with gold trim
       drawCelPoly(
         ctx,
         [
@@ -375,25 +386,27 @@ function drawEraFortress(
         pal.main,
         { highlight: pal.light, shadow: pal.dark, lineWidth: 2.5 },
       );
+      drawCelRoundRect(ctx, 12, -96, 66, 9, 2.5, '#facc15', { highlight: '#fef08a', shadow: '#b45309', lineWidth: 1.9 });
       drawCelRoundRect(ctx, 26, -68, 40, 68, 6, '#1e1b4b', { lineWidth: 2.4 });
       drawEnergyOrb(ctx, 46, -84, 8, '#facc15', '#ffffff');
+      drawWallTorch(ctx, 16, -66, time, 0.95);
       drawTeamFlag(ctx, -10, -192, pal, time);
       break;
     }
 
     case 2: {
-      // Era 3: Classical Marble Acropolis Citadel
+      // Era 3: Classical Marble Acropolis Citadel + Fluted Columns & Bronze Shield Emblem
       drawCelRoundRect(ctx, -84, -184, 134, 184, 5, '#e2e8f0', {
         highlight: '#ffffff',
         shadow: '#94a3b8',
         lineWidth: 2.7,
       });
-      // Classical triangular pediment roof with gold trim
+      drawStoneMasonry(ctx, -78, -176, 122, 166, 6, 4, 'rgba(71,85,105,0.16)', 'rgba(255,255,255,0.22)');
       drawCelPoly(
         ctx,
         [
           [-92, -182],
-          [-17, -226],
+          [-17, -224],
           [58, -182],
         ],
         pal.main,
@@ -403,66 +416,68 @@ function drawEraFortress(
         ctx,
         [
           [-74, -186],
-          [-17, -216],
+          [-17, -214],
           [40, -186],
         ],
         '#f8fafc',
-        { lineWidth: 1.8 },
+        { shadow: '#cbd5e1', lineWidth: 1.8 },
       );
-      // Fluted marble columns
+      // Golden laurel sun emblem inside pediment
+      drawCelEllipse(ctx, -17, -196, 9, 9, '#facc15', { highlight: '#fef08a', shadow: '#b45309', lineWidth: 1.7 });
+      // Fluted marble columns with capitals
       for (let i = 0; i < 4; i++) {
-        drawCelRoundRect(ctx, -74 + i * 32, -172, 14, 152, 2, '#f8fafc', {
+        const cx = -74 + i * 32;
+        drawCelRoundRect(ctx, cx, -172, 14, 152, 2, '#f8fafc', {
           highlight: '#ffffff',
           shadow: '#cbd5e1',
           lineWidth: 1.9,
         });
+        drawCelRoundRect(ctx, cx - 3, -176, 20, 6, 1.5, '#e2e8f0', { highlight: '#ffffff', lineWidth: 1.5 });
       }
-      // Forward bastion gatehouse
       drawCelRoundRect(ctx, 18, -106, 66, 106, 4, '#cbd5e1', {
         highlight: '#f8fafc',
         shadow: '#64748b',
         lineWidth: 2.6,
       });
       drawCelRoundRect(ctx, 32, -66, 38, 66, 18, '#1e293b', { lineWidth: 2.4 });
-      drawTeamFlag(ctx, -17, -226, pal, time);
+      drawWallTorch(ctx, 25, -72, time, 0.95);
+      drawTeamFlag(ctx, -17, -224, pal, time);
       break;
     }
 
     case 3: {
-      // Era 4: Gothic Medieval Stone Castle Keep!
-      // Tall rear keep spire with conical team roof
+      // Era 4: Gothic Medieval Stone Castle Keep + Masonry, Torches & Royal Banner!
       drawCelRoundRect(ctx, -82, -186, 68, 186, 4, '#64748b', {
         highlight: '#94a3b8',
         shadow: '#334155',
         lineWidth: 2.7,
       });
+      drawStoneMasonry(ctx, -78, -180, 60, 174, 8, 3);
       drawCelPoly(
         ctx,
         [
           [-88, -184],
-          [-48, -226],
+          [-48, -214],
           [-8, -184],
         ],
         pal.main,
         { highlight: pal.light, shadow: pal.dark, lineWidth: 2.5 },
       );
-      // Main crenellated castle curtain wall & front tower
       drawCelRoundRect(ctx, -28, -158, 110, 158, 4, '#94a3b8', {
         highlight: '#cbd5e1',
         shadow: '#475569',
         lineWidth: 2.7,
       });
-      // Subtle stylized masonry blocks
-      ctx.fillStyle = 'rgba(30, 41, 59, 0.22)';
-      ctx.fillRect(-70, -142, 22, 10);
-      ctx.fillRect(-44, -108, 20, 10);
-      ctx.fillRect(24, -132, 26, 10);
-      ctx.fillRect(46, -104, 24, 10);
-      // Castle battlements (crenellations)
+      drawStoneMasonry(ctx, -24, -152, 102, 146, 7, 4);
+      // Crenellations with beveled caps
       for (let i = 0; i < 5; i++) {
-        drawCelRoundRect(ctx, -28 + i * 23, -172, 15, 16, 2, '#cbd5e1', { lineWidth: 2.0 });
+        drawCelRoundRect(ctx, -28 + i * 23, -172, 15, 16, 2, '#cbd5e1', {
+          highlight: '#f8fafc',
+          shadow: '#64748b',
+          lineWidth: 2.0,
+        });
       }
-      // Iron portcullis arched gate!
+      // Arched portcullis gate with iron crossbar & flanking glowing torches!
       drawCelRoundRect(ctx, 26, -74, 46, 74, 22, '#1c1917', { lineWidth: 2.6 });
       setInkStyle(ctx, 2.2, '#64748b');
       for (let gx = 34; gx <= 64; gx += 10) {
@@ -471,7 +486,14 @@ function drawEraFortress(
         ctx.lineTo(gx, -2);
         ctx.stroke();
       }
-      // Hanging heraldic banner
+      ctx.beginPath();
+      ctx.moveTo(28, -42);
+      ctx.lineTo(70, -42);
+      ctx.moveTo(28, -20);
+      ctx.lineTo(70, -20);
+      ctx.stroke();
+      drawWallTorch(ctx, 18, -62, time, 0.95);
+      // Royal heraldic banner with gold cross trim
       drawCelPoly(
         ctx,
         [
@@ -482,14 +504,17 @@ function drawEraFortress(
           [-10, -92],
         ],
         pal.main,
-        { highlight: pal.light, lineWidth: 2.0 },
+        { highlight: pal.light, shadow: pal.dark, lineWidth: 2.0 },
       );
-      drawTeamFlag(ctx, -48, -226, pal, time);
+      ctx.fillStyle = '#facc15';
+      ctx.fillRect(0.5, -132, 3, 40);
+      ctx.fillRect(-6, -118, 16, 3);
+      drawTeamFlag(ctx, -48, -214, pal, time);
       break;
     }
 
     case 4: {
-      // Era 5: Brick Renaissance Star-Fort Bastion
+      // Era 5: Brick Renaissance Star-Fort Bastion + Brick Courses & Brass Stud Doors
       drawCelPoly(
         ctx,
         [
@@ -503,68 +528,73 @@ function drawEraFortress(
         '#9a3412',
         { highlight: '#c2410c', shadow: '#7c2d12', lineWidth: 2.8 },
       );
-      // Cream stone corner quoins & horizontal cornice
-      drawCelRoundRect(ctx, -86, -198, 108, 14, 3, '#e7e5e4', { highlight: '#ffffff', lineWidth: 2.3 });
-      drawCelRoundRect(ctx, 14, -128, 72, 12, 3, '#e7e5e4', { highlight: '#ffffff', lineWidth: 2.2 });
-      // Team mansard roof dome
+      drawStoneMasonry(ctx, -78, -182, 92, 168, 8, 4, 'rgba(67,20,7,0.28)', 'rgba(254,215,170,0.14)');
+      drawCelRoundRect(ctx, -86, -198, 108, 14, 3, '#e7e5e4', { highlight: '#ffffff', shadow: '#a8a29e', lineWidth: 2.3 });
+      drawCelRoundRect(ctx, 14, -128, 72, 12, 3, '#e7e5e4', { highlight: '#ffffff', shadow: '#a8a29e', lineWidth: 2.2 });
       drawCelPoly(
         ctx,
         [
           [-78, -198],
-          [-64, -228],
-          [4, -228],
+          [-64, -226],
+          [4, -226],
           [16, -198],
         ],
         pal.dark,
-        { highlight: pal.main, lineWidth: 2.4 },
+        { highlight: pal.main, shadow: '#0f172a', lineWidth: 2.4 },
       );
-      // Heavy timber double bastion doors with brass studs
-      drawCelRoundRect(ctx, 28, -76, 48, 76, 10, '#5c3412', { highlight: '#854d0e', lineWidth: 2.5 });
-      drawTeamFlag(ctx, -30, -228, pal, time);
+      // Timber bastion double doors with iron hinges & gleaming brass rivets
+      drawCelRoundRect(ctx, 28, -76, 48, 76, 10, '#5c3412', { highlight: '#92400e', shadow: '#3b1f0b', lineWidth: 2.5 });
+      drawRivetStrip(ctx, 35, -62, 35, -12, 4, 1.5);
+      drawRivetStrip(ctx, 69, -62, 69, -12, 4, 1.5);
+      drawWallTorch(ctx, 18, -76, time, 0.95);
+      drawTeamFlag(ctx, -30, -226, pal, time);
       break;
     }
 
     case 5: {
-      // Era 6: Steampunk Copper Clockwork Foundry
-      // Smoking twin factory chimneys
-      drawCelRoundRect(ctx, -74, -234, 20, 74, 3, '#475569', { highlight: '#94a3b8', lineWidth: 2.4 });
-      drawCelRoundRect(ctx, -44, -222, 18, 62, 3, '#475569', { highlight: '#94a3b8', lineWidth: 2.3 });
-      // Rising cartoon steam clouds
+      // Era 6: Steampunk Copper Clockwork Foundry + Dual Meshing Toothed Gears & Rivets!
+      drawCelRoundRect(ctx, -74, -230, 20, 72, 3, '#475569', { highlight: '#94a3b8', shadow: '#1e293b', lineWidth: 2.4 });
+      drawCelRoundRect(ctx, -44, -218, 18, 60, 3, '#475569', { highlight: '#94a3b8', shadow: '#1e293b', lineWidth: 2.3 });
+      drawCelRoundRect(ctx, -77, -233, 26, 6, 1.5, '#d97706', { highlight: '#fef08a', lineWidth: 1.7 });
+      drawCelRoundRect(ctx, -47, -221, 24, 6, 1.5, '#d97706', { highlight: '#fef08a', lineWidth: 1.7 });
       const p1 = (time * 0.7) % 1;
-      drawCelEllipse(ctx, -64 + p1 * 18, -242 - p1 * 28, 10 + p1 * 8, 7 + p1 * 5, 'rgba(226,232,240,0.65)', {
-        lineWidth: 1.5,
-      });
+      ctx.save();
+      ctx.globalAlpha = (1 - p1) * 0.65;
+      drawCelEllipse(ctx, -64 + p1 * 22, -240 - p1 * 26, 9 + p1 * 9, 6.5 + p1 * 5, '#e2e8f0', { lineWidth: 1.4 });
+      ctx.restore();
       // Main riveted copper & iron foundry hall
       drawCelRoundRect(ctx, -84, -182, 152, 182, 8, '#b45309', {
         highlight: '#f59e0b',
         shadow: '#78350f',
         lineWidth: 2.8,
       });
-      // Spinning huge golden clockwork gear on facade!
-      ctx.save();
-      ctx.translate(-34, -118);
-      ctx.rotate(time * 0.7);
-      drawCelEllipse(ctx, 0, 0, 26, 26, '#facc15', { highlight: '#fef08a', shadow: '#b45309', lineWidth: 2.2 });
-      drawCelEllipse(ctx, 0, 0, 12, 12, '#1e293b', { lineWidth: 2.0 });
-      ctx.restore();
+      drawRivetStrip(ctx, -78, -162, 58, -162, 8, 1.6);
+      drawRivetStrip(ctx, -78, -14, 12, -14, 6, 1.6);
+      // Glowing amber steam furnace grate
+      drawCelRoundRect(ctx, -72, -56, 48, 28, 4, '#451a03', { lineWidth: 2.0 });
+      ctx.fillStyle = '#f97316';
+      for (let i = 0; i < 4; i++) {
+        ctx.fillRect(-66 + i * 10, -50, 6, 16);
+      }
+      // TWO real toothed golden clockwork gears meshing in opposite directions!
+      drawGearWheel(ctx, -38, -118, 23, time * 0.75, 10, '#facc15', '#fef08a', '#b45309');
+      drawGearWheel(ctx, -4, -92, 14, -time * 1.25 + 0.3, 8, '#d97706', '#fde047', '#78350f');
       // Armored steel sliding gate + team trim
-      drawCelRoundRect(ctx, 18, -94, 66, 94, 6, '#334155', { highlight: '#64748b', lineWidth: 2.6 });
+      drawCelRoundRect(ctx, 18, -94, 66, 94, 6, '#334155', { highlight: '#64748b', shadow: '#0f172a', lineWidth: 2.6 });
       drawCelRoundRect(ctx, 30, -72, 42, 72, 6, '#0f172a', { lineWidth: 2.4 });
-      drawCelRoundRect(ctx, -84, -184, 152, 14, 3, pal.main, { highlight: pal.light, lineWidth: 2.1 });
+      drawCelRoundRect(ctx, -84, -184, 152, 14, 3, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 2.1 });
       drawTeamFlag(ctx, 12, -184, pal, time);
       break;
     }
 
     case 6: {
-      // Era 7: Reinforced World War Concrete Command Bunker
-      // Radar / radio tower mast on roof
+      // Era 7: Reinforced World War Concrete Command Bunker + Riveted Steel & Sandbags
       setInkStyle(ctx, 2.6, '#334155');
       ctx.beginPath();
       ctx.moveTo(-48, -172);
-      ctx.lineTo(-34, -234);
+      ctx.lineTo(-34, -228);
       ctx.lineTo(-20, -172);
       ctx.stroke();
-      // Heavy sloped brutalist concrete bunker
       drawCelPoly(
         ctx,
         [
@@ -578,26 +608,35 @@ function drawEraFortress(
         '#64748b',
         { highlight: '#94a3b8', shadow: '#334155', lineWidth: 2.8 },
       );
-      // Slit pillbox observation windows
+      drawRivetStrip(ctx, -72, -166, 20, -166, 6, 1.5);
+      // Slit pillbox observation windows with dim tactical amber glow
       drawCelRoundRect(ctx, -64, -154, 72, 14, 3, '#0f172a', { lineWidth: 2.2 });
-      // Team painted stripe + sandbag berm at base
-      drawCelRoundRect(ctx, -78, -126, 122, 12, 2, pal.main, { highlight: pal.light, lineWidth: 1.9 });
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.38)';
+      ctx.fillRect(-58, -150, 60, 6);
+      drawCelRoundRect(ctx, -78, -126, 122, 12, 2, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 1.9 });
       drawCelRoundRect(ctx, 26, -74, 48, 74, 4, '#1e293b', { lineWidth: 2.5 });
-      for (let i = 0; i < 4; i++) {
-        drawCelEllipse(ctx, -72 + i * 22, -6, 13, 7, '#a16207', { highlight: '#ca8a04', lineWidth: 1.8 });
+      // Stacked layered sandbags berm at base
+      for (let row = 0; row < 2; row++) {
+        for (let i = 0; i < 4 - row; i++) {
+          drawCelEllipse(ctx, -70 + i * 22 + row * 10, -6 - row * 10, 13, 6.5, '#a16207', {
+            highlight: '#d97706',
+            shadow: '#713f12',
+            lineWidth: 1.8,
+          });
+        }
       }
-      drawTeamFlag(ctx, -34, -232, pal, time);
+      drawTeamFlag(ctx, -34, -228, pal, time);
       break;
     }
 
     case 7: {
-      // Era 8: Modern Reinforced Tactical Command HQ with Rotating Radar Dish!
+      // Era 8: Modern Reinforced Tactical Command HQ + Mast Radar Dish & Reflective Glass!
       drawCelRoundRect(ctx, -84, -196, 124, 196, 6, '#475569', {
         highlight: '#94a3b8',
         shadow: '#1e293b',
         lineWidth: 2.8,
       });
-      // Modern armored angled annex + hangar door
+      drawRivetStrip(ctx, -76, -188, 30, -188, 6, 1.5);
       drawCelPoly(
         ctx,
         [
@@ -609,32 +648,44 @@ function drawEraFortress(
         '#334155',
         { highlight: '#64748b', shadow: '#0f172a', lineWidth: 2.7 },
       );
-      // Glowing command room glass windows
-      drawCelRoundRect(ctx, -68, -176, 86, 22, 4, '#38bdf8', { highlight: '#ffffff', lineWidth: 2.2 });
-      drawCelRoundRect(ctx, -76, -138, 102, 12, 3, pal.main, { highlight: pal.light, lineWidth: 2.0 });
+      // Command room panoramic glass with crisp diagonal specular reflections!
+      drawCelRoundRect(ctx, -68, -176, 86, 22, 4, '#0284c7', { highlight: '#7dd3fc', shadow: '#0c4a6e', lineWidth: 2.2 });
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.32)';
+      ctx.beginPath();
+      ctx.moveTo(-54, -175);
+      ctx.lineTo(-42, -175);
+      ctx.lineTo(-52, -155);
+      ctx.lineTo(-64, -155);
+      ctx.closePath();
+      ctx.fill();
+      drawCelRoundRect(ctx, -76, -138, 102, 12, 3, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 2.0 });
       // Spinning radar dish mounted on armored roof mast!
       drawCelRoundRect(ctx, -40, -214, 12, 20, 2, '#334155', { highlight: '#64748b', lineWidth: 2.0 });
       const sway = Math.sin(time * 2.2) * 0.25;
       ctx.save();
       ctx.translate(-34, -218);
       ctx.rotate(sway);
-      drawCelEllipse(ctx, 0, 0, 22, 11, '#cbd5e1', { highlight: '#ffffff', lineWidth: 2.2 });
+      drawCelEllipse(ctx, 0, 0, 22, 11, '#cbd5e1', { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.2 });
       drawEnergyOrb(ctx, 0, -6, 4.5, '#4ade80', '#ffffff');
       ctx.restore();
-      // Blast hangar bay door
+      // Blast hangar bay door with hazard yellow/black stripe
       drawCelRoundRect(ctx, 26, -78, 50, 78, 4, '#0f172a', { lineWidth: 2.5 });
-      drawCelRoundRect(ctx, 26, -78, 50, 10, 2, '#facc15', { lineWidth: 1.6 });
+      drawCelRoundRect(ctx, 26, -78, 50, 10, 2, '#facc15', { highlight: '#fef08a', lineWidth: 1.6 });
+      ctx.fillStyle = INK;
+      for (let hx = 30; hx < 72; hx += 10) {
+        ctx.fillRect(hx, -77, 4, 8);
+      }
       break;
     }
 
     case 8: {
-      // Era 9: Sci-Fi Titanium Cyberpunk Arcology Core!
+      // Era 9: Sci-Fi Titanium Cyberpunk Arcology Core + Holographic Shield Portal!
       drawCelPoly(
         ctx,
         [
           [-86, 0],
           [-74, -206],
-          [-26, -238],
+          [-26, -234],
           [22, -206],
           [66, -126],
           [86, 0],
@@ -642,16 +693,17 @@ function drawEraFortress(
         '#e2e8f0',
         { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.8 },
       );
-      // Sleek vertical glowing plasma core conduit!
-      drawCelRoundRect(ctx, -40, -208, 26, 178, 8, '#0f172a', { lineWidth: 2.4 });
+      drawCelRoundRect(ctx, -40, -206, 26, 176, 8, '#0f172a', { lineWidth: 2.4 });
       const pulse = 0.78 + Math.sin(time * 4.5) * 0.22;
       ctx.save();
       ctx.globalAlpha = pulse;
-      drawCelRoundRect(ctx, -34, -200, 14, 162, 6, pal.glow, { highlight: '#ffffff', lineWidth: 1.6 });
+      drawCelRoundRect(ctx, -34, -198, 14, 160, 6, pal.glow, { highlight: '#ffffff', lineWidth: 1.6 });
       ctx.restore();
-      // Team armor trim chevron
-      drawCelRoundRect(ctx, -72, -166, 92, 14, 4, pal.main, { highlight: pal.light, lineWidth: 2.0 });
-      // Glowing holographic forcefield portal
+      // Cooling energy fins along core
+      for (let fy = -182; fy <= -62; fy += 30) {
+        drawCelRoundRect(ctx, -44, fy, 34, 5, 2, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.4 });
+      }
+      drawCelRoundRect(ctx, -72, -166, 92, 14, 4, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 2.0 });
       drawCelPoly(
         ctx,
         [
@@ -665,64 +717,72 @@ function drawEraFortress(
       );
       ctx.fillStyle = pal.glowSoft;
       ctx.fillRect(34, -76, 38, 72);
+      // Animated holographic scanlines on portal
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
+      const scanY = -74 + ((time * 42) % 66);
+      ctx.fillRect(34, scanY, 38, 2.5);
       break;
     }
 
     default: {
-      // Era 10: Interstellar Obsidian-Gold Cosmic Nexus with Levitating Singularity Crystal!
+      // Era 10: Interstellar Obsidian-Gold Cosmic Nexus + Dual Rune Rings & Stargate!
       drawCelPoly(
         ctx,
         [
           [-88, 0],
-          [-68, -196],
-          [-18, -228],
-          [36, -184],
+          [-68, -194],
+          [-18, -224],
+          [36, -182],
           [84, -92],
           [88, 0],
         ],
         '#1e1b4b',
-        { highlight: '#4c1d95', shadow: '#09071a', lineWidth: 2.9 },
+        { highlight: '#5b21b6', shadow: '#09071a', lineWidth: 2.9 },
       );
-      // Sweeping golden celestial filigree ribs
       drawCelPoly(
         ctx,
         [
           [-76, -16],
-          [-56, -190],
-          [-44, -190],
+          [-56, -188],
+          [-44, -188],
           [-62, -16],
         ],
         '#f59e0b',
-        { highlight: '#fef08a', lineWidth: 1.9 },
+        { highlight: '#fef08a', shadow: '#b45309', lineWidth: 1.9 },
       );
       drawCelPoly(
         ctx,
         [
           [16, -16],
-          [22, -178],
-          [34, -172],
+          [22, -176],
+          [34, -170],
           [28, -16],
         ],
         '#f59e0b',
-        { highlight: '#fef08a', lineWidth: 1.9 },
+        { highlight: '#fef08a', shadow: '#b45309', lineWidth: 1.9 },
       );
-      // Floating cosmic halo + radiant singularity core above spire!
-      const floatY = -232 + Math.sin(time * 2.8) * 5;
+      // Floating cosmic halo + dual orbiting rings + radiant singularity crystal!
+      const floatY = -228 + Math.sin(time * 2.8) * 4.5;
       ctx.save();
       ctx.translate(-18, floatY);
       setInkStyle(ctx, 4.0, INK);
       ctx.beginPath();
-      ctx.ellipse(0, 0, 30, 10, -0.18, 0, Math.PI * 2);
+      ctx.ellipse(0, 0, 32, 10, -0.18, 0, Math.PI * 2);
       ctx.stroke();
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.4;
       ctx.stroke();
+      ctx.strokeStyle = 'rgba(240, 171, 252, 0.8)';
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 26, 8, 0.25 + Math.sin(time * 1.4) * 0.1, 0, Math.PI * 2);
+      ctx.stroke();
       drawEnergyOrb(ctx, 0, 0, 13, '#c084fc', '#fef08a');
       ctx.restore();
-      // Stargate warp portal entrance
-      drawCelEllipse(ctx, 50, -44, 24, 42, pal.main, { highlight: '#e879f9', lineWidth: 2.6 });
+      // Stargate warp portal entrance with pulsing concentric ripples
+      drawCelEllipse(ctx, 50, -44, 24, 42, pal.main, { highlight: '#e879f9', shadow: '#312e81', lineWidth: 2.6 });
       drawCelEllipse(ctx, 50, -44, 16, 32, '#09071a', { lineWidth: 2.0 });
-      drawEnergyOrb(ctx, 50, -44, 11, '#a855f7', '#fef08a');
+      drawEnergyOrb(ctx, 50, -44, 11 + Math.sin(time * 5) * 1.2, '#a855f7', '#fef08a');
       break;
     }
   }

@@ -10,7 +10,7 @@ export const ERAS: EraDef[] = [
     name: '원시 시대',
     shortName: '원시',
     roman: 'I',
-    evolveXp: 450,
+    evolveXp: 1500,
     baseMaxHp: 600,
     passiveGoldPerSec: 4,
     palette: {
@@ -196,7 +196,7 @@ export const ERAS: EraDef[] = [
     name: '고대 이집트',
     shortName: '이집트',
     roman: 'II',
-    evolveXp: 850,
+    evolveXp: 3000,
     baseMaxHp: 900,
     passiveGoldPerSec: 7,
     palette: {
@@ -379,7 +379,7 @@ export const ERAS: EraDef[] = [
     name: '고대 문명',
     shortName: '고대',
     roman: 'III',
-    evolveXp: 1450,
+    evolveXp: 5400,
     baseMaxHp: 1350,
     passiveGoldPerSec: 11,
     palette: {
@@ -562,7 +562,7 @@ export const ERAS: EraDef[] = [
     name: '중세 시대',
     shortName: '중세',
     roman: 'IV',
-    evolveXp: 2600,
+    evolveXp: 9600,
     baseMaxHp: 2100,
     passiveGoldPerSec: 20,
     palette: {
@@ -749,7 +749,7 @@ export const ERAS: EraDef[] = [
     name: '화약·근세',
     shortName: '화약',
     roman: 'V',
-    evolveXp: 4800,
+    evolveXp: 16800,
     baseMaxHp: 3400,
     passiveGoldPerSec: 38,
     palette: {
@@ -939,7 +939,7 @@ export const ERAS: EraDef[] = [
     name: '산업·증기 시대',
     shortName: '산업',
     roman: 'VI',
-    evolveXp: 7800,
+    evolveXp: 28500,
     baseMaxHp: 5000,
     passiveGoldPerSec: 64,
     palette: {
@@ -1129,7 +1129,7 @@ export const ERAS: EraDef[] = [
     name: '세계대전',
     shortName: '대전',
     roman: 'VII',
-    evolveXp: 12500,
+    evolveXp: 47000,
     baseMaxHp: 7400,
     passiveGoldPerSec: 110,
     palette: {
@@ -1322,7 +1322,7 @@ export const ERAS: EraDef[] = [
     name: '현대 시대',
     shortName: '현대',
     roman: 'VIII',
-    evolveXp: 20000,
+    evolveXp: 78000,
     baseMaxHp: 11000,
     passiveGoldPerSec: 190,
     palette: {
@@ -1515,7 +1515,7 @@ export const ERAS: EraDef[] = [
     name: '미래 시대',
     shortName: '미래',
     roman: 'IX',
-    evolveXp: 32000,
+    evolveXp: 128000,
     baseMaxHp: 16500,
     passiveGoldPerSec: 330,
     palette: {

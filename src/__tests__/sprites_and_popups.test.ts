@@ -47,13 +47,13 @@ function createMockCanvasContext(): { ctx: CanvasRenderingContext2D; drawCalls: 
 }
 
 describe('Flash-Cartoon Vector Renderer, Zero Camera Shake & Combat Popups', () => {
-  it('renders all 40 cartoon units, 20 rotating turrets, 10 era fortresses, 10 backgrounds, and 8 upgrade icons cleanly', () => {
+  it('renders all 40 cartoon units, 20 rotating turrets, 10 era fortresses, 10 backgrounds, and 16 upgrade icons cleanly', () => {
     const unitIds = Object.keys(UNIT_BY_ID) as UnitVisualKind[];
     const turretIds = Object.keys(TURRET_BY_ID) as TurretVisualKind[];
     expect(unitIds).toHaveLength(40);
     expect(turretIds).toHaveLength(20);
     expect(ERAS).toHaveLength(10);
-    expect(UPGRADES).toHaveLength(8);
+    expect(UPGRADES).toHaveLength(16);
 
     // 1. Every single one of the 40 units renders across walk, attack, hurt, and death states for both teams
     for (const kind of unitIds) {
@@ -102,7 +102,7 @@ describe('Flash-Cartoon Vector Renderer, Zero Camera Shake & Combat Popups', () 
       expect(mock.drawCalls, `Era ${eraIdx} scene emitted too few draw calls`).toBeGreaterThan(20);
     }
 
-    // 4. All 8 Gold Upgrade cartoon icons render cleanly
+    // 4. All 16 Gold Upgrade cartoon icons render cleanly
     for (const upg of UPGRADES) {
       const mock = createMockCanvasContext();
       drawCartoonUpgradeIcon(mock.ctx, upg.id);

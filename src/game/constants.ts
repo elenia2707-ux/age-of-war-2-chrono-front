@@ -24,8 +24,8 @@ export const TURRET_SLOT_COSTS = [120, 400, 1200] as const;
 export const TURRET_SELL_REFUND_RATE = 0.5;
 export const UNIT_DEATH_DURATION = 0.65;
 export const CRIT_MULTIPLIER = 1.6;
-export const LOSS_XP_RATIO = 0.2;
-export const BASE_HIT_XP_PER_100_DMG = 14;
+export const LOSS_XP_RATIO = 0.14;
+export const BASE_HIT_XP_PER_100_DMG = 8;
 
 /** Turret mount offsets relative to base center (x offset flipped for enemy) */
 export const TURRET_MOUNT_OFFSETS: ReadonlyArray<{ dx: number; dy: number }> = [

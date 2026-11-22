@@ -33,7 +33,7 @@
           </div>
           <div class="stat-chip xp-chip" title="경험치">
             <span class="chip-icon" aria-hidden="true">XP</span>
-            <span id="hud-xp" class="num">0/450</span>
+            <span id="hud-xp" class="num">0/1,500</span>
           </div>
           <div id="hud-era-badge" class="era-pill">I 원시</div>
         </div>
@@ -125,12 +125,18 @@
               <small id="upgrade-level-total" class="num">Lv0</small>
             </button>
           </div>
-          <div id="upgrade-page-switch" class="upgrade-page-switch hidden" aria-label="강화 페이지 전환">
-            <button id="upg-page-combat" class="upg-page-btn active" type="button" data-upg-cat="combat">
-              전투
+          <div id="upgrade-page-switch" class="upgrade-page-switch hidden" aria-label="강화 카테고리 전환">
+            <button id="upg-page-offense" class="upg-page-btn cat-offense active" type="button" data-upg-cat="offense">
+              공격
             </button>
-            <button id="upg-page-support" class="upg-page-btn" type="button" data-upg-cat="support">
-              지원
+            <button id="upg-page-defense" class="upg-page-btn cat-defense" type="button" data-upg-cat="defense">
+              방어
+            </button>
+            <button id="upg-page-tactics" class="upg-page-btn cat-tactics" type="button" data-upg-cat="tactics">
+              전술
+            </button>
+            <button id="upg-page-empire" class="upg-page-btn cat-empire" type="button" data-upg-cat="empire">
+              제국
             </button>
           </div>
           <div id="action-cards" class="action-cards" data-cols="4"></div>
@@ -142,7 +148,7 @@
             <div class="power-content">
               <span class="power-kicker" id="evolve-kicker">시대 진화</span>
               <strong class="power-label" id="evolve-label">II 이집트</strong>
-              <span class="power-sub num" id="evolve-sub">450 XP</span>
+              <span class="power-sub num" id="evolve-sub">1,500 XP</span>
             </div>
           </button>
 
@@ -161,10 +167,10 @@
       <section id="overlay-title" class="overlay-backdrop" aria-label="시작 화면">
         <div class="title-modal glass-modal">
           <div class="title-left">
-            <span class="title-eyebrow">AGE OF WAR II · 10-ERA STRATEGY</span>
+            <span class="title-eyebrow">AGE OF WAR II · 10-ERA CARTOON STRATEGY</span>
             <h1>전쟁시대 2: 크로노 프론트</h1>
             <p class="title-desc">
-              원시 시대부터 성간 문명까지 10시대·40종 병력을 지휘하고, 8종 골드 강화로 군대를 육성해 적 기지를 파괴하는 횡스크롤 전략 디펜스
+              원시 시대부터 성간 문명까지 10시대·40종 병력을 지휘하고, 16종 골드 강화로 군대를 육성해 적 기지를 파괴하는 횡스크롤 전략 디펜스
             </p>
             <div class="era-strip" aria-label="10시대 진화 단계">
               <span>I 원시</span>

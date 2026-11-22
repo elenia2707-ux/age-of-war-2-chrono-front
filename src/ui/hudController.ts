@@ -31,7 +31,7 @@ function renderSpriteMarkup(iconUrl: string, alt: string, extraClass = ''): stri
 
 export class HudController {
   public activeTab: DockTab = 'units';
-  public upgradeCategory: UpgradeCategory = 'combat';
+  public upgradeCategory: UpgradeCategory = 'offense';
   public sellHighlightMode = false;
 
   private topHud = document.getElementById('top-hud')!;
@@ -56,8 +56,9 @@ export class HudController {
   private tabTurretsBtn = document.getElementById('tab-turrets') as HTMLButtonElement;
   private tabUpgradesBtn = document.getElementById('tab-upgrades') as HTMLButtonElement;
   private upgradePageSwitchEl = document.getElementById('upgrade-page-switch')!;
-  private upgPageCombatBtn = document.getElementById('upg-page-combat') as HTMLButtonElement;
-  private upgPageSupportBtn = document.getElementById('upg-page-support') as HTMLButtonElement;
+  private upgPageButtons = Array.from(
+    document.querySelectorAll<HTMLButtonElement>('#upgrade-page-switch [data-upg-cat]'),
+  );
   private turretSlotCountEl = document.getElementById('turret-slot-count')!;
   private upgradeLevelTotalEl = document.getElementById('upgrade-level-total')!;
   private actionCardsEl = document.getElementById('action-cards')!;
@@ -250,27 +251,27 @@ export class HudController {
       this.switchTab('turrets');
     });
 
+    const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire'];
+
     this.tabUpgradesBtn.addEventListener('click', () => {
       this.onUnlockAudio();
       if (this.activeTab === 'upgrades') {
-        // Quick double-tap on 강화 tab flips seamlessly between 전투 & 지원 pages!
-        this.setUpgradeCategory(this.upgradeCategory === 'combat' ? 'support' : 'combat');
+        const idx = categoryOrder.indexOf(this.upgradeCategory);
+        this.setUpgradeCategory(categoryOrder[(idx + 1) % categoryOrder.length]);
       } else {
         this.switchTab('upgrades');
       }
     });
 
-    this.upgPageCombatBtn.addEventListener('click', () => {
-      this.onUnlockAudio();
-      this.setUpgradeCategory('combat');
-    });
+    for (const btn of this.upgPageButtons) {
+      btn.addEventListener('click', () => {
+        this.onUnlockAudio();
+        const cat = btn.dataset.upgCat as UpgradeCategory | undefined;
+        if (cat) this.setUpgradeCategory(cat);
+      });
+    }
 
-    this.upgPageSupportBtn.addEventListener('click', () => {
-      this.onUnlockAudio();
-      this.setUpgradeCategory('support');
-    });
-
-    // Horizontal swipe on upgrade cards also flips between 전투 and 지원
+    // Horizontal swipe on upgrade cards steps smoothly across all 4 categories
     let swipeStartX = 0;
     let swipeTracking = false;
     this.actionCardsEl.addEventListener('pointerdown', (ev) => {
@@ -283,7 +284,9 @@ export class HudController {
       swipeTracking = false;
       const dx = ev.clientX - swipeStartX;
       if (Math.abs(dx) > 36) {
-        this.setUpgradeCategory(dx < 0 ? 'support' : 'combat');
+        const idx = categoryOrder.indexOf(this.upgradeCategory);
+        const nextIdx = (idx + (dx < 0 ? 1 : -1) + categoryOrder.length) % categoryOrder.length;
+        this.setUpgradeCategory(categoryOrder[nextIdx]);
       }
     });
     this.actionCardsEl.addEventListener('pointercancel', () => {
@@ -328,8 +331,9 @@ export class HudController {
 
   public setUpgradeCategory(cat: UpgradeCategory): void {
     this.upgradeCategory = cat;
-    this.upgPageCombatBtn.classList.toggle('active', cat === 'combat');
-    this.upgPageSupportBtn.classList.toggle('active', cat === 'support');
+    for (const btn of this.upgPageButtons) {
+      btn.classList.toggle('active', btn.dataset.upgCat === cat);
+    }
   }
 
   public switchTab(tab: DockTab): void {
@@ -495,8 +499,14 @@ export class HudController {
         const unitId = card.dataset.unitId as UnitVisualKind;
         const def = era.units.find((u) => u.id === unitId);
         if (!def) continue;
-        const canAfford = p.gold >= def.cost && !queueFull;
+        const effCost = this.engine.getEffectiveUnitCost('player', def.cost);
+        const canAfford = p.gold >= effCost && !queueFull;
         card.classList.toggle('unaffordable', !canAfford);
+
+        const costEl = card.querySelector<HTMLElement>('.card-cost');
+        if (costEl) {
+          costEl.textContent = `${effCost.toLocaleString()}G`;
+        }
 
         const queuedCount = p.queue.filter((q) => q.unitId === unitId).length;
         const badge = card.querySelector<HTMLElement>('.card-queue-badge');
@@ -557,7 +567,10 @@ export class HudController {
         const tid = card.dataset.turretId as TurretVisualKind;
         const def = era.turrets.find((t) => t.id === tid);
         if (!def) continue;
-        const ok = hasEmptySlot && p.gold >= def.cost;
+        const effCost = this.engine.getEffectiveTurretCost('player', def.cost);
+        const costEl = card.querySelector<HTMLElement>('.card-cost');
+        if (costEl) costEl.textContent = `${effCost.toLocaleString()}G`;
+        const ok = hasEmptySlot && p.gold >= effCost;
         card.classList.toggle('unaffordable', !ok);
       } else if (kind === 'sell_turret') {
         const canSell = installed.length > 0;

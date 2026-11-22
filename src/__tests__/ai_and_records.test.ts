@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { ERAS } from '../data/eras';
 import { BattleCamera } from '../game/camera';
 import { WORLD_WIDTH } from '../game/constants';
 import { GameEngine } from '../game/engine';
@@ -26,7 +27,7 @@ describe('Enemy AI, Camera & Local Records', () => {
   it('enemy AI spawns units, builds turrets, buys gold upgrades, and evolves over time', () => {
     const engine = new GameEngine();
     engine.startNewGame('hard', 2026);
-    engine.enemy.xp = 500;
+    engine.enemy.xp = ERAS[0].evolveXp + 100;
     engine.enemy.gold = 3500;
 
     // Run 12 seconds of simulation
@@ -38,7 +39,7 @@ describe('Enemy AI, Camera & Local Records', () => {
     expect(totalEnemyUpgrades).toBeGreaterThan(0);
   });
 
-  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3 across all 8 upgrades)', () => {
+  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3 across all 16 upgrades)', () => {
     const engine = new GameEngine();
     engine.startNewGame('easy', 1337);
     engine.enemy.gold = 200000;

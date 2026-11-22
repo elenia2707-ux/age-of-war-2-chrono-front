@@ -46,24 +46,41 @@ function renderSingleEraBackground(
   const era = getEra(eraIndex);
   const p = era.palette;
 
-  // 1. Rich Painterly Sky Gradient
+  // 1. Rich Multi-Stop Painterly Sky Gradient
   const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 6);
   skyGrad.addColorStop(0, p.skyTop);
-  skyGrad.addColorStop(0.54, p.skyMid);
+  skyGrad.addColorStop(0.52, p.skyMid);
   skyGrad.addColorStop(1, p.skyBottom);
   ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, viewportW + 4, GROUND_Y + 6);
 
-  // 2. Celestial Atmosphere (Sun / Stars / Ringed Planet / Clouds / Pterodactyls / Searchlights)
+  // 2. Celestial Atmosphere + Volumetric God-Rays + Clouds + Aurora
   drawSkyAtmosphere(ctx, eraIndex, cameraX, viewportW, time, p.sunColor, p.accent);
 
   // 3. Far Parallax Horizon & Landmarks (0.16x)
-  drawFarLayer(ctx, eraIndex, cameraX, viewportW, time, p.farHill, p.accent);
+  drawFarLayer(ctx, eraIndex, cameraX, viewportW, time, p.farHill, p.sunColor, p.accent);
 
-  // 4. Mid Parallax Hills & Era Silhouettes (0.42x)
+  // 4. Soft Atmospheric Depth Haze separating Far & Mid layers!
+  const hazeGrad = ctx.createLinearGradient(0, GROUND_Y - 120, 0, GROUND_Y);
+  hazeGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
+  hazeGrad.addColorStop(
+    1,
+    eraIndex >= 8
+      ? 'rgba(139, 92, 246, 0.16)'
+      : eraIndex === 1 || eraIndex === 0
+        ? 'rgba(251, 146, 60, 0.18)'
+        : 'rgba(226, 232, 240, 0.13)',
+  );
+  ctx.fillStyle = hazeGrad;
+  ctx.fillRect(0, GROUND_Y - 120, viewportW + 4, 120);
+
+  // 5. Mid Parallax Hills & Two-Tone Handcrafted Era Props (0.42x)
   drawMidLayer(ctx, eraIndex, cameraX, viewportW, time, p.midHill, p.nearProp, p.accent);
 
-  // 5. Crisp Cartoon Battlefield Road & Ground Strata (1.0x)
+  // 6. Ambient Drifting Era Motes (Volcanic Embers / Desert Glints / Stardust / Data Sparks)
+  drawAmbientMotes(ctx, eraIndex, cameraX, viewportW, time, p.accent);
+
+  // 7. Crisp Multi-Layer Cartoon Battlefield Road & Ground Strata (1.0x)
   drawCartoonGround(ctx, eraIndex, cameraX, viewportW, p.groundTop, p.groundMid, p.groundDark, p.accent);
 }
 
@@ -77,95 +94,150 @@ function drawSkyAtmosphere(
   accent: string,
 ): void {
   const sunX = viewportW * 0.64 - cameraX * 0.045;
-  const sunY = eraIndex >= 8 ? 92 : 104;
+  const sunY = eraIndex >= 8 ? 90 : 102;
 
   ctx.save();
 
-  // Twinkling starfield for Future & Interstellar eras
+  // Twinkling cosmic starfield + translucent nebula aurora for Future & Interstellar eras
   if (eraIndex >= 8) {
-    for (let i = 0; i < 42; i++) {
-      const sx = ((i * 197 + 41 - cameraX * 0.03) % (viewportW + 40) + (viewportW + 40)) % (viewportW + 40) - 20;
-      const sy = 16 + ((i * 83) % 185);
-      const tw = 0.4 + 0.6 * Math.abs(Math.sin(time * 1.8 + i * 1.3));
-      ctx.fillStyle = i % 5 === 0 ? '#fef08a' : '#e0f2fe';
-      ctx.globalAlpha = tw * 0.85;
+    if (eraIndex === 9) {
+      // Sweeping translucent cosmic aurora nebula ribbon
+      ctx.save();
+      const neb = ctx.createLinearGradient(0, 36, viewportW, 190);
+      neb.addColorStop(0, 'rgba(168, 85, 247, 0.14)');
+      neb.addColorStop(0.5, 'rgba(236, 72, 153, 0.22)');
+      neb.addColorStop(1, 'rgba(56, 189, 248, 0.14)');
+      ctx.fillStyle = neb;
       ctx.beginPath();
-      ctx.arc(sx, sy, i % 7 === 0 ? 2.2 : 1.3, 0, Math.PI * 2);
+      ctx.moveTo(0, 110 + Math.sin(time * 0.4) * 14);
+      ctx.bezierCurveTo(viewportW * 0.3, 45, viewportW * 0.68, 175, viewportW, 85);
+      ctx.lineTo(viewportW, 155);
+      ctx.bezierCurveTo(viewportW * 0.65, 210, viewportW * 0.32, 105, 0, 170);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+
+    for (let i = 0; i < 52; i++) {
+      const sx =
+        ((((i * 197 + 41 - cameraX * 0.03) % (viewportW + 40)) + (viewportW + 40)) % (viewportW + 40)) - 20;
+      const sy = 14 + ((i * 83) % 192);
+      const tw = 0.38 + 0.62 * Math.abs(Math.sin(time * 1.9 + i * 1.3));
+      ctx.fillStyle = i % 5 === 0 ? '#fef08a' : i % 7 === 0 ? '#f0abfc' : '#e0f2fe';
+      ctx.globalAlpha = tw * 0.88;
+      ctx.beginPath();
+      ctx.arc(sx, sy, i % 9 === 0 ? 2.4 : 1.3, 0, Math.PI * 2);
       ctx.fill();
     }
     ctx.globalAlpha = 1;
   }
 
+  // Volumetric Diagonal God-Rays fanning gently from the sun/moon!
+  ctx.save();
+  ctx.translate(sunX, sunY);
+  for (let r = 0; r < 5; r++) {
+    const baseAngle = 0.52 + r * 0.44 + Math.sin(time * 0.35 + r) * 0.04;
+    ctx.save();
+    ctx.rotate(baseAngle);
+    const rayGrad = ctx.createLinearGradient(0, 0, 290, 0);
+    rayGrad.addColorStop(0, eraIndex >= 8 ? 'rgba(192, 132, 252, 0.14)' : 'rgba(254, 240, 138, 0.14)');
+    rayGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+    ctx.fillStyle = rayGrad;
+    ctx.beginPath();
+    ctx.moveTo(14, -6);
+    ctx.lineTo(290, -28);
+    ctx.lineTo(290, 28);
+    ctx.lineTo(14, 6);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
+  ctx.restore();
+
   // Luminous atmospheric sun / cosmic orb
-  const haloR = eraIndex === 1 || eraIndex === 9 ? 115 : 88;
+  const haloR = eraIndex === 1 || eraIndex === 9 ? 124 : 96;
   const halo = ctx.createRadialGradient(sunX, sunY, 12, sunX, sunY, haloR);
-  halo.addColorStop(0, 'rgba(255,255,255,0.92)');
-  halo.addColorStop(0.26, sunColor);
-  halo.addColorStop(0.6, eraIndex === 9 ? 'rgba(168, 85, 247, 0.25)' : 'rgba(255, 232, 160, 0.16)');
+  halo.addColorStop(0, 'rgba(255,255,255,0.95)');
+  halo.addColorStop(0.24, sunColor);
+  halo.addColorStop(0.58, eraIndex === 9 ? 'rgba(168, 85, 247, 0.28)' : 'rgba(255, 232, 160, 0.18)');
   halo.addColorStop(1, 'rgba(255,255,255,0)');
   ctx.fillStyle = halo;
   ctx.beginPath();
   ctx.arc(sunX, sunY, haloR, 0, Math.PI * 2);
   ctx.fill();
 
-  // Crisp glowing disc
   ctx.fillStyle = sunColor;
   ctx.beginPath();
   ctx.arc(sunX, sunY, eraIndex === 1 || eraIndex === 9 ? 31 : 24, 0, Math.PI * 2);
   ctx.fill();
-  ctx.fillStyle = 'rgba(255,255,255,0.75)';
+  ctx.fillStyle = 'rgba(255,255,255,0.78)';
   ctx.beginPath();
   ctx.arc(sunX - 6, sunY - 6, 9, 0, Math.PI * 2);
   ctx.fill();
 
-  // Interstellar ringed planet & nebula ribbon!
+  // Interstellar dual-ringed gas giant!
   if (eraIndex === 9) {
     ctx.save();
     ctx.translate(sunX, sunY);
-    ctx.rotate(-0.28);
-    ctx.strokeStyle = 'rgba(250, 204, 21, 0.78)';
-    ctx.lineWidth = 4;
+    ctx.rotate(-0.26);
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+    ctx.lineWidth = 4.2;
     ctx.beginPath();
-    ctx.ellipse(0, 0, 62, 13, 0, 0, Math.PI * 2);
+    ctx.ellipse(0, 0, 64, 14, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.strokeStyle = 'rgba(240, 171, 252, 0.55)';
+    ctx.lineWidth = 2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 74, 17, 0, 0, Math.PI * 2);
     ctx.stroke();
     ctx.restore();
   }
 
-  // Soft stylized cartoon clouds (Eras 0–7)
+  // Two-tone sunlit cartoon clouds with soft flat undersides (Eras 0–7)
   if (eraIndex <= 7) {
-    const cloudCol =
+    const cloudTop =
       eraIndex === 6
-        ? 'rgba(148, 163, 184, 0.24)'
-        : eraIndex === 5
-          ? 'rgba(254, 215, 170, 0.34)'
-          : 'rgba(255, 255, 255, 0.34)';
-    ctx.fillStyle = cloudCol;
-    for (let i = 0; i < 5; i++) {
-      const span = viewportW + 280;
-      const cx =
-        (((i * 270 + time * (7 + i * 1.3) - cameraX * 0.08) % span) + span) % span - 140;
-      const cy = 54 + (i % 3) * 34;
+        ? 'rgba(148, 163, 184, 0.28)'
+        : eraIndex === 5 || eraIndex === 0
+          ? 'rgba(254, 226, 192, 0.38)'
+          : 'rgba(255, 255, 255, 0.42)';
+    const cloudUnder =
+      eraIndex === 6 ? 'rgba(51, 65, 85, 0.22)' : 'rgba(148, 163, 184, 0.16)';
+    for (let i = 0; i < 6; i++) {
+      const span = viewportW + 300;
+      const cx = (((i * 250 + time * (6 + i * 1.2) - cameraX * 0.08) % span) + span) % span - 150;
+      const cy = 48 + (i % 3) * 34;
+      const sc = 0.8 + (i % 3) * 0.18;
+      ctx.save();
+      ctx.translate(cx, cy);
+      ctx.scale(sc, sc);
+      ctx.fillStyle = cloudUnder;
       ctx.beginPath();
-      ctx.arc(cx, cy, 22, 0, Math.PI * 2);
-      ctx.arc(cx + 20, cy - 8, 26, 0, Math.PI * 2);
-      ctx.arc(cx + 44, cy, 20, 0, Math.PI * 2);
-      ctx.arc(cx + 22, cy + 6, 22, 0, Math.PI * 2);
+      ctx.ellipse(22, 10, 36, 10, 0, 0, Math.PI * 2);
       ctx.fill();
+      ctx.fillStyle = cloudTop;
+      ctx.beginPath();
+      ctx.arc(0, 0, 20, 0, Math.PI * 2);
+      ctx.arc(20, -9, 25, 0, Math.PI * 2);
+      ctx.arc(43, 0, 19, 0, Math.PI * 2);
+      ctx.arc(22, 5, 21, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.restore();
     }
   }
 
   // Era 1: Gliding prehistoric pterodactyl silhouettes
   if (eraIndex === 0) {
-    setInkStyle(ctx, 2.2, 'rgba(69, 26, 3, 0.55)');
-    for (let i = 0; i < 3; i++) {
-      const span = viewportW + 200;
-      const bx = (((i * 310 + time * 24 - cameraX * 0.1) % span) + span) % span - 80;
-      const by = 68 + i * 26 + Math.sin(time * 2 + i) * 6;
-      const flap = Math.sin(time * 5 + i * 2) * 5;
+    setInkStyle(ctx, 2.2, 'rgba(69, 26, 3, 0.58)');
+    for (let i = 0; i < 4; i++) {
+      const span = viewportW + 220;
+      const bx = (((i * 280 + time * 24 - cameraX * 0.1) % span) + span) % span - 90;
+      const by = 60 + i * 24 + Math.sin(time * 2 + i) * 6;
+      const flap = Math.sin(time * 5.2 + i * 2) * 5.5;
       ctx.beginPath();
-      ctx.moveTo(bx - 12, by + flap);
+      ctx.moveTo(bx - 13, by + flap);
       ctx.quadraticCurveTo(bx - 4, by - 6, bx, by);
-      ctx.quadraticCurveTo(bx + 4, by - 6, bx + 12, by + flap);
+      ctx.quadraticCurveTo(bx + 4, by - 6, bx + 13, by + flap);
       ctx.stroke();
     }
   }
@@ -173,19 +245,19 @@ function drawSkyAtmosphere(
   // Era 7: Sweeping wartime anti-air searchlight cones!
   if (eraIndex === 6) {
     for (let i = 0; i < 3; i++) {
-      const bx = viewportW * (0.22 + i * 0.3) - (cameraX * 0.1) % 140;
+      const bx = viewportW * (0.2 + i * 0.3) - ((cameraX * 0.1) % 140);
       const ang = -Math.PI / 2 + Math.sin(time * 0.9 + i * 2.1) * 0.38;
       ctx.save();
       ctx.translate(bx, GROUND_Y);
       ctx.rotate(ang);
-      const beam = ctx.createLinearGradient(0, 0, 320, 0);
-      beam.addColorStop(0, 'rgba(254, 240, 138, 0.22)');
+      const beam = ctx.createLinearGradient(0, 0, 340, 0);
+      beam.addColorStop(0, 'rgba(254, 240, 138, 0.25)');
       beam.addColorStop(1, 'rgba(254, 240, 138, 0)');
       ctx.fillStyle = beam;
       ctx.beginPath();
       ctx.moveTo(0, -6);
-      ctx.lineTo(320, -48);
-      ctx.lineTo(320, 48);
+      ctx.lineTo(340, -52);
+      ctx.lineTo(340, 52);
       ctx.lineTo(0, 6);
       ctx.closePath();
       ctx.fill();
@@ -193,16 +265,18 @@ function drawSkyAtmosphere(
     }
   }
 
-  // Era 9: Flying cyberpunk skyline traffic streaks
+  // Era 9: Flying cyberpunk skyline traffic streaks with glowing trails
   if (eraIndex === 8) {
-    for (let i = 0; i < 6; i++) {
-      const span = viewportW + 160;
+    for (let i = 0; i < 8; i++) {
+      const span = viewportW + 180;
       const dir = i % 2 === 0 ? 1 : -1;
-      const tx = (((i * 190 + time * 85 * dir - cameraX * 0.12) % span) + span) % span - 80;
-      const ty = 115 + (i % 4) * 28;
+      const tx = (((i * 170 + time * 92 * dir - cameraX * 0.12) % span) + span) % span - 90;
+      const ty = 104 + (i % 4) * 28;
       ctx.fillStyle = i % 2 === 0 ? accent : '#f43f5e';
-      ctx.globalAlpha = 0.72;
-      ctx.fillRect(tx, ty, 18, 2.5);
+      ctx.globalAlpha = 0.78;
+      ctx.beginPath();
+      ctx.roundRect(tx, ty, 20, 2.8, 1.5);
+      ctx.fill();
     }
   }
 
@@ -216,54 +290,86 @@ function drawFarLayer(
   viewportW: number,
   time: number,
   farColor: string,
+  sunColor: string,
   accent: string,
 ): void {
   const offset = -(cameraX * 0.16);
   ctx.save();
 
   if (eraIndex === 0) {
-    // Smoking cartoon prehistoric mountains & volcanoes!
+    // Smoking twin prehistoric cartoon volcanoes with glowing lava veins & warm rim glow!
     const spacing = 260;
     const start = Math.floor((-offset - 160) / spacing);
     const end = Math.ceil((viewportW - offset + 160) / spacing);
     for (let i = start; i <= end; i++) {
       const mx = i * spacing + offset;
       const isVolcano = Math.abs(i) % 2 === 1;
-      const h = isVolcano ? 154 : 118 + (Math.abs(i * 37) % 36);
-      ctx.fillStyle = farColor;
+      const h = isVolcano ? 156 : 120 + (Math.abs(i * 37) % 36);
+
+      const mGrad = ctx.createLinearGradient(mx, GROUND_Y - h, mx, GROUND_Y);
+      mGrad.addColorStop(0, isVolcano ? '#7c3a21' : farColor);
+      mGrad.addColorStop(1, farColor);
+      ctx.fillStyle = mGrad;
       ctx.beginPath();
-      ctx.moveTo(mx - 140, GROUND_Y);
+      ctx.moveTo(mx - 144, GROUND_Y);
       if (isVolcano) {
         ctx.lineTo(mx - 26, GROUND_Y - h);
         ctx.lineTo(mx + 26, GROUND_Y - h);
       } else {
-        ctx.quadraticCurveTo(mx, GROUND_Y - h - 22, mx + 140, GROUND_Y);
+        ctx.quadraticCurveTo(mx, GROUND_Y - h - 22, mx + 144, GROUND_Y);
       }
-      ctx.lineTo(mx + 140, GROUND_Y);
+      ctx.lineTo(mx + 144, GROUND_Y);
       ctx.closePath();
       ctx.fill();
+
       if (isVolcano) {
-        // Glowing lava rim + cartoon smoke plume
-        ctx.fillStyle = '#f97316';
-        ctx.fillRect(mx - 22, GROUND_Y - h, 44, 6);
-        const sOff = (time * 14) % 28;
-        ctx.fillStyle = 'rgba(241, 245, 249, 0.25)';
+        // Soft volcanic glow halo rising above caldera
+        const calderaY = GROUND_Y - h;
+        const glow = ctx.createRadialGradient(mx, calderaY, 4, mx, calderaY - 8, 54);
+        glow.addColorStop(0, 'rgba(251, 146, 60, 0.55)');
+        glow.addColorStop(0.5, 'rgba(234, 88, 12, 0.22)');
+        glow.addColorStop(1, 'rgba(234, 88, 12, 0)');
+        ctx.fillStyle = glow;
         ctx.beginPath();
-        ctx.arc(mx + sOff * 0.7, GROUND_Y - h - 18 - sOff * 0.5, 18, 0, Math.PI * 2);
-        ctx.arc(mx + 24 + sOff * 0.9, GROUND_Y - h - 32 - sOff * 0.4, 24, 0, Math.PI * 2);
+        ctx.arc(mx, calderaY - 4, 54, 0, Math.PI * 2);
+        ctx.fill();
+
+        // Organic curved glowing caldera rim & flowing lava vein
+        ctx.fillStyle = '#ea580c';
+        ctx.beginPath();
+        ctx.ellipse(mx, calderaY + 2, 24, 5.5, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = '#fde047';
+        ctx.beginPath();
+        ctx.ellipse(mx, calderaY + 1, 15, 2.8, 0, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.strokeStyle = 'rgba(249, 115, 22, 0.78)';
+        ctx.lineWidth = 3.2;
+        ctx.lineCap = 'round';
+        ctx.beginPath();
+        ctx.moveTo(mx - 7, calderaY + 3);
+        ctx.quadraticCurveTo(mx - 15, calderaY + 26, mx - 25, calderaY + 48);
+        ctx.stroke();
+
+        // Rising layered volcanic smoke puffs
+        const sOff = (time * 14) % 34;
+        ctx.fillStyle = 'rgba(255, 237, 213, 0.2)';
+        ctx.beginPath();
+        ctx.arc(mx + 4 + sOff * 0.6, calderaY - 14 - sOff * 0.55, 16, 0, Math.PI * 2);
+        ctx.arc(mx + 22 + sOff * 0.9, calderaY - 28 - sOff * 0.45, 22, 0, Math.PI * 2);
+        ctx.arc(mx + 44 + sOff * 1.1, calderaY - 40 - sOff * 0.35, 26, 0, Math.PI * 2);
         ctx.fill();
       }
     }
   } else if (eraIndex === 1) {
-    // Iconic Giza Pyramids silhouette across the desert horizon!
+    // Iconic Giza Pyramids with sunlit faces, stone tier glints & golden capstones!
     const spacing = 310;
     const start = Math.floor((-offset - 180) / spacing);
     const end = Math.ceil((viewportW - offset + 180) / spacing);
     for (let i = start; i <= end; i++) {
       const px = i * spacing + offset;
-      const h = 138 + (Math.abs(i) % 2) * 38;
+      const h = 140 + (Math.abs(i) % 2) * 40;
       const hw = h * 0.92;
-      // Shaded right face + sunlit left face
       ctx.fillStyle = farColor;
       ctx.beginPath();
       ctx.moveTo(px - hw, GROUND_Y);
@@ -272,15 +378,16 @@ function drawFarLayer(
       ctx.closePath();
       ctx.fill();
 
-      ctx.fillStyle = 'rgba(254, 240, 138, 0.24)';
+      // Sunlit golden left slope
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.28)';
       ctx.beginPath();
       ctx.moveTo(px - hw, GROUND_Y);
       ctx.lineTo(px, GROUND_Y - h);
-      ctx.lineTo(px - hw * 0.12, GROUND_Y);
+      ctx.lineTo(px - hw * 0.1, GROUND_Y);
       ctx.closePath();
       ctx.fill();
 
-      // Golden pyramidion capstone
+      // Gleaming gilded pyramidion capstone
       ctx.fillStyle = '#facc15';
       ctx.beginPath();
       ctx.moveTo(px - hw * 0.14, GROUND_Y - h * 0.86);
@@ -290,7 +397,7 @@ function drawFarLayer(
       ctx.fill();
     }
   } else if (eraIndex === 5 || eraIndex === 7 || eraIndex === 8) {
-    // Industrial steampunk / Modern metropolis / Sci-fi cyberpunk skyline!
+    // Steampunk Industrial / Modern Night Metropolis / Cyberpunk Neon Skyline!
     const spacing = 74;
     const start = Math.floor((-offset - 90) / spacing);
     const end = Math.ceil((viewportW - offset + 90) / spacing);
@@ -298,20 +405,43 @@ function drawFarLayer(
       const bx = i * spacing + offset;
       const seed = Math.abs(i * 73 + 19);
       const bw = 42 + (seed % 28);
-      const bh = 95 + (seed % 110);
-      ctx.fillStyle = farColor;
+      const bh = 95 + (seed % 112);
+
+      const bGrad = ctx.createLinearGradient(bx, GROUND_Y - bh, bx + bw, GROUND_Y);
+      bGrad.addColorStop(0, farColor);
+      bGrad.addColorStop(1, '#0c1220');
+      ctx.fillStyle = bGrad;
       ctx.beginPath();
       ctx.roundRect(bx, GROUND_Y - bh, bw, bh, eraIndex === 8 ? [10, 10, 0, 0] : 2);
       ctx.fill();
 
-      // Lit glowing city / cyberpunk windows or steampunk smokestacks
       if (eraIndex === 5) {
         if (seed % 3 === 0) {
           ctx.fillRect(bx + bw * 0.35, GROUND_Y - bh - 28, 10, 28);
+          ctx.fillStyle = 'rgba(254, 215, 170, 0.18)';
+          ctx.beginPath();
+          ctx.arc(bx + bw * 0.4 + 12, GROUND_Y - bh - 38, 14, 0, Math.PI * 2);
+          ctx.fill();
         }
+        // Warm furnace glow windows
+        ctx.fillStyle = 'rgba(251, 146, 60, 0.38)';
+        ctx.fillRect(bx + 8, GROUND_Y - 46, bw - 16, 10);
       } else {
-        ctx.fillStyle = eraIndex === 8 ? accent : 'rgba(254, 240, 138, 0.42)';
-        ctx.globalAlpha = eraIndex === 8 ? 0.52 : 0.7;
+        // Rooftop spire + blinking aviation warning beacon on tall skyscrapers!
+        if (bh > 155) {
+          ctx.fillStyle = farColor;
+          ctx.fillRect(bx + bw / 2 - 1.5, GROUND_Y - bh - 22, 3, 22);
+          const blink = Math.sin(time * 4 + i) > 0;
+          if (blink) {
+            ctx.fillStyle = eraIndex === 8 ? accent : '#ef4444';
+            ctx.beginPath();
+            ctx.arc(bx + bw / 2, GROUND_Y - bh - 22, 2.6, 0, Math.PI * 2);
+            ctx.fill();
+          }
+        }
+        // Illuminated office/neon windows
+        ctx.fillStyle = eraIndex === 8 ? accent : 'rgba(254, 240, 138, 0.48)';
+        ctx.globalAlpha = eraIndex === 8 ? 0.56 : 0.72;
         for (let wy = GROUND_Y - bh + 12; wy < GROUND_Y - 28; wy += 16) {
           for (let wx = bx + 7; wx < bx + bw - 10; wx += 11) {
             if ((wx + wy + seed) % 3 !== 0) {
@@ -323,29 +453,37 @@ function drawFarLayer(
       }
     }
   } else if (eraIndex === 9) {
-    // Floating golden-trimmed cosmic monoliths hovering over interstellar abyss!
+    // Floating golden-trimmed cosmic crystal monoliths with orbiting energy rings!
     const spacing = 220;
     const start = Math.floor((-offset - 120) / spacing);
     const end = Math.ceil((viewportW - offset + 120) / spacing);
     for (let i = start; i <= end; i++) {
       const mx = i * spacing + offset;
       const bob = Math.sin(time * 1.1 + i * 1.7) * 8;
-      const mh = 110 + (Math.abs(i * 41) % 65);
-      const my = GROUND_Y - 120 + bob;
+      const mh = 112 + (Math.abs(i * 41) % 65);
+      const my = GROUND_Y - 124 + bob;
       ctx.fillStyle = farColor;
       ctx.beginPath();
       ctx.moveTo(mx, my - mh * 0.55);
-      ctx.lineTo(mx + 26, my);
-      ctx.lineTo(mx, my + mh * 0.42);
-      ctx.lineTo(mx - 26, my);
+      ctx.lineTo(mx + 27, my);
+      ctx.lineTo(mx, my + mh * 0.44);
+      ctx.lineTo(mx - 27, my);
       ctx.closePath();
       ctx.fill();
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.55)';
-      ctx.fillRect(mx - 2, my - mh * 0.35, 4, mh * 0.65);
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.65)';
+      ctx.fillRect(mx - 2, my - mh * 0.36, 4, mh * 0.66);
+      ctx.strokeStyle = 'rgba(192, 132, 252, 0.45)';
+      ctx.lineWidth = 2;
+      ctx.beginPath();
+      ctx.ellipse(mx, my, 36, 8, -0.15, 0, Math.PI * 2);
+      ctx.stroke();
     }
   } else {
-    // Smooth sweeping cartoon mountain range (Classical / Medieval / Gunpowder / WW)
-    ctx.fillStyle = farColor;
+    // Smooth sweeping sunlit mountain range (Classical / Medieval / Gunpowder / WW)
+    const mGrad = ctx.createLinearGradient(0, GROUND_Y - 165, 0, GROUND_Y);
+    mGrad.addColorStop(0, farColor);
+    mGrad.addColorStop(1, '#141a26');
+    ctx.fillStyle = mGrad;
     ctx.beginPath();
     ctx.moveTo(-20, GROUND_Y);
     const step = 120;
@@ -362,12 +500,18 @@ function drawFarLayer(
     ctx.closePath();
     ctx.fill();
 
-    // Distant Medieval castle or Classical Parthenon landmark silhouettes anchored into ridge!
+    // Subtle sunlit ridge highlight along distant peaks
+    ctx.strokeStyle = sunColor;
+    ctx.globalAlpha = 0.22;
+    ctx.lineWidth = 2.5;
+    ctx.stroke();
+    ctx.globalAlpha = 1;
+
+    // Grounded Distant Medieval Castle / Classical Parthenon / Gunpowder Frigate Silhouettes!
     if (eraIndex === 2 || eraIndex === 3) {
-      const lx = ((420 + offset) % (viewportW + 300) + (viewportW + 300)) % (viewportW + 300) - 100;
+      const lx = (((420 + offset) % (viewportW + 300)) + (viewportW + 300)) % (viewportW + 300) - 100;
       ctx.fillStyle = farColor;
       if (eraIndex === 2) {
-        // Parthenon temple seated atop acropolis cliff down to GROUND_Y
         ctx.beginPath();
         ctx.moveTo(lx - 76, GROUND_Y);
         ctx.lineTo(lx - 48, GROUND_Y - 98);
@@ -383,7 +527,6 @@ function drawFarLayer(
         ctx.closePath();
         ctx.fill();
       } else {
-        // Fairytale distant medieval keep grounded on hilltop ridge down to GROUND_Y
         ctx.beginPath();
         ctx.moveTo(lx - 86, GROUND_Y);
         ctx.lineTo(lx - 46, GROUND_Y - 96);
@@ -422,8 +565,11 @@ function drawMidLayer(
   const offset = -(cameraX * 0.42);
   ctx.save();
 
-  // Rolling smooth cartoon hills
-  ctx.fillStyle = midColor;
+  // Rolling smooth shaded cartoon hills with crisp sunlit rim!
+  const hillGrad = ctx.createLinearGradient(0, GROUND_Y - 82, 0, GROUND_Y);
+  hillGrad.addColorStop(0, midColor);
+  hillGrad.addColorStop(1, '#101622');
+  ctx.fillStyle = hillGrad;
   ctx.beginPath();
   ctx.moveTo(-20, GROUND_Y);
   const step = 160;
@@ -431,86 +577,144 @@ function drawMidLayer(
   const end = Math.ceil((viewportW - offset + 180) / step);
   for (let i = start; i <= end; i++) {
     const x = i * step + offset;
-    const h = 42 + Math.sin(i * 1.15 + eraIndex) * 20 + Math.cos(i * 0.65) * 14;
+    const h = 44 + Math.sin(i * 1.15 + eraIndex) * 20 + Math.cos(i * 0.65) * 14;
     ctx.quadraticCurveTo(x, GROUND_Y - h - 18, x + step * 0.5, GROUND_Y - h * 0.55);
   }
   ctx.lineTo(viewportW + 40, GROUND_Y);
   ctx.closePath();
   ctx.fill();
 
-  // Era-specific midground props along the ridge
-  const propStep = 210;
+  ctx.strokeStyle = 'rgba(255, 255, 255, 0.14)';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+
+  // Two-tone detailed era props along midground ridge!
+  const propStep = 205;
   const pStart = Math.floor((-offset - 120) / propStep);
   const pEnd = Math.ceil((viewportW - offset + 120) / propStep);
   for (let i = pStart; i <= pEnd; i++) {
     const px = i * propStep + offset + ((i * 59) & 31);
-    const py = GROUND_Y - 6;
+    const py = GROUND_Y - 4;
 
     if (eraIndex === 0 || eraIndex === 3 || eraIndex === 4) {
-      // Stylized Kingdom-Rush cartoon pine / palm / oak trees
+      // Two-tone Kingdom-Rush cartoon trees with lit crown highlights!
+      ctx.fillStyle = '#3b2412';
+      ctx.fillRect(px - 4.5, py - 34, 9, 34);
       ctx.fillStyle = propColor;
-      ctx.fillRect(px - 4, py - 34, 8, 34);
       ctx.beginPath();
-      ctx.arc(px, py - 42, 18, 0, Math.PI * 2);
-      ctx.arc(px - 12, py - 32, 13, 0, Math.PI * 2);
-      ctx.arc(px + 12, py - 32, 13, 0, Math.PI * 2);
+      ctx.arc(px, py - 42, 19, 0, Math.PI * 2);
+      ctx.arc(px - 13, py - 32, 13.5, 0, Math.PI * 2);
+      ctx.arc(px + 13, py - 32, 13.5, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+      ctx.beginPath();
+      ctx.arc(px - 4, py - 47, 11, 0, Math.PI * 2);
       ctx.fill();
     } else if (eraIndex === 1) {
-      // Desert date palms & sandstone obelisks
+      // Desert date palms & gilded obelisk markers
       ctx.fillStyle = propColor;
       if (Math.abs(i) % 2 === 0) {
         ctx.beginPath();
         ctx.moveTo(px - 8, py);
-        ctx.lineTo(px - 5, py - 46);
-        ctx.lineTo(px, py - 58);
-        ctx.lineTo(px + 5, py - 46);
+        ctx.lineTo(px - 5, py - 48);
+        ctx.lineTo(px, py - 60);
+        ctx.lineTo(px + 5, py - 48);
         ctx.lineTo(px + 8, py);
         ctx.fill();
+        ctx.fillStyle = 'rgba(250, 204, 21, 0.65)';
+        ctx.beginPath();
+        ctx.moveTo(px - 5, py - 48);
+        ctx.lineTo(px, py - 60);
+        ctx.lineTo(px + 5, py - 48);
+        ctx.fill();
       } else {
-        ctx.fillRect(px - 3, py - 38, 6, 38);
+        ctx.fillRect(px - 3, py - 40, 6, 40);
         for (let f = -2; f <= 2; f++) {
           ctx.beginPath();
-          ctx.ellipse(px + f * 9, py - 38 + Math.abs(f) * 3, 12, 4, f * 0.35, 0, Math.PI * 2);
+          ctx.ellipse(px + f * 9, py - 40 + Math.abs(f) * 3, 13, 4.2, f * 0.35, 0, Math.PI * 2);
           ctx.fill();
         }
       }
     } else if (eraIndex === 2) {
-      // Classical cypress trees & marble columns
+      // Classical Mediterranean cypress & marble ruin column
       ctx.fillStyle = propColor;
       ctx.beginPath();
-      ctx.ellipse(px, py - 28, 9, 28, 0, 0, Math.PI * 2);
+      ctx.ellipse(px, py - 30, 9.5, 30, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.1)';
+      ctx.beginPath();
+      ctx.ellipse(px - 2.5, py - 34, 4, 20, 0, 0, Math.PI * 2);
       ctx.fill();
     } else if (eraIndex === 5) {
-      // Steampunk factory pipes & rotating gear silhouettes
+      // Steampunk pipes & silhouette clockwork gear
       ctx.fillStyle = propColor;
-      ctx.fillRect(px - 7, py - 46, 14, 46);
+      ctx.fillRect(px - 7, py - 48, 14, 48);
       ctx.beginPath();
-      ctx.arc(px + 18, py - 22, 14, 0, Math.PI * 2);
+      ctx.arc(px + 18, py - 24, 15, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = midColor;
+      ctx.beginPath();
+      ctx.arc(px + 18, py - 24, 6, 0, Math.PI * 2);
       ctx.fill();
     } else if (eraIndex === 8 || eraIndex === 9) {
-      // Glowing futuristic / cosmic energy pylons
+      // Glowing futuristic / cosmic energy obelisk pylons
       ctx.fillStyle = propColor;
       ctx.beginPath();
       ctx.moveTo(px - 10, py);
-      ctx.lineTo(px - 4, py - 52);
-      ctx.lineTo(px + 4, py - 52);
+      ctx.lineTo(px - 4.5, py - 54);
+      ctx.lineTo(px + 4.5, py - 54);
       ctx.lineTo(px + 10, py);
       ctx.fill();
-      const pulse = 0.65 + Math.sin(time * 3 + i) * 0.3;
+      const pulse = 0.6 + Math.sin(time * 3.2 + i) * 0.35;
       ctx.fillStyle = accent;
       ctx.globalAlpha = pulse;
       ctx.beginPath();
-      ctx.arc(px, py - 54, 5, 0, Math.PI * 2);
+      ctx.arc(px, py - 56, 5.5, 0, Math.PI * 2);
       ctx.fill();
       ctx.globalAlpha = 1;
     } else {
-      // Sandbag posts / ruined wall silhouettes (Era 6/7/8)
       ctx.fillStyle = propColor;
-      ctx.fillRect(px - 14, py - 22, 28, 22);
-      ctx.fillRect(px - 8, py - 34, 14, 14);
+      ctx.fillRect(px - 15, py - 24, 30, 24);
+      ctx.fillRect(px - 8, py - 36, 14, 14);
     }
   }
 
+  ctx.restore();
+}
+
+/** Subtle ambient drifting embers / desert glints / golden leaves / cyber data motes / cosmic stardust */
+function drawAmbientMotes(
+  ctx: CanvasRenderingContext2D,
+  eraIndex: number,
+  cameraX: number,
+  viewportW: number,
+  time: number,
+  accent: string,
+): void {
+  ctx.save();
+  const count = 16;
+  const col =
+    eraIndex === 0 || eraIndex === 5 || eraIndex === 6
+      ? '#fb923c'
+      : eraIndex === 1
+        ? '#fde047'
+        : eraIndex >= 8
+          ? accent
+          : '#fef9c3';
+
+  for (let i = 0; i < count; i++) {
+    const span = viewportW + 80;
+    const speedX = eraIndex === 1 ? -28 : 12 + (i % 4) * 5;
+    const mx = (((i * 97 + time * speedX - cameraX * 0.55) % span) + span) % span - 40;
+    const rise = eraIndex === 0 || eraIndex === 5 || eraIndex >= 8;
+    const rawY = rise ? GROUND_Y - 12 - ((time * (18 + (i % 3) * 7) + i * 31) % 185) : 70 + ((i * 43 + time * 14) % 210);
+    const alpha = 0.28 + 0.45 * Math.abs(Math.sin(time * 2.5 + i * 1.7));
+    ctx.globalAlpha = alpha;
+    ctx.fillStyle = col;
+    ctx.beginPath();
+    ctx.arc(mx, rawY, i % 4 === 0 ? 2.4 : 1.5, 0, Math.PI * 2);
+    ctx.fill();
+  }
   ctx.restore();
 }
 
@@ -529,20 +733,23 @@ function drawCartoonGround(
   // Sub-ground deep strata gradient
   const gGrad = ctx.createLinearGradient(0, GROUND_Y, 0, WORLD_HEIGHT);
   gGrad.addColorStop(0, midCol);
-  gGrad.addColorStop(0.42, darkCol);
-  gGrad.addColorStop(1, '#090d16');
+  gGrad.addColorStop(0.45, darkCol);
+  gGrad.addColorStop(1, '#080c15');
   ctx.fillStyle = gGrad;
   ctx.fillRect(0, GROUND_Y, viewportW + 4, groundH + 4);
 
-  // Top walkable battlefield road strip with crisp cartoon bevel
-  ctx.fillStyle = topCol;
-  ctx.fillRect(0, GROUND_Y - 3, viewportW + 4, 17);
+  // Top walkable battlefield road strip with smooth bevel gradient
+  const roadGrad = ctx.createLinearGradient(0, GROUND_Y - 3, 0, GROUND_Y + 15);
+  roadGrad.addColorStop(0, topCol);
+  roadGrad.addColorStop(1, midCol);
+  ctx.fillStyle = roadGrad;
+  ctx.fillRect(0, GROUND_Y - 3, viewportW + 4, 18);
 
-  // Subtle top highlight rim along road surface
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
+  // Crisp sunlit top edge highlight
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.28)';
   ctx.fillRect(0, GROUND_Y - 2, viewportW + 4, 3);
 
-  // World-locked road surface details (pebbles / cobblestones / dashed road / cyber circuit lines)
+  // World-locked detailed road surface textures
   const tileW = 64;
   const start = Math.floor((cameraX - 64) / tileW);
   const end = Math.ceil((cameraX + viewportW + 64) / tileW);
@@ -551,28 +758,41 @@ function drawCartoonGround(
   for (let i = start; i <= end; i++) {
     const sx = i * tileW - cameraX;
     if (eraIndex === 2 || eraIndex === 3 || eraIndex === 4) {
-      // Stylized cartoon cobblestones
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.16)';
+      // Handcrafted beveled cartoon cobblestones
+      ctx.fillStyle = 'rgba(12, 16, 26, 0.2)';
       ctx.beginPath();
-      ctx.roundRect(sx + 4, GROUND_Y + 2, 24, 8, 3);
-      ctx.roundRect(sx + 34, GROUND_Y + 3, 22, 7, 3);
+      ctx.roundRect(sx + 4, GROUND_Y + 2, 24, 9, 3);
+      ctx.roundRect(sx + 34, GROUND_Y + 3, 24, 8, 3);
       ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.fillRect(sx + 6, GROUND_Y + 3, 20, 2);
+      ctx.fillRect(sx + 36, GROUND_Y + 4, 20, 2);
     } else if (eraIndex === 7) {
-      // Modern road lane dashes
-      ctx.fillStyle = 'rgba(250, 204, 21, 0.55)';
-      ctx.fillRect(sx + 12, GROUND_Y + 5, 28, 3);
+      // Crisp modern highway dashed lane markers + asphalt bevel
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.65)';
+      ctx.beginPath();
+      ctx.roundRect(sx + 12, GROUND_Y + 5, 30, 3.5, 1.5);
+      ctx.fill();
     } else if (eraIndex >= 8) {
-      // Glowing neon sci-fi / cosmic energy deck seams!
+      // Glowing neon sci-fi / cosmic energy deck plates + circuit seams!
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+      ctx.fillRect(sx + 2, GROUND_Y + 1, 58, 12);
       ctx.fillStyle = accent;
-      ctx.globalAlpha = 0.55;
-      ctx.fillRect(sx + 8, GROUND_Y + 5, 42, 2.5);
+      ctx.globalAlpha = 0.65;
+      ctx.beginPath();
+      ctx.roundRect(sx + 8, GROUND_Y + 5, 44, 2.8, 1.4);
+      ctx.fill();
       ctx.globalAlpha = 1;
     } else {
-      // Organic cartoon pebbles & soil tufts
-      ctx.fillStyle = 'rgba(0, 0, 0, 0.18)';
+      // Organic cartoon pebbles, ruts & soil texture
+      ctx.fillStyle = 'rgba(12, 16, 26, 0.2)';
       ctx.beginPath();
-      ctx.ellipse(sx + 16, GROUND_Y + 7, 7, 2.8, 0, 0, Math.PI * 2);
-      ctx.ellipse(sx + 48, GROUND_Y + 6, 5, 2.2, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx + 16, GROUND_Y + 7, 7.5, 2.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(sx + 48, GROUND_Y + 6, 5.2, 2.2, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.14)';
+      ctx.beginPath();
+      ctx.ellipse(sx + 14.5, GROUND_Y + 6, 3.5, 1.1, 0, 0, Math.PI * 2);
       ctx.fill();
     }
   }
@@ -584,11 +804,11 @@ function drawCartoonGround(
   ctx.lineTo(viewportW + 4, GROUND_Y - 3);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.32)';
-  ctx.lineWidth = 2;
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.36)';
+  ctx.lineWidth = 2.2;
   ctx.beginPath();
-  ctx.moveTo(0, GROUND_Y + 14);
-  ctx.lineTo(viewportW + 4, GROUND_Y + 14);
+  ctx.moveTo(0, GROUND_Y + 15);
+  ctx.lineTo(viewportW + 4, GROUND_Y + 15);
   ctx.stroke();
   ctx.restore();
 }
@@ -613,29 +833,27 @@ export function renderForegroundParallax(
     const sway = Math.sin(time * 2.1 + i) * 2.5;
 
     if (eraIndex === 0 || eraIndex === 3) {
-      // Cartoon grass bush tuft + pebbles
       drawCelPoly(
         ctx,
         [
           [px - 14, py],
           [px - 18 + sway, py - 14],
           [px - 6, py - 7],
-          [px + sway, py - 18],
+          [px + sway, py - 19],
           [px + 6, py - 7],
           [px + 18 + sway, py - 13],
           [px + 14, py],
         ],
         era.palette.groundTop,
-        { lineWidth: 1.8 },
+        { highlight: '#a3e635', shadow: '#365314', lineWidth: 1.8 },
       );
     } else if (eraIndex === 1 || eraIndex === 2) {
-      // Stylized sandstone boulder / marble rubble
       drawCelEllipse(ctx, px, py - 6, 15, 8, era.palette.nearProp, {
-        highlight: 'rgba(255,255,255,0.2)',
+        highlight: 'rgba(255,255,255,0.28)',
+        shadow: 'rgba(0,0,0,0.3)',
         lineWidth: 1.8,
       });
     } else if (eraIndex >= 8) {
-      // Glowing sci-fi / cosmic crystal cluster along foreground lip
       drawCelPoly(
         ctx,
         [
@@ -646,12 +864,12 @@ export function renderForegroundParallax(
           [px + 13, py],
         ],
         era.palette.accent,
-        { highlight: '#ffffff', lineWidth: 1.7 },
+        { highlight: '#ffffff', shadow: '#4c1d95', lineWidth: 1.7 },
       );
     } else {
-      // Subtle military crate / gear / road bollard silhouette
       drawCelRoundRect(ctx, px - 12, py - 12, 24, 12, 3, era.palette.nearProp, {
-        highlight: 'rgba(255,255,255,0.14)',
+        highlight: 'rgba(255,255,255,0.2)',
+        shadow: 'rgba(0,0,0,0.35)',
         lineWidth: 1.8,
       });
     }
