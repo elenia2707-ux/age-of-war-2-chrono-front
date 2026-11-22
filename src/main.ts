@@ -109,10 +109,22 @@ function lockViewportOrigin(): void {
   }
 }
 
+let touchStartX = 0;
+let touchStartY = 0;
+let touchStartedOnButton = false;
+
 document.addEventListener(
   'touchstart',
   (ev) => {
-    if (ev.touches.length > 1 && ev.cancelable) {
+    sound.unlock();
+    const touches = ev.touches;
+    if (!touches) return;
+    if (touches.length === 1) {
+      touchStartX = touches[0].clientX;
+      touchStartY = touches[0].clientY;
+      touchStartedOnButton = ev.target instanceof Element && ev.target.closest('button') !== null;
+    } else if (touches.length > 1 && ev.cancelable) {
+      touchStartedOnButton = false;
       const target = ev.target;
       if (!(target instanceof Element && target.closest('button'))) {
         ev.preventDefault();
@@ -125,9 +137,18 @@ document.addEventListener(
 document.addEventListener(
   'touchmove',
   (ev) => {
-    if (ev.cancelable) {
-      ev.preventDefault();
+    if (!ev.cancelable) return;
+    // On iOS WebKit, calling preventDefault() on the first 1-2px touchmove cancels
+    // synthetic click events on buttons! Buttons already have CSS touch-action: none,
+    // so only preventDefault() on buttons if finger actually drags (>=12px).
+    if (touchStartedOnButton && ev.touches && ev.touches.length === 1) {
+      const dx = ev.touches[0].clientX - touchStartX;
+      const dy = ev.touches[0].clientY - touchStartY;
+      if (Math.hypot(dx, dy) < 12) {
+        return;
+      }
     }
+    ev.preventDefault();
   },
   { passive: false },
 );
@@ -180,8 +201,23 @@ window.visualViewport?.addEventListener('scroll', lockViewportOrigin);
 window.addEventListener(
   'touchend',
   () => {
+    touchStartedOnButton = false;
     lockViewportOrigin();
     requestAnimationFrame(blurActiveButton);
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'touchcancel',
+  () => {
+    touchStartedOnButton = false;
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'pointerdown',
+  () => {
+    sound.unlock();
   },
   { passive: true },
 );
@@ -313,6 +349,7 @@ window.addEventListener('orientationchange', () => {
 });
 document.addEventListener('visibilitychange', () => {
   if (!document.hidden) {
+    sound.unlock();
     window.setTimeout(handleResize, 60);
   }
 });

@@ -156,7 +156,7 @@ svg {
 }
 
 #top-hud {
-  top: max(6px, calc(var(--safe-top) * 0.85));
+  top: max(10px, calc(var(--safe-top) * 0.85));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -327,31 +327,31 @@ svg {
 .top-right {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 3px;
-  height: 40px;
+  gap: 5px;
+  padding: 3px 4px;
+  height: 42px;
   flex: 0 0 auto;
 }
 
 .icon-btn {
-  width: 36px;
+  width: 38px;
   height: 34px;
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.12);
   border-radius: 8px;
-  background: rgba(255, 255, 255, 0.06);
+  background: rgba(255, 255, 255, 0.07);
   color: var(--text-main);
   display: inline-flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   font-weight: 800;
-  font-size: 12px;
+  font-size: 12.5px;
   padding: 0;
   transition: background 0.14s ease, transform 0.1s ease;
 }
 
 .speed-btn {
-  width: 40px;
+  width: 44px;
 }
 
 .icon-btn:active {

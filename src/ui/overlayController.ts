@@ -2,6 +2,7 @@ import { DIFFICULTIES, DIFFICULTY_LIST } from '../data/difficulty';
 import { getEra } from '../data/eras';
 import type { DifficultyId, GameSnapshot } from '../data/types';
 import { formatDuration, type PlayerRecords } from '../storage/records';
+import { bindButtonTap } from './tap';
 
 export class OverlayController {
   public selectedDifficulty: DifficultyId = 'normal';
@@ -29,14 +30,14 @@ export class OverlayController {
   }) {
     this.buildDifficultyButtons();
 
-    document.getElementById('btn-start-game')!.addEventListener('click', () => {
+    bindButtonTap(document.getElementById('btn-start-game') as HTMLButtonElement, () => {
       callbacks.onStart(this.selectedDifficulty);
     });
-    document.getElementById('btn-resume')!.addEventListener('click', callbacks.onResume);
-    document.getElementById('btn-pause-restart')!.addEventListener('click', callbacks.onRestart);
-    document.getElementById('btn-pause-title')!.addEventListener('click', callbacks.onReturnTitle);
-    document.getElementById('btn-result-retry')!.addEventListener('click', callbacks.onRestart);
-    document.getElementById('btn-result-title')!.addEventListener('click', callbacks.onReturnTitle);
+    bindButtonTap(document.getElementById('btn-resume') as HTMLButtonElement, callbacks.onResume);
+    bindButtonTap(document.getElementById('btn-pause-restart') as HTMLButtonElement, callbacks.onRestart);
+    bindButtonTap(document.getElementById('btn-pause-title') as HTMLButtonElement, callbacks.onReturnTitle);
+    bindButtonTap(document.getElementById('btn-result-retry') as HTMLButtonElement, callbacks.onRestart);
+    bindButtonTap(document.getElementById('btn-result-title') as HTMLButtonElement, callbacks.onReturnTitle);
   }
 
   public showTitle(records: PlayerRecords): void {
@@ -117,7 +118,7 @@ export class OverlayController {
       btn.setAttribute('aria-checked', String(diff.id === this.selectedDifficulty));
       btn.innerHTML = `<strong>${diff.name}</strong><small>${diff.shortTag}</small>`;
 
-      btn.addEventListener('click', () => {
+      bindButtonTap(btn, () => {
         this.selectedDifficulty = diff.id;
         for (const el of this.diffSelector.querySelectorAll<HTMLButtonElement>('.diff-btn')) {
           const active = el.dataset.diff === diff.id;

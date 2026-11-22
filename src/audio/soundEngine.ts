@@ -2,10 +2,17 @@ import type { SoundCue } from '../data/types';
 
 type AudioContextCtor = typeof AudioContext;
 
+interface NavigatorWithAudioSession extends Navigator {
+  audioSession?: {
+    type: string;
+  };
+}
+
 export class SoundEngine {
   private ctx: AudioContext | null = null;
   private noiseBuffer: AudioBuffer | null = null;
   private muted = false;
+  private unlockedPulseSent = false;
   private lastCueTime = new Map<SoundCue, number>();
 
   constructor(initialMuted = false) {
@@ -22,12 +29,27 @@ export class SoundEngine {
 
   public toggleMute(): boolean {
     this.muted = !this.muted;
+    if (!this.muted) {
+      this.unlock(true);
+    }
     return this.muted;
   }
 
-  /** Must be called on first user touch/click to unlock iOS Safari Web Audio */
-  public unlock(): void {
+  /** Must be called inside user touch/pointer/click to unlock iOS Safari & PWA Web Audio */
+  public unlock(playConfirmChime = false): void {
     if (typeof window === 'undefined') return;
+
+    // On iOS 17+ Safari / Standalone PWA, Web Audio defaults to 'ambient' (silenced by hardware ringer switch).
+    // Setting 'playback' lets game audio play cleanly even when the iPhone silent switch is engaged.
+    try {
+      const nav = navigator as NavigatorWithAudioSession;
+      if (nav.audioSession && nav.audioSession.type !== 'playback') {
+        nav.audioSession.type = 'playback';
+      }
+    } catch {
+      // Ignore if browser restricts audioSession mutation
+    }
+
     if (!this.ctx) {
       const Ctor: AudioContextCtor | undefined =
         window.AudioContext ||
@@ -40,13 +62,45 @@ export class SoundEngine {
         return;
       }
     }
-    if (this.ctx.state === 'suspended') {
-      this.ctx.resume().catch(() => undefined);
+
+    const ctx = this.ctx;
+
+    const finishUnlock = () => {
+      // One-sample silent buffer pulse wakes iOS CoreAudio hardware cleanly
+      if (!this.unlockedPulseSent && ctx.state === 'running') {
+        try {
+          const buf = ctx.createBuffer(1, 1, 22050);
+          const src = ctx.createBufferSource();
+          src.buffer = buf;
+          src.connect(ctx.destination);
+          src.start(0);
+          this.unlockedPulseSent = true;
+        } catch {
+          // Ignore
+        }
+      }
+      if (playConfirmChime && !this.muted && ctx.state === 'running') {
+        this.play('spawn');
+      }
+    };
+
+    // Resume on BOTH 'suspended' AND iOS 'interrupted' states
+    if (ctx.state !== 'running') {
+      ctx
+        .resume()
+        .then(finishUnlock)
+        .catch(() => undefined);
+    } else {
+      finishUnlock();
     }
   }
 
   public play(cue: SoundCue): void {
-    if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+    if (this.muted || !this.ctx) return;
+    if (this.ctx.state !== 'running') {
+      this.ctx.resume().catch(() => undefined);
+      return;
+    }
 
     const nowMs = performance.now();
     const minGap = this.getMinGapMs(cue);

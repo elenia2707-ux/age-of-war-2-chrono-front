@@ -18,6 +18,7 @@ import type { GameEngine } from '../game/engine';
 import { getTurretIconUrl, getUnitIconUrl, getUpgradeIconUrl } from '../render/iconRenderer';
 import { renderMinimap } from '../render/renderer';
 import { formatDuration } from '../storage/records';
+import { bindButtonTap } from './tap';
 
 export type DockTab = 'units' | 'turrets' | 'upgrades';
 
@@ -256,37 +257,36 @@ export class HudController {
   }
 
   private bindEvents(): void {
-    this.speedBtn.addEventListener('click', () => {
+    bindButtonTap(this.speedBtn, () => {
       this.onUnlockAudio();
       const nextSpeed = this.engine.toggleSpeed();
       setTextIfChanged(this.speedLabelEl, `${nextSpeed}x`);
       this.speedBtn.classList.toggle('active', nextSpeed === 2);
     });
 
-    this.muteBtn.addEventListener('click', () => {
-      this.onUnlockAudio();
+    bindButtonTap(this.muteBtn, () => {
       const muted = this.onToggleMute();
       this.setMutedVisual(muted);
     });
 
-    this.pauseBtn.addEventListener('click', () => {
+    bindButtonTap(this.pauseBtn, () => {
       this.onUnlockAudio();
       this.onTogglePause();
     });
 
-    this.tabUnitsBtn.addEventListener('click', () => {
+    bindButtonTap(this.tabUnitsBtn, () => {
       this.onUnlockAudio();
       this.switchTab('units');
     });
 
-    this.tabTurretsBtn.addEventListener('click', () => {
+    bindButtonTap(this.tabTurretsBtn, () => {
       this.onUnlockAudio();
       this.switchTab('turrets');
     });
 
     const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire', 'special'];
 
-    this.tabUpgradesBtn.addEventListener('click', () => {
+    bindButtonTap(this.tabUpgradesBtn, () => {
       this.onUnlockAudio();
       if (this.activeTab === 'upgrades') {
         const idx = categoryOrder.indexOf(this.upgradeCategory);
@@ -297,7 +297,7 @@ export class HudController {
     });
 
     for (const btn of this.upgPageButtons) {
-      btn.addEventListener('click', () => {
+      bindButtonTap(btn, () => {
         this.onUnlockAudio();
         const cat = btn.dataset.upgCat as UpgradeCategory | undefined;
         if (cat) this.setUpgradeCategory(cat);
@@ -327,12 +327,12 @@ export class HudController {
       swipeTracking = false;
     });
 
-    this.evolveBtn.addEventListener('click', () => {
+    bindButtonTap(this.evolveBtn, () => {
       this.onUnlockAudio();
       this.engine.evolve('player');
     });
 
-    this.ultBtn.addEventListener('click', () => {
+    bindButtonTap(this.ultBtn, () => {
       this.onUnlockAudio();
       this.engine.triggerUltimate('player');
     });
@@ -405,7 +405,7 @@ export class HudController {
           <span class="card-queue-badge hidden"></span>
         `;
 
-        btn.addEventListener('click', () => {
+        bindButtonTap(btn, () => {
           this.onUnlockAudio();
           this.engine.enqueueUnit('player', unit.id as UnitVisualKind);
         });
@@ -435,11 +435,15 @@ export class HudController {
           <span class="card-level-badge num" data-upg-level>Lv.0</span>
         `;
 
-        btn.addEventListener('click', () => {
-          if (performance.now() < this.suppressUpgradeClickUntil) return;
-          this.onUnlockAudio();
-          this.engine.buyUpgrade('player', upg.id);
-        });
+        bindButtonTap(
+          btn,
+          () => {
+            if (performance.now() < this.suppressUpgradeClickUntil) return;
+            this.onUnlockAudio();
+            this.engine.buyUpgrade('player', upg.id);
+          },
+          { cancelOnSwipe: true },
+        );
         this.actionCardsEl.appendChild(btn);
       }
       return;
@@ -464,7 +468,7 @@ export class HudController {
       <span class="card-name">슬롯 확장</span>
       <span class="card-cost num" data-slot-cost>120G</span>
     `;
-    expandBtn.addEventListener('click', () => {
+    bindButtonTap(expandBtn, () => {
       this.onUnlockAudio();
       this.engine.expandTurretSlot('player');
     });
@@ -485,7 +489,7 @@ export class HudController {
         <span class="card-name">${turret.shortName}</span>
         <span class="card-cost num">${turret.cost.toLocaleString()}G</span>
       `;
-      btn.addEventListener('click', () => {
+      bindButtonTap(btn, () => {
         this.onUnlockAudio();
         this.sellHighlightMode = false;
         const ok = this.engine.installTurret('player', turret.id as TurretVisualKind);
@@ -512,7 +516,7 @@ export class HudController {
       <span class="card-name">포탑 판매</span>
       <span class="card-cost num" data-sell-refund>50% 환급</span>
     `;
-    sellBtn.addEventListener('click', () => {
+    bindButtonTap(sellBtn, () => {
       this.onUnlockAudio();
       const installed = this.engine.player.turrets.filter((t) => t !== null);
       if (installed.length === 0) return;
@@ -658,7 +662,7 @@ export class HudController {
           <span class="queue-cancel-x">×</span>
           ${idx === 0 ? '<span class="queue-progress"></span>' : ''}
         `;
-        slot.addEventListener('click', () => {
+        bindButtonTap(slot, () => {
           this.onUnlockAudio();
           this.engine.cancelQueuedUnit('player', idx);
         });
