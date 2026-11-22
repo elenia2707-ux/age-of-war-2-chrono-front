@@ -67,6 +67,49 @@ export function renderBase(
   if (hpRatio <= 0.5) {
     drawFortressCracks(ctx, hpRatio);
   }
+
+  // Visual Fortress Upgrade Evolution (live fortification badges & energy dome as 요새포탑 levels up!)
+  const fortLv = faction.upgrades.fortress;
+  if (fortLv >= 2) {
+    // Gleaming golden reinforced foundation bumper & rivets
+    drawCelRoundRect(ctx, -84, -12, 170, 12, 3, '#d97706', {
+      highlight: '#fef08a',
+      shadow: '#78350f',
+      lineWidth: 2.0,
+    });
+  }
+  if (fortLv >= 5) {
+    // Glowing fortified diamond bastion crest mounted on front bastion!
+    drawCelPoly(
+      ctx,
+      [
+        [72, -46],
+        [82, -60],
+        [92, -46],
+        [82, -32],
+      ],
+      pal.main,
+      { highlight: '#fef08a', shadow: pal.dark, lineWidth: 1.9 },
+    );
+    drawEnergyOrb(ctx, 82, -46, 3.6 + Math.sin(time * 5) * 0.7, '#38bdf8', '#ffffff');
+  }
+  if (fortLv >= 8) {
+    // Shimmering translucent Aegis Energy Shield Dome guarding the fortress!
+    const domePulse = 0.22 + Math.sin(time * 4.5) * 0.08;
+    ctx.save();
+    ctx.strokeStyle = faction.team === 'player' ? `rgba(96, 165, 250, ${(domePulse + 0.35).toFixed(2)})` : `rgba(248, 113, 113, ${(domePulse + 0.35).toFixed(2)})`;
+    ctx.lineWidth = 3.2;
+    ctx.beginPath();
+    ctx.arc(4, -22, 112, Math.PI * 1.15, Math.PI * 1.98);
+    ctx.stroke();
+    ctx.fillStyle = faction.team === 'player' ? `rgba(56, 189, 248, ${(domePulse * 0.45).toFixed(2)})` : `rgba(244, 63, 94, ${(domePulse * 0.45).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(4, -22, 112, Math.PI * 1.15, Math.PI * 1.98);
+    ctx.lineTo(4, -22);
+    ctx.closePath();
+    ctx.fill();
+    ctx.restore();
+  }
   ctx.restore();
 
   // Rising smooth cartoon smoke puffs & flames when fortress is damaged (<=50% / <=25%)

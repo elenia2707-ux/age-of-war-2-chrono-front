@@ -313,6 +313,10 @@ export interface FactionState {
   upgradeFlash: number;
   kills: number;
   unitsSpawned: number;
+  /** Chrono Fever: kill streak gauge (0..10) & active golden frenzy timer */
+  feverKills: number;
+  feverTimer: number;
+  feverDuration: number;
 }
 
 export interface UnitEntity {
@@ -334,6 +338,24 @@ export interface UnitEntity {
   upgradeFlash: number;
   knockbackVel: number;
   deathTimer: number;
+  /** Veteran promotion progression: 1 kill -> ★, 3 kills -> ★★, 5 kills -> ★★★ */
+  kills: number;
+  vetRank: 0 | 1 | 2 | 3;
+}
+
+export interface SupplyCrateEntity {
+  uid: number;
+  x: number;
+  y: number;
+  vy: number;
+  landed: boolean;
+  hp: number;
+  maxHp: number;
+  goldReward: number;
+  xpReward: number;
+  hitFlash: number;
+  life: number;
+  maxLife: number;
 }
 
 export interface ProjectileEntity {
@@ -358,6 +380,7 @@ export interface ProjectileEntity {
   life: number;
   maxLife: number;
   targetX?: number;
+  sourceUnitUid?: number;
 }
 
 export interface BeamEffect {
@@ -470,6 +493,7 @@ export interface GameSnapshot {
   player: FactionState;
   enemy: FactionState;
   units: UnitEntity[];
+  supplyCrates: SupplyCrateEntity[];
   projectiles: ProjectileEntity[];
   beams: BeamEffect[];
   particles: ParticleEntity[];

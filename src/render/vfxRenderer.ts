@@ -6,6 +6,7 @@ import type {
   ProjectileEntity,
   ScorchMark,
   SlashEffect,
+  SupplyCrateEntity,
 } from '../data/types';
 import { GROUND_Y, WORLD_HEIGHT } from '../game/constants';
 import {
@@ -856,4 +857,102 @@ export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[
   }
 
   ctx.restore();
+}
+
+/** Draw parachuting & landed golden Midfield Chrono Supply Crates with drop beacon & HP bar! */
+export function renderSupplyCrates(
+  ctx: CanvasRenderingContext2D,
+  crates: SupplyCrateEntity[],
+  time: number,
+): void {
+  for (const c of crates) {
+    const sway = c.landed ? 0 : Math.sin(time * 3.8 + c.uid) * 0.14;
+    const pulse = 0.65 + Math.sin(time * 5.2 + c.uid) * 0.25;
+
+    ctx.save();
+    // Glowing golden sky beacon guiding both armies to midfield!
+    const beaconGrad = ctx.createLinearGradient(c.x, GROUND_Y, c.x, 40);
+    beaconGrad.addColorStop(0, `rgba(250, 204, 21, ${(pulse * 0.34).toFixed(2)})`);
+    beaconGrad.addColorStop(0.65, `rgba(254, 240, 138, ${(pulse * 0.12).toFixed(2)})`);
+    beaconGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
+    ctx.fillStyle = beaconGrad;
+    ctx.fillRect(c.x - 16, 40, 32, GROUND_Y - 40);
+
+    // Ground contact shadow
+    ctx.fillStyle = 'rgba(10, 14, 24, 0.36)';
+    ctx.beginPath();
+    ctx.ellipse(c.x, GROUND_Y + 2, c.landed ? 22 : 13, 5, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    ctx.translate(c.x, c.y);
+    ctx.rotate(sway);
+
+    // Striped cartoon parachute canopy while descending!
+    if (!c.landed) {
+      setInkStyle(ctx, 1.5, '#cbd5e1');
+      ctx.beginPath();
+      ctx.moveTo(-12, -26);
+      ctx.lineTo(-22, -52);
+      ctx.moveTo(12, -26);
+      ctx.lineTo(22, -52);
+      ctx.moveTo(0, -26);
+      ctx.lineTo(0, -56);
+      ctx.stroke();
+
+      ctx.beginPath();
+      ctx.arc(0, -52, 24, Math.PI, 0);
+      ctx.closePath();
+      ctx.fillStyle = '#f59e0b';
+      ctx.fill();
+      ctx.beginPath();
+      ctx.arc(0, -52, 24, Math.PI * 1.25, Math.PI * 1.75);
+      ctx.lineTo(0, -52);
+      ctx.closePath();
+      ctx.fillStyle = '#fef08a';
+      ctx.fill();
+      setInkStyle(ctx, 2.1, INK);
+      ctx.beginPath();
+      ctx.arc(0, -52, 24, Math.PI, 0);
+      ctx.closePath();
+      ctx.stroke();
+    }
+
+    // Hit flash jolt
+    const jolt = c.hitFlash > 0.2 ? Math.sin(time * 48) * 2.5 * c.hitFlash : 0;
+    ctx.translate(jolt, 0);
+
+    // Armored golden-wood Chrono Relic Supply Crate!
+    drawCelRoundRect(ctx, -17, -30, 34, 30, 5, c.hitFlash > 0.45 ? '#fef9c3' : '#b45309', {
+      highlight: '#fde047',
+      shadow: '#78350f',
+      lineWidth: 2.4,
+    });
+    // Crossed golden steel bands
+    drawCelRoundRect(ctx, -18, -20, 36, 7, 2, '#facc15', { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.7 });
+    drawCelRoundRect(ctx, -4, -31, 8, 32, 2, '#facc15', { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.7 });
+    // Glowing cyan Chrono core gem in center
+    drawEnergyOrb(ctx, 0, -16, 5.2 + pulse * 1.1, '#22d3ee', '#ffffff');
+
+    // Overhead HP bar once landed
+    if (c.landed) {
+      const barW = 42;
+      const barH = 6;
+      const barY = -42;
+      const ratio = Math.max(0, Math.min(1, c.hp / Math.max(1, c.maxHp)));
+      ctx.fillStyle = '#141c2c';
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2, barY, barW, barH, 3);
+      ctx.fill();
+      ctx.fillStyle = '#facc15';
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2, barY, barW * ratio, barH, 2.5);
+      ctx.fill();
+      setInkStyle(ctx, 1.6, INK);
+      ctx.beginPath();
+      ctx.roundRect(-barW / 2, barY, barW, barH, 3);
+      ctx.stroke();
+    }
+
+    ctx.restore();
+  }
 }

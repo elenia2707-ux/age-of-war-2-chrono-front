@@ -730,13 +730,20 @@ function drawCartoonGround(
 ): void {
   const groundH = WORLD_HEIGHT - GROUND_Y;
 
-  // Sub-ground deep strata gradient
-  const gGrad = ctx.createLinearGradient(0, GROUND_Y, 0, WORLD_HEIGHT);
+  // Sub-ground deep strata gradient (rich warm earth extending cleanly below bottom dock!)
+  const gGrad = ctx.createLinearGradient(0, GROUND_Y, 0, WORLD_HEIGHT + 36);
   gGrad.addColorStop(0, midCol);
-  gGrad.addColorStop(0.45, darkCol);
-  gGrad.addColorStop(1, '#080c15');
+  gGrad.addColorStop(0.42, darkCol);
+  gGrad.addColorStop(0.85, '#121824');
+  gGrad.addColorStop(1, '#0c111b');
   ctx.fillStyle = gGrad;
-  ctx.fillRect(0, GROUND_Y, viewportW + 4, groundH + 4);
+  ctx.fillRect(0, GROUND_Y, viewportW + 4, groundH + 40);
+
+  // Subtle horizontal geological soil band behind dock for rich depth
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.04)';
+  ctx.fillRect(0, GROUND_Y + 26, viewportW + 4, 14);
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.14)';
+  ctx.fillRect(0, GROUND_Y + 54, viewportW + 4, 18);
 
   // Top walkable battlefield road strip with smooth bevel gradient
   const roadGrad = ctx.createLinearGradient(0, GROUND_Y - 3, 0, GROUND_Y + 15);
@@ -874,5 +881,59 @@ export function renderForegroundParallax(
       });
     }
   }
+
+  // Dynamic Era Weather Overlay (desert wind, wartime rain, cyberpunk neon rain, cosmic meteors!)
+  if (eraIndex === 1) {
+    // Sweeping translucent desert sand wind streaks
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.16)';
+    ctx.lineWidth = 2.0;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < 10; i++) {
+      const span = viewportW + 220;
+      const sx = (((i * 155 + time * 160 - cameraX * 0.5) % span) + span) % span - 110;
+      const sy = 95 + (i % 5) * 44 + Math.sin(time * 2 + i) * 8;
+      ctx.beginPath();
+      ctx.moveTo(sx, sy);
+      ctx.quadraticCurveTo(sx + 38, sy - 6, sx + 78, sy + 2);
+      ctx.stroke();
+    }
+  } else if (eraIndex === 4 || eraIndex === 6 || eraIndex === 8) {
+    // Atmospheric rain (Gunpowder & WWII drizzle / Future Cyberpunk neon rain!)
+    const isNeon = eraIndex === 8;
+    ctx.lineWidth = isNeon ? 1.6 : 1.3;
+    ctx.lineCap = 'round';
+    const drops = isNeon ? 24 : 20;
+    for (let i = 0; i < drops; i++) {
+      const rx = (((i * 97 - time * 130 - cameraX * 0.45) % (viewportW + 80)) + (viewportW + 80)) % (viewportW + 80) - 40;
+      const ry = (((i * 67 + time * 360) % (GROUND_Y + 20)) + (GROUND_Y + 20)) % (GROUND_Y + 20);
+      ctx.strokeStyle = isNeon
+        ? i % 3 === 0
+          ? 'rgba(244, 114, 182, 0.28)'
+          : 'rgba(56, 189, 248, 0.28)'
+        : 'rgba(203, 213, 225, 0.22)';
+      ctx.beginPath();
+      ctx.moveTo(rx, ry);
+      ctx.lineTo(rx - 7, ry + 18);
+      ctx.stroke();
+    }
+  } else if (eraIndex === 9) {
+    // Sweeping cosmic shooting stars gliding across the nebula!
+    for (let i = 0; i < 3; i++) {
+      const phase = (time * 0.32 + i * 0.37) % 1;
+      if (phase < 0.35) {
+        const t = phase / 0.35;
+        const sx = viewportW * (0.25 + i * 0.28) + t * 180;
+        const sy = 42 + i * 32 + t * 55;
+        const alpha = Math.sin(t * Math.PI) * 0.72;
+        ctx.strokeStyle = `rgba(254, 240, 138, ${alpha.toFixed(2)})`;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.moveTo(sx - 34, sy - 11);
+        ctx.lineTo(sx, sy);
+        ctx.stroke();
+      }
+    }
+  }
+
   ctx.restore();
 }

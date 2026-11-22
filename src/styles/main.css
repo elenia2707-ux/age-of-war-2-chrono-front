@@ -31,6 +31,8 @@
 
 html,
 body {
+  position: fixed;
+  inset: 0;
   margin: 0;
   padding: 0;
   width: 100%;
@@ -52,15 +54,18 @@ body {
 }
 
 #app {
-  position: relative;
-  width: 100vw;
-  height: 100dvh;
+  position: fixed;
+  inset: 0;
+  width: 100%;
+  height: 100%;
   overflow: hidden;
   background: var(--bg-deep);
 }
 
 #game-canvas {
   display: block;
+  position: absolute;
+  inset: 0;
   width: 100%;
   height: 100%;
   touch-action: none;
@@ -102,18 +107,18 @@ body {
 }
 
 /* ============================================================================
-   TOP HUD
+   TOP HUD (calibrated for iPhone Dynamic Island & Standalone PWA safe-areas)
    ============================================================================ */
 .hud-layer {
   position: absolute;
-  left: max(8px, var(--safe-left));
-  right: max(8px, var(--safe-right));
+  left: max(8px, calc(var(--safe-left) * 0.76));
+  right: max(8px, calc(var(--safe-right) * 0.76));
   z-index: 20;
   pointer-events: none;
 }
 
 #top-hud {
-  top: max(6px, var(--safe-top));
+  top: max(6px, calc(var(--safe-top) * 0.85));
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -265,6 +270,12 @@ body {
   white-space: nowrap;
 }
 
+.hp-vs.fever-active {
+  color: #fde047;
+  font-weight: 900;
+  text-shadow: 0 0 8px rgba(250, 204, 21, 0.75);
+}
+
 #minimap-canvas {
   width: 100%;
   height: 20px;
@@ -368,8 +379,8 @@ body {
    ============================================================================ */
 .queue-bar {
   position: absolute;
-  left: max(8px, var(--safe-left));
-  bottom: calc(88px + var(--safe-bottom));
+  left: max(8px, calc(var(--safe-left) * 0.76));
+  bottom: calc(88px + var(--safe-bottom) * 0.52);
   z-index: 21;
   display: flex;
   align-items: center;
@@ -426,7 +437,7 @@ body {
    BOTTOM THUMB DOCK
    ============================================================================ */
 #bottom-hud {
-  bottom: max(6px, var(--safe-bottom));
+  bottom: max(6px, calc(var(--safe-bottom) * 0.52));
   display: flex;
   align-items: stretch;
   justify-content: space-between;
@@ -436,7 +447,7 @@ body {
 
 .dock-left {
   pointer-events: auto;
-  flex: 1 1 auto;
+  flex: 1 1 0;
   min-width: 0;
   max-width: 596px;
   border-radius: var(--radius-md);

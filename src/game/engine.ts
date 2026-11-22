@@ -49,6 +49,7 @@ import type {
   ProjectileEntity,
   ScorchMark,
   SlashEffect,
+  SupplyCrateEntity,
   Team,
   TurretVisualKind,
   UnitDef,
@@ -79,6 +80,9 @@ import {
   WORLD_WIDTH,
 } from './constants';
 
+const FEVER_KILLS_TARGET = 10;
+const FEVER_DURATION_SEC = 10;
+
 export class GameEngine {
   public status: GameStatus = 'title';
   public difficulty: DifficultyId = 'normal';
@@ -89,6 +93,7 @@ export class GameEngine {
   public enemy: FactionState;
 
   public units: UnitEntity[] = [];
+  public supplyCrates: SupplyCrateEntity[] = [];
   public projectiles: ProjectileEntity[] = [];
   public beams: BeamEffect[] = [];
   public particles: ParticleEntity[] = [];
@@ -106,6 +111,7 @@ export class GameEngine {
 
   private nextUid = 1;
   private rngState = 1337;
+  private nextSupplyCrateAt = 24;
   private ai = new EnemyAI();
   private callbacks: EngineCallbacks;
 
@@ -126,10 +132,12 @@ export class GameEngine {
     this.elapsed = 0;
     this.nextUid = 1;
     this.rngState = seed ?? ((Date.now() & 0x7fffffff) || 1337);
+    this.nextSupplyCrateAt = 24;
 
     this.player = this.createFaction('player');
     this.enemy = this.createFaction('enemy');
     this.units = [];
+    this.supplyCrates = [];
     this.projectiles = [];
     this.beams = [];
     this.particles = [];
@@ -605,6 +613,7 @@ export class GameEngine {
       player: this.player,
       enemy: this.enemy,
       units: this.units,
+      supplyCrates: this.supplyCrates,
       projectiles: this.projectiles,
       beams: this.beams,
       particles: this.particles,
@@ -614,6 +623,112 @@ export class GameEngine {
       ultimates: this.ultimates,
       eraTransition: this.eraTransition,
     };
+  }
+
+  public spawnSupplyCrate(customX?: number): SupplyCrateEntity {
+    const avgEra = Math.floor((this.player.eraIndex + this.enemy.eraIndex) * 0.5);
+    const era = getEra(Math.max(this.player.eraIndex, avgEra));
+    const maxHp = Math.round(95 + avgEra * 155 + avgEra * avgEra * 58);
+    const goldReward = Math.round((era.units[2]?.cost ?? 45) * 1.65);
+    const xpReward = Math.round(era.evolveXp > 0 ? era.evolveXp * 0.12 : 4200);
+    const x =
+      customX ??
+      Math.round(WORLD_WIDTH * (0.42 + this.random() * 0.16));
+    const crate: SupplyCrateEntity = {
+      uid: this.nextUid++,
+      x,
+      y: 42,
+      vy: 68,
+      landed: false,
+      hp: maxHp,
+      maxHp,
+      goldReward,
+      xpReward,
+      hitFlash: 0,
+      life: 32,
+      maxLife: 32,
+    };
+    this.supplyCrates.push(crate);
+    this.callbacks.onBanner?.(
+      '크로노 보급상자 투하!',
+      `중앙 보급상자를 먼저 파괴해 +${goldReward.toLocaleString()}G & +${xpReward.toLocaleString()} XP 획득!`,
+      '#facc15',
+    );
+    return crate;
+  }
+
+  private damageSupplyCrate(crate: SupplyCrateEntity, dmg: number, attackerTeam: Team): void {
+    if (crate.hp <= 0) return;
+    crate.hp = Math.max(0, crate.hp - Math.max(1, Math.round(dmg)));
+    crate.hitFlash = 1;
+    this.spawnBurst(crate.x, crate.y - 16, '#fde047', 6, 120);
+    this.callbacks.onSound?.('melee_wood');
+
+    if (crate.hp <= 0) {
+      const winner = this.getFaction(attackerTeam);
+      const rewardGold = Math.round(crate.goldReward * (winner.feverTimer > 0 ? 1.25 : 1));
+      const rewardXp = Math.round(crate.xpReward * getXpMasteryMult(winner.upgrades));
+      winner.gold += rewardGold;
+      winner.xp += rewardXp;
+      winner.totalXp += rewardXp;
+
+      this.spawnExplosion(crate.x, GROUND_Y - 14, 52, '#facc15');
+      this.spawnRing(crate.x, GROUND_Y - 16, '#fef08a', 68);
+      this.callbacks.onSound?.('turret_build');
+      this.addPopup(
+        crate.x,
+        GROUND_Y - 56,
+        `+${rewardGold.toLocaleString()}G`,
+        '#facc15',
+        1.28,
+        'gold',
+      );
+      this.addPopup(
+        crate.x + 18,
+        GROUND_Y - 82,
+        `+${rewardXp.toLocaleString()} XP`,
+        '#38bdf8',
+        1.16,
+        'elemental',
+      );
+      if (attackerTeam === 'player') {
+        this.callbacks.onBanner?.(
+          '보급상자 확보!',
+          `+${rewardGold.toLocaleString()}G · +${rewardXp.toLocaleString()} XP 획득`,
+          '#facc15',
+        );
+      }
+      const idx = this.supplyCrates.indexOf(crate);
+      if (idx >= 0) this.supplyCrates.splice(idx, 1);
+    }
+  }
+
+  private updateSupplyCrates(dt: number): void {
+    if (this.elapsed >= this.nextSupplyCrateAt && this.supplyCrates.length === 0) {
+      this.spawnSupplyCrate();
+      this.nextSupplyCrateAt = this.elapsed + 36 + this.random() * 10;
+    }
+
+    for (let i = this.supplyCrates.length - 1; i >= 0; i--) {
+      const c = this.supplyCrates[i];
+      if (c.hitFlash > 0) c.hitFlash = Math.max(0, c.hitFlash - dt * 6);
+      if (!c.landed) {
+        c.y += c.vy * dt;
+        if (c.y >= GROUND_Y) {
+          c.y = GROUND_Y;
+          c.vy = 0;
+          c.landed = true;
+          this.spawnDustWave(c.x, GROUND_Y, 0, 18, '#fef08a');
+          this.spawnRing(c.x, GROUND_Y - 8, '#facc15', 38);
+        }
+      } else {
+        c.life -= dt;
+        if (c.life <= 0) {
+          this.spawnSmoke(c.x, GROUND_Y - 12, 4);
+          this.supplyCrates.splice(i, 1);
+        }
+      }
+    }
   }
 
   private createFaction(team: Team): FactionState {
@@ -638,20 +753,25 @@ export class GameEngine {
       upgradeFlash: 0,
       kills: 0,
       unitsSpawned: 0,
+      feverKills: 0,
+      feverTimer: 0,
+      feverDuration: FEVER_DURATION_SEC,
     };
   }
 
   private stepInternal(dt: number): void {
     this.elapsed += dt;
 
-    // 1. Passive income (scaled by Economy upgrade), cooldowns, flash decay
+    // 1. Passive income (scaled by Economy upgrade + Chrono Fever +25%), cooldowns, flash decay
     const diff = DIFFICULTIES[this.difficulty];
     const pEra = getEra(this.player.eraIndex);
     const eEra = getEra(this.enemy.eraIndex);
 
-    this.player.gold += pEra.passiveGoldPerSec * getGoldIncomeMult(this.player.upgrades) * dt;
+    const pFeverGold = this.player.feverTimer > 0 ? 1.25 : 1;
+    const eFeverGold = this.enemy.feverTimer > 0 ? 1.25 : 1;
+    this.player.gold += pEra.passiveGoldPerSec * getGoldIncomeMult(this.player.upgrades) * pFeverGold * dt;
     this.enemy.gold +=
-      eEra.passiveGoldPerSec * diff.aiGoldMultiplier * getGoldIncomeMult(this.enemy.upgrades) * dt;
+      eEra.passiveGoldPerSec * diff.aiGoldMultiplier * getGoldIncomeMult(this.enemy.upgrades) * eFeverGold * dt;
 
     this.updateFactionTimers(this.player, dt);
     this.updateFactionTimers(this.enemy, dt);
@@ -663,9 +783,10 @@ export class GameEngine {
       }
     }
 
-    // 2. Production queues
+    // 2. Production queues & Midfield Supply Crates
     this.updateQueue(this.player, dt);
     this.updateQueue(this.enemy, dt);
+    this.updateSupplyCrates(dt);
 
     // 3. Enemy AI decision step
     this.ai.update(this, dt);
@@ -699,6 +820,9 @@ export class GameEngine {
   private updateFactionTimers(f: FactionState, dt: number): void {
     if (f.ultimateCooldown > 0) {
       f.ultimateCooldown = Math.max(0, f.ultimateCooldown - dt);
+    }
+    if (f.feverTimer > 0) {
+      f.feverTimer = Math.max(0, f.feverTimer - dt);
     }
     if (f.baseHitFlash > 0) {
       f.baseHitFlash = Math.max(0, f.baseHitFlash - dt * 5);
@@ -752,6 +876,8 @@ export class GameEngine {
       upgradeFlash: 0,
       knockbackVel: 0,
       deathTimer: 0,
+      kills: 0,
+      vetRank: 0,
     };
     this.units.push(unit);
     faction.unitsSpawned += 1;
@@ -771,8 +897,9 @@ export class GameEngine {
       const dir = team === 'player' ? 1 : -1;
       const enemyBaseFront = team === 'player' ? ENEMY_BASE_FRONT_X : PLAYER_BASE_FRONT_X;
       const teamFaction = this.getFaction(team);
-      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades);
-      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades);
+      const feverOn = teamFaction.feverTimer > 0;
+      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades) * (feverOn ? 1.25 : 1);
+      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades) * (feverOn ? 1.2 : 1);
       const rangeMult = getRangeMult(teamFaction.upgrades);
       const regenRate = getRegenRatePerSec(teamFaction.upgrades);
 
@@ -835,15 +962,39 @@ export class GameEngine {
           }
         }
 
+        // Find closest landed Midfield Chrono Supply Crate in front!
+        let targetCrate: SupplyCrateEntity | null = null;
+        let minCrateDist = Infinity;
+        for (const c of this.supplyCrates) {
+          if (!c.landed || c.hp <= 0) continue;
+          const dist = (c.x - u.x) * dir - (30 + u.def.width) * 0.45;
+          if (dist >= -20 && dist < minCrateDist) {
+            minCrateDist = dist;
+            targetCrate = c;
+          }
+        }
+
         const effectiveRange = u.def.range > 45 ? u.def.range * rangeMult : u.def.range;
         const distToEnemyBase = (enemyBaseFront - u.x) * dir - u.def.width * 0.5;
         const inRangeOfUnit = target !== null && minEnemyDist <= effectiveRange;
+        const inRangeOfCrate = targetCrate !== null && minCrateDist <= effectiveRange;
         const inRangeOfBase = distToEnemyBase <= effectiveRange;
 
-        if (inRangeOfUnit || inRangeOfBase) {
+        if (inRangeOfUnit || inRangeOfCrate || inRangeOfBase) {
           u.state = 'attack';
           if (u.attackCooldown <= 0) {
-            this.performUnitAttack(u, inRangeOfUnit ? target : null);
+            const hitCrateFirst = inRangeOfCrate && (!inRangeOfUnit || minCrateDist <= minEnemyDist + 16);
+            if (hitCrateFirst && targetCrate) {
+              const vetMult = u.vetRank === 3 ? 1.5 : u.vetRank === 2 ? 1.3 : u.vetRank === 1 ? 1.15 : 1;
+              const crateDmg = u.def.damage * getWeaponDamageMult(teamFaction.upgrades) * vetMult;
+              this.callbacks.onSound?.(u.def.attackSound);
+              if (!u.def.projectile) {
+                this.spawnMeleeSlash(u, u.x + dir * (u.def.width * 0.6), GROUND_Y - u.def.height * 0.72, dir, false);
+              }
+              this.damageSupplyCrate(targetCrate, crateDmg, team);
+            } else {
+              this.performUnitAttack(u, inRangeOfUnit ? target : null);
+            }
             u.attackCooldown = 1 / (u.def.attackRate * atkSpdMult);
             u.attackAnim = 1;
           }
@@ -870,10 +1021,14 @@ export class GameEngine {
             const effSpeed = u.def.speed * moveSpdMult;
             const moveDist = effSpeed * dt;
             let nextX = u.x + moveDist * dir;
-            // Don't walk past closest enemy unit or enemy base
+            // Don't walk past closest enemy unit, landed crate, or enemy base
             if (target) {
               const stopX = target.x - dir * ((target.def.width + u.def.width) * 0.48);
               nextX = dir === 1 ? Math.min(nextX, stopX) : Math.max(nextX, stopX);
+            }
+            if (targetCrate) {
+              const crateStop = targetCrate.x - dir * ((30 + u.def.width) * 0.48);
+              nextX = dir === 1 ? Math.min(nextX, crateStop) : Math.max(nextX, crateStop);
             }
             const baseStop = enemyBaseFront - dir * (u.def.width * 0.5 + 4);
             nextX = dir === 1 ? Math.min(nextX, baseStop) : Math.max(nextX, baseStop);
@@ -915,8 +1070,10 @@ export class GameEngine {
     const critChance = Math.min(0.85, def.critChance + getCritChanceBonus(attackerFaction.upgrades));
     const critMult = CRIT_MULTIPLIER + getCritDamageBonus(attackerFaction.upgrades);
     const isCrit = this.random() < critChance;
+    const vetDamageMult =
+      attacker.vetRank === 3 ? 1.5 : attacker.vetRank === 2 ? 1.3 : attacker.vetRank === 1 ? 1.15 : 1;
     const rawDamage =
-      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * (isCrit ? critMult : 1);
+      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * vetDamageMult * (isCrit ? critMult : 1);
     const rangeMult = getRangeMult(attackerFaction.upgrades);
     const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
     const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
@@ -1091,6 +1248,7 @@ export class GameEngine {
         life: 0,
         maxLife: Math.min(3.5, flightTime + 0.8),
         targetX,
+        sourceUnitUid: attacker.uid,
       });
 
       // Muzzle flash smoke for gunpowder/modern/tank/mortar weapons
@@ -1307,6 +1465,10 @@ export class GameEngine {
                 : '#f97316';
 
       // Check collision with enemy units
+      const sourceUnit =
+        p.sourceUnitUid !== undefined
+          ? this.units.find((s) => s.uid === p.sourceUnitUid && s.state !== 'dead')
+          : undefined;
       for (const u of this.units) {
         if (u.team !== enemyTeam || u.state === 'dead') continue;
         if (p.hitUids.includes(u.uid)) continue;
@@ -1316,15 +1478,36 @@ export class GameEngine {
         if (p.x >= u.x - halfW && p.x <= u.x + halfW && p.y >= topY && p.y <= GROUND_Y + 6) {
           p.hitUids.push(u.uid);
           if (p.splashRadius > 0) {
-            this.applySplashDamage(p.x, p.team, p.damage, p.splashRadius, p.armorPierce, p.isCrit, dir * p.knockback);
+            this.applySplashDamage(
+              p.x,
+              p.team,
+              p.damage,
+              p.splashRadius,
+              p.armorPierce,
+              p.isCrit,
+              dir * p.knockback,
+              sourceUnit,
+            );
             this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 6), p.splashRadius, blastColor);
             this.callbacks.onSound?.('explosion');
           } else {
-            this.applyDamageToUnit(u, p.damage, p.armorPierce, p.isCrit, dir * p.knockback, p.team);
+            this.applyDamageToUnit(u, p.damage, p.armorPierce, p.isCrit, dir * p.knockback, p.team, sourceUnit);
             this.spawnBurst(p.x, p.y, blastColor === '#f97316' ? '#fef08a' : blastColor, 5, 100);
           }
           p.pierceRemaining -= 1;
           if (p.pierceRemaining <= 0) {
+            impacted = true;
+            break;
+          }
+        }
+      }
+
+      // Check collision with landed Midfield Supply Crates
+      if (!impacted) {
+        for (const c of this.supplyCrates) {
+          if (!c.landed || c.hp <= 0) continue;
+          if (Math.abs(p.x - c.x) <= 22 && p.y >= GROUND_Y - 38 && p.y <= GROUND_Y + 6) {
+            this.damageSupplyCrate(c, p.damage, p.team);
             impacted = true;
             break;
           }
@@ -1738,7 +1921,9 @@ export class GameEngine {
       const loser = this.getFaction(victim.team);
       const diff = DIFFICULTIES[this.difficulty];
 
-      const goldMult = (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades);
+      const feverGoldMult = killer.feverTimer > 0 ? 1.25 : 1;
+      const goldMult =
+        (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades) * feverGoldMult;
       const xpMult =
         (attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1) *
         getKillXpMult(killer.upgrades) *
@@ -1751,6 +1936,59 @@ export class GameEngine {
       killer.xp += rewardXp;
       killer.totalXp += rewardXp;
       killer.kills += 1;
+
+      // Unit Veteran Promotion (1 kill -> ★, 3 kills -> ★★, 5 kills -> ★★★)!
+      if (attackerUnit && attackerUnit.state !== 'dead') {
+        attackerUnit.kills += 1;
+        const nextRank: 0 | 1 | 2 | 3 =
+          attackerUnit.kills >= 5 ? 3 : attackerUnit.kills >= 3 ? 2 : attackerUnit.kills >= 1 ? 1 : 0;
+        if (nextRank > attackerUnit.vetRank) {
+          attackerUnit.vetRank = nextRank;
+          const vetHpMult = nextRank === 3 ? 1.5 : nextRank === 2 ? 1.3 : 1.15;
+          const newMax = Math.round(
+            attackerUnit.def.maxHp * getArmorHpMult(killer.upgrades) * vetHpMult,
+          );
+          const hpDelta = Math.max(0, newMax - attackerUnit.maxHp);
+          attackerUnit.maxHp = newMax;
+          attackerUnit.hp = Math.min(newMax, attackerUnit.hp + hpDelta + Math.round(newMax * 0.2));
+          attackerUnit.displayHp = Math.max(attackerUnit.displayHp, attackerUnit.hp);
+          attackerUnit.upgradeFlash = 1;
+          const stars = '★'.repeat(nextRank);
+          const title = nextRank === 3 ? `${stars} 영웅!` : nextRank === 2 ? `${stars} 정예!` : `${stars} 베테랑!`;
+          this.addPopup(
+            attackerUnit.x,
+            GROUND_Y - attackerUnit.def.height * 1.48 - 32 - (attackerUnit.def.hoverHeight ?? 0),
+            title,
+            '#fde047',
+            1.14,
+            'crit',
+          );
+          this.spawnRing(attackerUnit.x, GROUND_Y - attackerUnit.def.height * 0.5, '#facc15', 36);
+        }
+      }
+
+      // Chrono Fever Kill-Streak Charge (10 kills -> 10s Golden Rush!)
+      if (killer.feverTimer <= 0) {
+        killer.feverKills += 1;
+        if (killer.feverKills >= FEVER_KILLS_TARGET) {
+          killer.feverKills = 0;
+          killer.feverTimer = FEVER_DURATION_SEC;
+          killer.feverDuration = FEVER_DURATION_SEC;
+          for (const ally of this.units) {
+            if (ally.team === attackerTeam && ally.state !== 'dead') {
+              ally.upgradeFlash = 1;
+            }
+          }
+          if (attackerTeam === 'player') {
+            this.callbacks.onSound?.('evolve');
+            this.callbacks.onBanner?.(
+              '크로노 피버 발동!',
+              '10초간 전 아군 공속 +25% · 이속 +20% · 골드 +25%',
+              '#facc15',
+            );
+          }
+        }
+      }
 
       // Small consolation XP for loser so battles never stall (also boosted by xp_mastery)
       const consolationXp = Math.round(

@@ -499,4 +499,43 @@ describe('GameEngine Core Simulation', () => {
     expect(engine.status).toBe('victory');
     expect(engine.enemy.baseHp).toBe(0);
   });
+
+  it('supports Veteran unit promotions (★/★★/★★★), Chrono Fever 10-kill rush, and Midfield Supply Crates', () => {
+    const engine = new GameEngine();
+    engine.startNewGame('normal', 888);
+
+    // 1. Midfield Chrono Supply Crate lands and awards bonus Gold + XP when destroyed by units
+    const crate = engine.spawnSupplyCrate(1100);
+    crate.y = 326;
+    crate.landed = true;
+    crate.hp = 10;
+    const goldBeforeCrate = engine.player.gold;
+    const xpBeforeCrate = engine.player.xp;
+    const raider = engine.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    raider.x = 1065;
+    raider.attackCooldown = 0;
+    engine.step(0.05);
+    expect(engine.supplyCrates).toHaveLength(0);
+    expect(engine.player.gold).toBeGreaterThanOrEqual(goldBeforeCrate + crate.goldReward);
+    expect(engine.player.xp).toBeGreaterThanOrEqual(xpBeforeCrate + crate.xpReward);
+
+    // 2. Unit Veteran Promotion (1 -> ★, 3 -> ★★, 5 -> ★★★) + Chrono Fever at 10 kills
+    const hero = engine.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    hero.x = 1200;
+    const initialHeroMaxHp = hero.maxHp;
+
+    for (let k = 0; k < 10; k++) {
+      const e = engine.spawnUnit('enemy', UNIT_BY_ID.clubman);
+      e.x = 1230;
+      e.hp = 1;
+      e.attackCooldown = 10;
+      hero.attackCooldown = 0;
+      engine.step(0.05);
+    }
+
+    expect(hero.kills).toBe(10);
+    expect(hero.vetRank).toBe(3);
+    expect(hero.maxHp).toBeGreaterThan(initialHeroMaxHp);
+    expect(engine.player.feverTimer).toBeGreaterThan(0);
+  });
 });

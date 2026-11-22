@@ -163,11 +163,15 @@ window.addEventListener('keydown', (ev) => {
 window.addEventListener('keyup', (ev) => heldKeys.delete(ev.code));
 
 // ============================================================================
-// VIEWPORT RESIZE & PORTRAIT DETECTION
+// VIEWPORT RESIZE & PORTRAIT DETECTION (iOS Standalone PWA Safe!)
 // ============================================================================
 function handleResize(): void {
-  const w = window.innerWidth;
-  const h = window.innerHeight;
+  const rect = canvas.getBoundingClientRect();
+  const vv = window.visualViewport;
+  const w = Math.round(rect.width || vv?.width || window.innerWidth);
+  const h = Math.round(rect.height || vv?.height || window.innerHeight);
+  if (w < 10 || h < 10) return;
+
   renderer.resize(w, h, camera);
 
   const isPortrait = h > w + 24;
@@ -184,7 +188,25 @@ function handleResize(): void {
 }
 
 window.addEventListener('resize', handleResize);
-window.addEventListener('orientationchange', () => window.setTimeout(handleResize, 120));
+window.visualViewport?.addEventListener('resize', handleResize);
+window.addEventListener('orientationchange', () => {
+  handleResize();
+  window.setTimeout(handleResize, 80);
+  window.setTimeout(handleResize, 260);
+  window.setTimeout(handleResize, 520);
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) {
+    window.setTimeout(handleResize, 60);
+  }
+});
+if (typeof ResizeObserver !== 'undefined') {
+  const appEl = document.getElementById('app');
+  if (appEl) {
+    const ro = new ResizeObserver(() => handleResize());
+    ro.observe(appEl);
+  }
+}
 handleResize();
 overlays.showTitle(initialRecords);
 

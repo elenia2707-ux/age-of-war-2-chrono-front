@@ -163,7 +163,13 @@ export class HudController {
     this.enemyHpEl.textContent = Math.ceil(e.baseHp).toLocaleString();
     this.playerHpBar.style.width = `${Math.max(0, Math.min(100, (p.baseHp / p.baseMaxHp) * 100)).toFixed(1)}%`;
     this.enemyHpBar.style.width = `${Math.max(0, Math.min(100, (e.baseHp / e.baseMaxHp) * 100)).toFixed(1)}%`;
-    this.timerEl.textContent = formatDuration(snapshot.elapsed);
+    if (p.feverTimer > 0) {
+      this.timerEl.textContent = `FEVER ${Math.ceil(p.feverTimer)}s`;
+      this.timerEl.classList.add('fever-active');
+    } else {
+      this.timerEl.textContent = formatDuration(snapshot.elapsed);
+      this.timerEl.classList.remove('fever-active');
+    }
 
     // Speed visual
     this.speedBtn.textContent = `${snapshot.speed}x`;

@@ -85,7 +85,12 @@ export function renderUnitPose(ctx: CanvasRenderingContext2D, p: UnitPoseParams)
  * Render a full in-world unit entity with smooth oval shadow, hover bob,
  * cartoon squash-and-stretch hit/attack response, upgrade aura, and fighting-game delayed HP bar.
  */
-export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity): void {
+export function renderUnitEntity(
+  ctx: CanvasRenderingContext2D,
+  unit: UnitEntity,
+  feverActive = false,
+  wallTime = 0,
+): void {
   const deathProgress = unit.state === 'dead' ? Math.min(1, unit.deathTimer / UNIT_DEATH_DURATION) : 0;
   const pose: UnitPoseParams = {
     kind: unit.def.id,
@@ -120,6 +125,21 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
   ctx.beginPath();
   ctx.ellipse(drawX, groundY + 1, shadowRx, shadowRy, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // 1b. Chrono Fever OR Veteran Hero (★★★) Pulsing Golden Ground Ring!
+  if (unit.state !== 'dead' && (feverActive || unit.vetRank >= 2)) {
+    const pulse = 0.65 + Math.sin(wallTime * 8 + unit.uid) * 0.28;
+    ctx.save();
+    ctx.strokeStyle =
+      feverActive || unit.vetRank === 3
+        ? `rgba(250, 204, 21, ${(0.75 * pulse).toFixed(2)})`
+        : `rgba(254, 240, 138, ${(0.45 * pulse).toFixed(2)})`;
+    ctx.lineWidth = feverActive || unit.vetRank === 3 ? 2.4 : 1.7;
+    ctx.beginPath();
+    ctx.ellipse(drawX, groundY + 1, shadowRx * (1.22 + pulse * 0.14), shadowRy * 1.32, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
 
   // 2. Golden Upgrade Power-Up Aura (smooth glowing column & floor ring)
   if (unit.state !== 'dead' && unit.upgradeFlash > 0.04) {
@@ -219,11 +239,13 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
     ctx.restore();
   }
 
+  const topOffset = getUnitHpBarOffset(unit.def.id, unit.def.height);
+  const showHpBar = unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5);
+
   // 5. Crisp Cel-Framed Overhead HP Bar with Delayed White/Gold Fighting-Game Trail!
-  if (unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5)) {
+  if (showHpBar) {
     const barW = Math.max(34, Math.min(78, unit.def.width * 1.18));
     const barH = 6.5;
-    const topOffset = getUnitHpBarOffset(unit.def.id, unit.def.height);
     const barY = spriteY - topOffset - 10;
     const ratio = Math.max(0, Math.min(1, unit.hp / unit.maxHp));
     const trailRatio = Math.max(ratio, Math.min(1, unit.displayHp / unit.maxHp));
@@ -267,6 +289,22 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
     ctx.beginPath();
     ctx.roundRect(barLeft, barY, barW, barH, 3);
     ctx.stroke();
+  }
+
+  // 6. Gleaming Golden Veteran Promotion Stars (★ / ★★ / ★★★) above promoted fighters!
+  if (unit.state !== 'dead' && unit.vetRank > 0) {
+    const starY = spriteY - topOffset - (showHpBar ? 19 : 9);
+    const stars = '★'.repeat(unit.vetRank);
+    ctx.save();
+    ctx.font = '900 10.5px system-ui, sans-serif';
+    ctx.textAlign = 'center';
+    ctx.textBaseline = 'middle';
+    ctx.lineWidth = 3.0;
+    ctx.strokeStyle = INK;
+    ctx.strokeText(stars, drawX, starY);
+    ctx.fillStyle = unit.vetRank === 3 ? '#fef08a' : '#facc15';
+    ctx.fillText(stars, drawX, starY);
+    ctx.restore();
   }
 
   ctx.restore();

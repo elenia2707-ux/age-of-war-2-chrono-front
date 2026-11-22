@@ -19,6 +19,7 @@ import {
   renderProjectiles,
   renderScorchMarks,
   renderSlashes,
+  renderSupplyCrates,
   renderUltimateAtmosphere,
 } from './vfxRenderer';
 
@@ -39,13 +40,40 @@ export class GameRenderer {
 
   public resize(width: number, height: number, camera: BattleCamera): void {
     const dpr = Math.min(3, window.devicePixelRatio || 1);
-    this.cssWidth = Math.max(1, Math.floor(width));
-    this.cssHeight = Math.max(1, Math.floor(height));
-    this.canvas.width = Math.floor(this.cssWidth * dpr);
-    this.canvas.height = Math.floor(this.cssHeight * dpr);
+    this.cssWidth = Math.max(1, Math.round(width));
+    this.cssHeight = Math.max(1, Math.round(height));
+    const targetW = Math.max(1, Math.round(this.cssWidth * dpr));
+    const targetH = Math.max(1, Math.round(this.cssHeight * dpr));
+    if (this.canvas.width !== targetW || this.canvas.height !== targetH) {
+      this.canvas.width = targetW;
+      this.canvas.height = targetH;
+    }
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
     this.ctx.imageSmoothingEnabled = true;
     camera.setViewport(this.cssWidth, this.cssHeight);
+  }
+
+  /**
+   * Self-healing iOS Safari / Home-Screen PWA viewport guard:
+   * verifies the canvas backing store matches its actual rendered CSS rect 1:1 every frame
+   * so portrait->landscape rotation in standalone mode can NEVER stretch or squish the canvas!
+   */
+  public syncCanvasSize(camera: BattleCamera): void {
+    const rect = this.canvas.getBoundingClientRect();
+    const w = Math.round(rect.width);
+    const h = Math.round(rect.height);
+    if (w < 10 || h < 10) return;
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
+    const expectedW = Math.round(w * dpr);
+    const expectedH = Math.round(h * dpr);
+    if (
+      w !== this.cssWidth ||
+      h !== this.cssHeight ||
+      this.canvas.width !== expectedW ||
+      this.canvas.height !== expectedH
+    ) {
+      this.resize(w, h, camera);
+    }
   }
 
   public getCssSize(): { width: number; height: number } {
@@ -58,7 +86,12 @@ export class GameRenderer {
     wallTime: number,
     highlightSellMode: boolean,
   ): void {
+    // Guarantee exact 1:1 aspect ratio before every draw (eliminates iOS PWA stretching!)
+    this.syncCanvasSize(camera);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
     const ctx = this.ctx;
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
     const scale = this.cssHeight / WORLD_HEIGHT;
     const viewportW = this.cssWidth / Math.max(0.01, scale);
 
@@ -66,7 +99,7 @@ export class GameRenderer {
     ctx.imageSmoothingEnabled = true;
     ctx.scale(scale, scale);
 
-    // 1. Multi-layer Painterly Cartoon Parallax Background & Road
+    // 1. Multi-layer Painterly Cartoon Parallax Background, Era Weather & Road
     renderBackground(
       ctx,
       snapshot.player.eraIndex,
@@ -76,8 +109,17 @@ export class GameRenderer {
       snapshot.eraTransition,
     );
 
-    // 2. Ultimate Sky Atmosphere
+    // 2. Ultimate Sky Atmosphere & Chrono Fever Golden Horizon Glow
     renderUltimateAtmosphere(ctx, snapshot.ultimates, viewportW);
+    if (snapshot.player.feverTimer > 0) {
+      const fAlpha = Math.min(1, snapshot.player.feverTimer * 0.8) * (0.12 + Math.sin(wallTime * 8) * 0.04);
+      const feverGrad = ctx.createLinearGradient(0, 0, 0, WORLD_HEIGHT);
+      feverGrad.addColorStop(0, `rgba(250, 204, 21, ${fAlpha.toFixed(3)})`);
+      feverGrad.addColorStop(0.5, 'rgba(250, 204, 21, 0)');
+      feverGrad.addColorStop(1, `rgba(245, 158, 11, ${(fAlpha * 1.1).toFixed(3)})`);
+      ctx.fillStyle = feverGrad;
+      ctx.fillRect(0, 0, viewportW, WORLD_HEIGHT);
+    }
 
     // 3. World Space Entities (smooth steady camera — zero screen shake)
     ctx.save();
@@ -86,9 +128,12 @@ export class GameRenderer {
     // Persistent crater scorch marks on the road
     renderScorchMarks(ctx, snapshot.scorchMarks);
 
-    // Monumental Cartoon Fortresses & Rotating Turrets (each displays its own era independently)
+    // Monumental Cartoon Fortresses & Rotating Turrets (each displays its own era & fortress upgrades!)
     renderBase(ctx, snapshot.player, wallTime, highlightSellMode);
     renderBase(ctx, snapshot.enemy, wallTime, false);
+
+    // Midfield Parachuting Chrono Supply Crates!
+    renderSupplyCrates(ctx, snapshot.supplyCrates, wallTime);
 
     // Units (sort so dead corpses draw gently behind living units)
     const sortedUnits = [...snapshot.units].sort((a, b) => {
@@ -96,9 +141,11 @@ export class GameRenderer {
       if (a.state !== 'dead' && b.state === 'dead') return 1;
       return a.uid - b.uid;
     });
+    const playerFever = snapshot.player.feverTimer > 0;
+    const enemyFever = snapshot.enemy.feverTimer > 0;
     for (const unit of sortedUnits) {
       if (unit.x + 160 < camera.x || unit.x - 160 > camera.x + viewportW) continue;
-      renderUnitEntity(ctx, unit);
+      renderUnitEntity(ctx, unit, unit.team === 'player' ? playerFever : enemyFever, wallTime);
     }
 
     // Combat VFX: Slashes, Active Ultimates, Projectiles, Beams, Particles, Popups
@@ -164,6 +211,20 @@ export function renderMinimap(
     const r = u.def.role === 'heavy' || u.def.role === 'siege' ? 2.6 : 1.8;
     ctx.beginPath();
     ctx.arc(ux, groundLine - r - 1, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Active Chrono Supply Crate golden diamond markers
+  for (const crate of snapshot.supplyCrates) {
+    const cx = toX(crate.x);
+    const cy = Math.min(groundLine - 3, (crate.y / GROUND_Y) * groundLine);
+    ctx.fillStyle = '#fde047';
+    ctx.beginPath();
+    ctx.moveTo(cx, cy - 4);
+    ctx.lineTo(cx + 3.5, cy);
+    ctx.lineTo(cx, cy + 4);
+    ctx.lineTo(cx - 3.5, cy);
+    ctx.closePath();
     ctx.fill();
   }
 
