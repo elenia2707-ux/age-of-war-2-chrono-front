@@ -124,6 +124,9 @@ export class GameEngine {
   private nextSupplyCrateAt = 24;
   private ai = new EnemyAI();
   private callbacks: EngineCallbacks;
+  private scratchPlayerLive: UnitEntity[] = [];
+  private scratchEnemyLive: UnitEntity[] = [];
+  private scratchHitCandidates: UnitEntity[] = [];
 
   constructor(callbacks: EngineCallbacks = {}) {
     this.callbacks = callbacks;
@@ -308,20 +311,51 @@ export class GameEngine {
     };
 
     if (id === 'armor') {
-      // Scale existing live allied units immediately so upgrading mid-battle feels punchy
+      // Scale existing live allied units immediately while preserving Veteran promotion HP multipliers!
       const newArmorMult = getArmorHpMult(faction.upgrades);
       const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
       const ratio = newArmorMult / prevArmorMult;
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           const oldMax = u.maxHp;
-          u.maxHp = Math.round(u.def.maxHp * newArmorMult * statMult);
+          const vetMult = getVeteranStatMult(u.vetRank, faction.upgrades);
+          u.maxHp = Math.round(u.def.maxHp * newArmorMult * vetMult * statMult);
           u.hp = Math.min(u.maxHp, Math.round(u.hp * ratio + Math.max(0, u.maxHp - oldMax) * 0.5));
           u.displayHp = Math.max(u.displayHp, u.hp);
+          if (u.maxShield > 0) {
+            const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+            const nextMaxShield = Math.round(u.maxHp * shieldRatio);
+            u.shield = Math.min(nextMaxShield, u.shield + Math.max(0, nextMaxShield - u.maxShield));
+            u.maxShield = nextMaxShield;
+          }
           u.upgradeFlash = 1;
         }
       }
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#60a5fa', 1.18, 'heal');
+    } else if (id === 'veteran_drill') {
+      // Immediately amplify live promoted veterans' max HP & shield ceiling to match the new drill level!
+      const armorMult = getArmorHpMult(faction.upgrades);
+      const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+      const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          if (u.vetRank > 0) {
+            const oldMax = u.maxHp;
+            const vetMult = getVeteranStatMult(u.vetRank, faction.upgrades);
+            u.maxHp = Math.round(u.def.maxHp * armorMult * vetMult * statMult);
+            const gain = Math.max(0, u.maxHp - oldMax);
+            u.hp = Math.min(u.maxHp, u.hp + gain);
+            u.displayHp = Math.max(u.displayHp, u.hp);
+            if (shieldRatio > 0) {
+              const nextMaxShield = Math.round(u.maxHp * shieldRatio);
+              u.shield = Math.min(nextMaxShield, u.shield + Math.max(0, nextMaxShield - u.maxShield));
+              u.maxShield = nextMaxShield;
+            }
+          }
+          u.upgradeFlash = 1;
+        }
+      }
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#f43f5e', 1.2, 'crit');
     } else if (id === 'fortress') {
       const nextBaseMaxHp = Math.round(era.baseMaxHp * getBaseMaxHpMult(faction.upgrades));
       const maxGain = Math.max(0, nextBaseMaxHp - prevBaseMaxHp);
@@ -379,7 +413,7 @@ export class GameEngine {
     this.spawnFlashStar(baseX, GROUND_Y - 82, '#fde047', 22);
     this.spawnBurst(baseX, GROUND_Y - 76, '#fef08a', 12, 160);
     if (team === 'player') {
-      this.callbacks.onSound?.('turret_build');
+      this.callbacks.onSound?.('upgrade');
     }
     return true;
   }
@@ -608,7 +642,11 @@ export class GameEngine {
     }
 
     this.ultimates.push(active);
-    this.callbacks.onSound?.('ultimate');
+    if (this.callbacks.onUltimateSound) {
+      this.callbacks.onUltimateSound(def.kind);
+    } else {
+      this.callbacks.onSound?.('ultimate');
+    }
     if (team === 'player') {
       this.callbacks.onBanner?.(def.name, def.description, def.accentColor);
     }
@@ -702,7 +740,7 @@ export class GameEngine {
 
       this.spawnExplosion(crate.x, GROUND_Y - 14, 52, '#facc15');
       this.spawnRing(crate.x, GROUND_Y - 16, '#fef08a', 68);
-      this.callbacks.onSound?.('turret_build');
+      this.callbacks.onSound?.('crate_open');
       this.addPopup(
         crate.x,
         GROUND_Y - 56,
@@ -922,13 +960,19 @@ export class GameEngine {
   }
 
   private updateUnits(dt: number): void {
-    // Separate live units by team sorted from front to back for natural formation spacing
-    const playerLive = this.units
-      .filter((u) => u.team === 'player' && u.state !== 'dead')
-      .sort((a, b) => b.x - a.x);
-    const enemyLive = this.units
-      .filter((u) => u.team === 'enemy' && u.state !== 'dead')
-      .sort((a, b) => a.x - b.x);
+    // Separate live units by team sorted from front to back using pre-allocated scratch buffers (zero GC)
+    const playerLive = this.scratchPlayerLive;
+    const enemyLive = this.scratchEnemyLive;
+    playerLive.length = 0;
+    enemyLive.length = 0;
+    for (let i = 0; i < this.units.length; i++) {
+      const u = this.units[i];
+      if (u.state === 'dead') continue;
+      if (u.team === 'player') playerLive.push(u);
+      else enemyLive.push(u);
+    }
+    playerLive.sort((a, b) => b.x - a.x);
+    enemyLive.sort((a, b) => a.x - b.x);
 
     const stepTeam = (allies: UnitEntity[], enemies: UnitEntity[], team: Team): void => {
       const dir = team === 'player' ? 1 : -1;
@@ -1009,7 +1053,8 @@ export class GameEngine {
         // Find closest enemy in front or inside reach
         let target: UnitEntity | null = null;
         let minEnemyDist = Infinity;
-        for (const e of enemies) {
+        for (let j = 0; j < enemies.length; j++) {
+          const e = enemies[j];
           const dist = (e.x - u.x) * dir - (e.def.width + u.def.width) * 0.45;
           if (dist >= -24 && dist < minEnemyDist) {
             minEnemyDist = dist;
@@ -1020,7 +1065,8 @@ export class GameEngine {
         // Find closest landed Midfield Chrono Supply Crate in front!
         let targetCrate: SupplyCrateEntity | null = null;
         let minCrateDist = Infinity;
-        for (const c of this.supplyCrates) {
+        for (let cIdx = 0; cIdx < this.supplyCrates.length; cIdx++) {
+          const c = this.supplyCrates[cIdx];
           if (!c.landed || c.hp <= 0) continue;
           const dist = (c.x - u.x) * dir - (30 + u.def.width) * 0.45;
           if (dist >= -20 && dist < minCrateDist) {
@@ -1029,7 +1075,9 @@ export class GameEngine {
           }
         }
 
-        const effectiveRange = u.def.range > 45 ? u.def.range * rangeMult : u.def.range;
+        const isRangedUnit =
+          u.def.role === 'ranged' || u.def.role === 'siege' || u.def.projectile !== undefined;
+        const effectiveRange = isRangedUnit ? u.def.range * rangeMult : u.def.range;
         const distToEnemyBase = (enemyBaseFront - u.x) * dir - u.def.width * 0.5;
         const inRangeOfUnit = target !== null && minEnemyDist <= effectiveRange;
         const inRangeOfCrate = targetCrate !== null && minCrateDist <= effectiveRange;
@@ -1037,6 +1085,8 @@ export class GameEngine {
 
         if (inRangeOfUnit || inRangeOfCrate || inRangeOfBase) {
           u.state = 'attack';
+          // Subtle combat-stance breathing/cape sway between strikes
+          u.walkPhase += dt * 2.2;
           if (u.attackCooldown <= 0) {
             const hpRatio = u.hp / Math.max(1, u.maxHp);
             const berserkSpd = getBerserkAttackSpeedMult(teamFaction.upgrades, hpRatio);
@@ -1074,6 +1124,8 @@ export class GameEngine {
 
           if (blockedByAlly) {
             u.state = 'idle';
+            // Keep waiting units gently breathing & fluttering capes/hover plumes
+            u.walkPhase += dt * 2.8;
           } else {
             u.state = 'walk';
             const effSpeed = u.def.speed * moveSpdMult;
@@ -1144,7 +1196,8 @@ export class GameEngine {
     const rangeMult = getRangeMult(attackerFaction.upgrades);
     const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
     const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
-    const effRange = def.range > 45 ? def.range * rangeMult : def.range;
+    const isRangedUnit = def.role === 'ranged' || def.role === 'siege' || def.projectile !== undefined;
+    const effRange = isRangedUnit ? def.range * rangeMult : def.range;
 
     this.callbacks.onSound?.(def.attackSound);
 
@@ -1198,14 +1251,18 @@ export class GameEngine {
       this.spawnMuzzleFlash(originX, originY, Math.atan2(endY - originY, endX - originX), beamCol, isChrono ? 18 : 14);
       this.spawnBurst(originX, originY, beamCol, 6, 110);
 
-      // Pierce up to def.pierceCount enemies along beam
-      const hitCandidates = this.units
-        .filter((u) => u.team !== attacker.team && u.state !== 'dead')
-        .filter((u) => {
-          const rel = (u.x - originX) * dir;
-          return rel >= -10 && rel <= effRange + 45;
-        })
-        .sort((a, b) => (a.x - originX) * dir - (b.x - originX) * dir);
+      // Pierce up to def.pierceCount enemies along beam (using scratch buffer)
+      const hitCandidates = this.scratchHitCandidates;
+      hitCandidates.length = 0;
+      for (let i = 0; i < this.units.length; i++) {
+        const u = this.units[i];
+        if (u.team === attacker.team || u.state === 'dead') continue;
+        const rel = (u.x - originX) * dir;
+        if (rel >= -10 && rel <= effRange + 45) {
+          hitCandidates.push(u);
+        }
+      }
+      hitCandidates.sort((a, b) => (a.x - originX) * dir - (b.x - originX) * dir);
 
       let hits = 0;
       let prevArcX = originX;
@@ -1642,12 +1699,19 @@ export class GameEngine {
                   ? '#ef4444'
                   : '#f97316';
 
-      // Check collision with enemy units
-      const sourceUnit =
-        p.sourceUnitUid !== undefined
-          ? this.units.find((s) => s.uid === p.sourceUnitUid && s.state !== 'dead')
-          : undefined;
-      for (const u of this.units) {
+      // Check collision with enemy units (zero-closure sourceUnit lookup)
+      let sourceUnit: UnitEntity | undefined;
+      if (p.sourceUnitUid !== undefined) {
+        for (let sIdx = 0; sIdx < this.units.length; sIdx++) {
+          const s = this.units[sIdx];
+          if (s.uid === p.sourceUnitUid && s.state !== 'dead') {
+            sourceUnit = s;
+            break;
+          }
+        }
+      }
+      for (let uIdx = 0; uIdx < this.units.length; uIdx++) {
+        const u = this.units[uIdx];
         if (u.team !== enemyTeam || u.state === 'dead') continue;
         if (p.hitUids.includes(u.uid)) continue;
         const halfW = u.def.width * 0.55 + 6;
@@ -1682,7 +1746,8 @@ export class GameEngine {
 
       // Check collision with landed Midfield Supply Crates
       if (!impacted) {
-        for (const c of this.supplyCrates) {
+        for (let cIdx = 0; cIdx < this.supplyCrates.length; cIdx++) {
+          const c = this.supplyCrates[cIdx];
           if (!c.landed || c.hp <= 0) continue;
           if (Math.abs(p.x - c.x) <= 22 && p.y >= GROUND_Y - 38 && p.y <= GROUND_Y + 6) {
             this.damageSupplyCrate(c, p.damage, p.team);
@@ -1709,10 +1774,19 @@ export class GameEngine {
         }
       }
 
-      // Ground impact
+      // Ground impact (credit sourceUnit for splash kills/lifesteal/veteran progression)
       if (!impacted && p.y >= GROUND_Y) {
         if (p.splashRadius > 0) {
-          this.applySplashDamage(p.x, p.team, p.damage, p.splashRadius, p.armorPierce, p.isCrit, dir * p.knockback);
+          this.applySplashDamage(
+            p.x,
+            p.team,
+            p.damage,
+            p.splashRadius,
+            p.armorPierce,
+            p.isCrit,
+            dir * p.knockback,
+            sourceUnit,
+          );
           this.spawnExplosion(p.x, GROUND_Y - 4, p.splashRadius, blastColor);
           this.callbacks.onSound?.('explosion');
         } else {
@@ -1722,7 +1796,9 @@ export class GameEngine {
       }
 
       if (impacted || p.life >= p.maxLife || p.x < -50 || p.x > WORLD_WIDTH + 50) {
-        this.projectiles.splice(i, 1);
+        const lastIdx = this.projectiles.length - 1;
+        if (i !== lastIdx) this.projectiles[i] = this.projectiles[lastIdx];
+        this.projectiles.pop();
       }
     }
   }
@@ -2135,6 +2211,7 @@ export class GameEngine {
       this.spawnImpactCross(victim.x, impactY, '#38bdf8', 30);
       this.spawnGroundShockwave(victim.x, GROUND_Y + 1, '#38bdf8', 36);
       this.spawnBurst(victim.x, impactY, '#67e8f9', 8, 195);
+      this.callbacks.onSound?.('shield_break');
     }
 
     // Supercharged arcade hit-impact starburst, anime impact cross, directional sparks & ground shockwave!
@@ -2167,6 +2244,9 @@ export class GameEngine {
       this.spawnRing(impactX, impactY, isExecute ? '#fb7185' : '#fde047', 36);
       this.spawnGroundShockwave(victim.x, GROUND_Y + 1, isExecute ? '#fb7185' : '#facc15', 42);
       this.spawnDustWave(victim.x, GROUND_Y, hitDir * 76, 17, '#a8a29e');
+      if (attackerTeam === 'player') {
+        this.callbacks.onSound?.('crit');
+      }
     } else if (armorPierce || (knockbackImpulse !== 0 && Math.abs(knockbackImpulse) >= 18)) {
       if (armorPierce) {
         this.spawnImpactCross(impactX, impactY, sparkColor, 18);
@@ -2260,6 +2340,9 @@ export class GameEngine {
           );
           this.spawnRing(attackerUnit.x, GROUND_Y - attackerUnit.def.height * 0.5, '#facc15', 36);
           this.spawnGroundShockwave(attackerUnit.x, GROUND_Y + 1, '#facc15', 38);
+          if (attackerTeam === 'player') {
+            this.callbacks.onSound?.('promote');
+          }
         }
       }
 
@@ -2278,7 +2361,7 @@ export class GameEngine {
             }
           }
           if (attackerTeam === 'player') {
-            this.callbacks.onSound?.('evolve');
+            this.callbacks.onSound?.('fever');
             this.callbacks.onBanner?.(
               '크로노 피버 발동!',
               `${Math.round(feverSec)}초간 전 아군 공속 +${25 + feverBonusPct}% · 골드 +${25 + feverBonusPct}%`,
@@ -2352,26 +2435,41 @@ export class GameEngine {
   }
 
   private updateEffects(dt: number): void {
+    // O(1) swap-and-pop removal avoids array-shift churn and GC pressure during massive 2x battles
     for (let i = this.beams.length - 1; i >= 0; i--) {
       this.beams[i].life -= dt;
-      if (this.beams[i].life <= 0) this.beams.splice(i, 1);
+      if (this.beams[i].life <= 0) {
+        const last = this.beams.length - 1;
+        if (i !== last) this.beams[i] = this.beams[last];
+        this.beams.pop();
+      }
     }
 
     for (let i = this.slashes.length - 1; i >= 0; i--) {
       this.slashes[i].life -= dt;
-      if (this.slashes[i].life <= 0) this.slashes.splice(i, 1);
+      if (this.slashes[i].life <= 0) {
+        const last = this.slashes.length - 1;
+        if (i !== last) this.slashes[i] = this.slashes[last];
+        this.slashes.pop();
+      }
     }
 
     for (let i = this.scorchMarks.length - 1; i >= 0; i--) {
       this.scorchMarks[i].life -= dt;
-      if (this.scorchMarks[i].life <= 0) this.scorchMarks.splice(i, 1);
+      if (this.scorchMarks[i].life <= 0) {
+        const last = this.scorchMarks.length - 1;
+        if (i !== last) this.scorchMarks[i] = this.scorchMarks[last];
+        this.scorchMarks.pop();
+      }
     }
 
     for (let i = this.particles.length - 1; i >= 0; i--) {
       const p = this.particles[i];
       p.life -= dt;
       if (p.life <= 0) {
-        this.particles.splice(i, 1);
+        const last = this.particles.length - 1;
+        if (i !== last) this.particles[i] = this.particles[last];
+        this.particles.pop();
         continue;
       }
       p.vy += p.gravity * dt;
@@ -2391,30 +2489,37 @@ export class GameEngine {
       }
     }
 
+    const popupDragX = Math.exp(-3.6 * dt);
+    const popupDragY = Math.exp(-2.6 * dt);
     for (let i = this.popups.length - 1; i >= 0; i--) {
       const pop = this.popups[i];
       pop.life -= dt;
+      if (pop.life <= 0) {
+        const last = this.popups.length - 1;
+        if (i !== last) this.popups[i] = this.popups[last];
+        this.popups.pop();
+        continue;
+      }
       if (pop.vx) {
         pop.x += pop.vx * dt;
-        pop.vx *= Math.exp(-3.6 * dt);
+        pop.vx *= popupDragX;
       }
       pop.y += pop.vy * dt;
-      pop.vy *= Math.exp(-2.6 * dt);
-      if (pop.life <= 0) this.popups.splice(i, 1);
+      pop.vy *= popupDragY;
     }
 
-    // Cap VFX budgets for locked 60fps on iPhone Safari
-    if (this.particles.length > 540) {
-      this.particles.splice(0, this.particles.length - 540);
+    // Cap VFX budgets for locked 60fps & low heat on iPhone Safari/PWA even at 2x speed
+    if (this.particles.length > 380) {
+      this.particles.length = 380;
     }
-    if (this.scorchMarks.length > 36) {
-      this.scorchMarks.splice(0, this.scorchMarks.length - 36);
+    if (this.scorchMarks.length > 32) {
+      this.scorchMarks.length = 32;
     }
-    if (this.slashes.length > 32) {
-      this.slashes.splice(0, this.slashes.length - 32);
+    if (this.slashes.length > 28) {
+      this.slashes.length = 28;
     }
-    if (this.popups.length > 48) {
-      this.popups.splice(0, this.popups.length - 48);
+    if (this.popups.length > 42) {
+      this.popups.length = 42;
     }
   }
 

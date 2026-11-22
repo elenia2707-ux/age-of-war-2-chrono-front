@@ -36,17 +36,31 @@ export class EnemyAI {
     if (this.thinkTimer > 0) return;
     this.thinkTimer = diff.aiThinkInterval * (0.85 + engine.random() * 0.3);
 
-    const playerUnits = engine.units.filter((u) => u.team === 'player' && u.state !== 'dead');
-    const enemyUnits = engine.units.filter((u) => u.team === 'enemy' && u.state !== 'dead');
+    let playerCount = 0;
+    let enemyCount = 0;
+    let closestPlayerX = 0;
+    let playerHeavyCount = 0;
+    let playerRangedCount = 0;
+    let enemyFrontlineCount = 0;
+    let enemyRangedCount = 0;
 
-    const closestPlayerX = playerUnits.reduce((maxX, u) => Math.max(maxX, u.x), 0);
-    const criticalThreat = closestPlayerX > WORLD_WIDTH * 0.72 && enemyUnits.length < 3;
+    for (let i = 0; i < engine.units.length; i++) {
+      const u = engine.units[i];
+      if (u.state === 'dead') continue;
+      if (u.team === 'player') {
+        playerCount++;
+        if (u.x > closestPlayerX) closestPlayerX = u.x;
+        if (u.def.role === 'heavy' || u.def.role === 'siege') playerHeavyCount++;
+        else if (u.def.role === 'ranged') playerRangedCount++;
+      } else {
+        enemyCount++;
+        if (u.def.role === 'melee' || u.def.role === 'heavy') enemyFrontlineCount++;
+        else enemyRangedCount++;
+      }
+    }
+
+    const criticalThreat = closestPlayerX > WORLD_WIDTH * 0.72 && enemyCount < 3;
     const underThreat = closestPlayerX > WORLD_WIDTH * 0.56 || enemy.baseHp < enemy.baseMaxHp * 0.72;
-
-    const playerHeavyCount = playerUnits.filter(
-      (u) => u.def.role === 'heavy' || u.def.role === 'siege',
-    ).length;
-    const playerRangedCount = playerUnits.filter((u) => u.def.role === 'ranged').length;
 
     // 2. Ultimate usage respects XP cost & avoids delaying imminent evolution unless critical
     const nearEvolution = era.evolveXp > 0 && enemy.xp >= era.evolveXp * 0.78;
@@ -62,102 +76,105 @@ export class EnemyAI {
       diff.aiUsesUltimate &&
       engine.canUseUltimate('enemy') &&
       (!nearEvolution || criticalThreat) &&
-      playerUnits.length >= minUltTargets &&
+      playerCount >= minUltTargets &&
       closestPlayerX > WORLD_WIDTH * (diff.aiCounterSmartness >= 0.85 ? 0.38 : 0.45)
     ) {
       engine.triggerUltimate('enemy');
       return;
     }
 
-    // 3. Difficulty-scaled Gold Spec Upgrades (all 20 upgrades)
-    if (!criticalThreat && this.tryPurchaseUpgrade(engine, underThreat, enemyUnits.length)) {
+    // 3. Difficulty-scaled Gold Spec Upgrades (all 24 upgrades)
+    if (!criticalThreat && this.tryPurchaseUpgrade(engine, underThreat, enemyCount)) {
       return;
     }
 
-    // 4. Turret management: sell outdated turrets or build new era turret
-    const installedTurrets = enemy.turrets.filter((t) => t !== null);
+    // 4. Turret management: sell outdated turrets or build new era turret (discount-aware!)
+    let installedCount = 0;
+    let outdatedSlot = -1;
+    let hasEmptySlot = false;
+    const minOutdatedGap = diff.aiCounterSmartness >= 0.8 ? 1 : 2;
+    for (let i = 0; i < enemy.turretSlots; i++) {
+      const t = enemy.turrets[i];
+      if (t) {
+        installedCount++;
+        if (outdatedSlot === -1 && enemy.eraIndex >= minOutdatedGap && enemy.eraIndex - t.eraIndex >= minOutdatedGap) {
+          outdatedSlot = t.slotIndex;
+        }
+      } else {
+        hasEmptySlot = true;
+      }
+    }
+
     const targetTurrets = Math.min(
       diff.aiMaxTurrets,
       Math.max(1, Math.floor((enemy.eraIndex + (diff.aiCounterSmartness >= 0.8 ? 3 : 2)) / 2)),
     );
 
-    // Replace outdated turrets (1+ era behind on Brutal+, 2+ eras behind on Normal/Hard)
-    const minOutdatedGap = diff.aiCounterSmartness >= 0.8 ? 1 : 2;
-    if (installedTurrets.length > 0 && enemy.eraIndex >= minOutdatedGap) {
-      const outdated = installedTurrets.find(
-        (t) => t && enemy.eraIndex - t.eraIndex >= minOutdatedGap,
-      );
-      const cheapestTurret = era.turrets[0];
-      if (outdated && enemy.gold >= cheapestTurret.cost * (minOutdatedGap === 1 ? 1.1 : 0.85)) {
-        engine.sellTurret('enemy', outdated.slotIndex);
-      }
+    const lightTurret = era.turrets[0];
+    const heavyTurret = era.turrets[1];
+    const lightTurretCost = engine.getEffectiveTurretCost('enemy', lightTurret.cost);
+    const heavyTurretCost = heavyTurret ? engine.getEffectiveTurretCost('enemy', heavyTurret.cost) : Infinity;
+
+    if (outdatedSlot !== -1 && enemy.gold >= lightTurretCost * (minOutdatedGap === 1 ? 1.1 : 0.85)) {
+      engine.sellTurret('enemy', outdatedSlot);
+      hasEmptySlot = true;
+      installedCount--;
     }
 
     // Expand slot if all unlocked slots are full and below desired turret cap
     const nextSlotCost = engine.getNextTurretSlotCost('enemy');
     if (
       nextSlotCost !== null &&
-      installedTurrets.length === enemy.turretSlots &&
+      installedCount === enemy.turretSlots &&
       enemy.turretSlots < targetTurrets &&
-      enemy.gold >= nextSlotCost + era.turrets[0].cost * 0.5
+      enemy.gold >= nextSlotCost + lightTurretCost * 0.5
     ) {
       engine.expandTurretSlot('enemy');
       return;
     }
 
     // Install a turret if an unlocked slot is empty and base is threatened or mid-match
-    const hasEmptySlot = enemy.turrets.slice(0, enemy.turretSlots).some((t) => t === null);
     const earlyTurretTime = diff.aiCounterSmartness >= 0.8 ? 16 : 28;
     if (hasEmptySlot && (underThreat || engine.elapsed > earlyTurretTime)) {
-      const heavyTurret = era.turrets[1];
-      const lightTurret = era.turrets[0];
       if (
         heavyTurret &&
-        enemy.gold >= heavyTurret.cost &&
+        enemy.gold >= heavyTurretCost &&
         (engine.random() < 0.55 + diff.aiCounterSmartness * 0.25 || enemy.eraIndex >= 2)
       ) {
         engine.installTurret('enemy', heavyTurret.id);
         return;
       }
-      if (lightTurret && enemy.gold >= lightTurret.cost) {
+      if (lightTurret && enemy.gold >= lightTurretCost) {
         engine.installTurret('enemy', lightTurret.id);
         return;
       }
     }
 
-    // 5. Tactical unit composition & counter-picking training
+    // 5. Tactical unit composition & counter-picking training (discount-aware!)
     if (enemy.queue.length >= diff.aiMaxQueue) return;
 
     const units = era.units;
-    const meleeUnits = units.filter((u) => u.role === 'melee');
-    const rangedUnits = units.filter((u) => u.role === 'ranged');
-    const heavyUnits = units.filter((u) => u.role === 'heavy' || u.role === 'siege');
-    const armorPiercers = units.filter((u) => u.armorPierce && enemy.gold >= u.cost);
-    const splashUnits = units.filter((u) => u.splashRadius > 0 && enemy.gold >= u.cost);
-
-    const enemyFrontlineCount = enemyUnits.filter(
-      (u) => u.def.role === 'melee' || u.def.role === 'heavy',
-    ).length;
-    const enemyRangedCount = enemyUnits.filter(
-      (u) => u.def.role === 'ranged' || u.def.role === 'siege',
-    ).length;
+    const unitCost = (cost: number) => engine.getEffectiveUnitCost('enemy', cost);
 
     // Emergency cheap defender when player is near enemy base
     if (criticalThreat) {
       const cheapest = units[0];
-      if (cheapest && enemy.gold >= cheapest.cost) {
+      if (cheapest && enemy.gold >= unitCost(cheapest.cost)) {
         engine.enqueueUnit('enemy', cheapest.id);
         return;
       }
     }
 
-    // Save occasionally for heavy/siege units instead of spamming only tier-1 units
+    const heavyUnits = units.filter((u) => u.role === 'heavy' || u.role === 'siege');
     const topUnit = heavyUnits[heavyUnits.length - 1] ?? units[units.length - 1];
+    const topCost = topUnit ? unitCost(topUnit.cost) : Infinity;
+
+    // Save occasionally for heavy/siege units instead of spamming only tier-1 units
     if (
       topUnit &&
-      enemy.gold < topUnit.cost &&
-      enemy.gold >= topUnit.cost * (diff.aiCounterSmartness >= 0.8 ? 0.52 : 0.62) &&
-      enemyUnits.length >= 2 &&
+      enemy.gold < topCost &&
+      enemy.gold >= topCost * (diff.aiCounterSmartness >= 0.8 ? 0.52 : 0.62) &&
+      enemyCount >= 2 &&
       !underThreat &&
       engine.random() < 0.45 + diff.aiCounterSmartness * 0.15
     ) {
@@ -168,14 +185,22 @@ export class EnemyAI {
     const counterRoll = engine.random();
     if (counterRoll < diff.aiCounterSmartness * 0.55) {
       // Counter player heavy/armored units with armor-piercing specialists
-      if (playerHeavyCount >= 2 && armorPiercers.length > 0 && enemyFrontlineCount >= 1) {
-        const pick = armorPiercers[armorPiercers.length - 1];
-        if (engine.enqueueUnit('enemy', pick.id)) return;
+      if (playerHeavyCount >= 2 && enemyFrontlineCount >= 1) {
+        for (let i = units.length - 1; i >= 0; i--) {
+          const u = units[i];
+          if (u.armorPierce && enemy.gold >= unitCost(u.cost)) {
+            if (engine.enqueueUnit('enemy', u.id)) return;
+          }
+        }
       }
       // Counter clustered player ranged stacks with splash siege/heavy breakers
-      if (playerRangedCount >= 3 && splashUnits.length > 0) {
-        const pick = splashUnits[splashUnits.length - 1];
-        if (engine.enqueueUnit('enemy', pick.id)) return;
+      if (playerRangedCount >= 3) {
+        for (let i = units.length - 1; i >= 0; i--) {
+          const u = units[i];
+          if (u.splashRadius > 0 && enemy.gold >= unitCost(u.cost)) {
+            if (engine.enqueueUnit('enemy', u.id)) return;
+          }
+        }
       }
     }
 
@@ -184,28 +209,29 @@ export class EnemyAI {
     let candidate = units[0];
     const heavyRollThreshold = 0.34 + diff.aiCounterSmartness * 0.24;
 
-    if (topUnit && enemy.gold >= topUnit.cost && roll < heavyRollThreshold) {
-      const affordableHeavy = heavyUnits.filter((u) => enemy.gold >= u.cost);
-      candidate =
-        affordableHeavy[Math.floor(engine.random() * affordableHeavy.length)] ?? topUnit;
-    } else if (
-      rangedUnits.length > 0 &&
-      enemyFrontlineCount >= enemyRangedCount &&
-      rangedUnits.some((u) => enemy.gold >= u.cost) &&
-      roll < 0.8
-    ) {
-      const affordableRanged = rangedUnits.filter((u) => enemy.gold >= u.cost);
+    const affordableHeavy = heavyUnits.filter((u) => enemy.gold >= unitCost(u.cost));
+    const affordableRanged = units.filter((u) => u.role === 'ranged' && enemy.gold >= unitCost(u.cost));
+    const affordableMelee = units.filter((u) => u.role === 'melee' && enemy.gold >= unitCost(u.cost));
+
+    if (affordableHeavy.length > 0 && roll < heavyRollThreshold) {
+      candidate = affordableHeavy[Math.floor(engine.random() * affordableHeavy.length)];
+    } else if (affordableRanged.length > 0 && enemyFrontlineCount >= enemyRangedCount && roll < 0.8) {
       candidate = affordableRanged[Math.floor(engine.random() * affordableRanged.length)];
-    } else if (meleeUnits.some((u) => enemy.gold >= u.cost)) {
-      const affordableMelee = meleeUnits.filter((u) => enemy.gold >= u.cost);
+    } else if (affordableMelee.length > 0) {
       candidate = affordableMelee[Math.floor(engine.random() * affordableMelee.length)];
     } else {
-      const affordable = units.filter((u) => enemy.gold >= u.cost);
-      if (affordable.length === 0) return;
-      candidate = affordable[affordable.length - 1];
+      let bestAffordable: (typeof units)[number] | null = null;
+      for (let i = units.length - 1; i >= 0; i--) {
+        if (enemy.gold >= unitCost(units[i].cost)) {
+          bestAffordable = units[i];
+          break;
+        }
+      }
+      if (!bestAffordable) return;
+      candidate = bestAffordable;
     }
 
-    if (candidate && enemy.gold >= candidate.cost) {
+    if (candidate && enemy.gold >= unitCost(candidate.cost)) {
       engine.enqueueUnit('enemy', candidate.id);
     }
   }

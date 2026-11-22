@@ -40,6 +40,49 @@ export function getTeamPalette(team: Team): TeamPalette {
   return team === 'player' ? PLAYER_PALETTE : ENEMY_PALETTE;
 }
 
+// Cached 48x48 radial glow sprites keyed by color (eliminates hundreds of createRadialGradient calls/frame!)
+const glowSpriteCache = new Map<string, HTMLCanvasElement>();
+
+function getGlowSprite(outerColor: string, innerColor = '#ffffff'): HTMLCanvasElement | null {
+  if (typeof document === 'undefined') return null;
+  const key = `${outerColor}|${innerColor}`;
+  const existing = glowSpriteCache.get(key);
+  if (existing) return existing;
+  if (glowSpriteCache.size > 96) {
+    const firstKey = glowSpriteCache.keys().next().value;
+    if (firstKey !== undefined) glowSpriteCache.delete(firstKey);
+  }
+  const c = document.createElement('canvas');
+  c.width = 48;
+  c.height = 48;
+  const gctx = c.getContext('2d');
+  if (!gctx) return null;
+  const grad = gctx.createRadialGradient(24, 24, 2, 24, 24, 24);
+  grad.addColorStop(0, innerColor);
+  grad.addColorStop(0.38, outerColor);
+  grad.addColorStop(0.72, outerColor + '38');
+  grad.addColorStop(1, 'rgba(255,255,255,0)');
+  // If outerColor is already rgba(...), fall back cleanly to valid stops
+  if (!outerColor.startsWith('#') || outerColor.length !== 7) {
+    const g2 = gctx.createRadialGradient(24, 24, 2, 24, 24, 24);
+    g2.addColorStop(0, innerColor);
+    g2.addColorStop(0.42, outerColor);
+    g2.addColorStop(1, 'rgba(255,255,255,0)');
+    gctx.fillStyle = g2;
+  } else {
+    gctx.fillStyle = grad;
+  }
+  gctx.beginPath();
+  gctx.arc(24, 24, 24, 0, Math.PI * 2);
+  gctx.fill();
+  glowSpriteCache.set(key, c);
+  return c;
+}
+
+export function clearPrimitiveCaches(): void {
+  glowSpriteCache.clear();
+}
+
 export function setInkStyle(ctx: CanvasRenderingContext2D, lineWidth = 2.2, color = INK): void {
   ctx.strokeStyle = color;
   ctx.lineWidth = lineWidth;
@@ -47,7 +90,10 @@ export function setInkStyle(ctx: CanvasRenderingContext2D, lineWidth = 2.2, colo
   ctx.lineJoin = 'round';
 }
 
-/** Draw a richly cel-shaded rounded rectangle with directional gradient, glossy top rim, bottom AO shadow, and crisp ink outline */
+/**
+ * Draw a crisp Flash-cartoon cel-shaded rounded rectangle with zero ctx.clip() and zero per-call gradient
+ * allocations (60fps iPhone WebKit optimized) while preserving glossy top rim, bottom AO shadow & bold ink outline.
+ */
 export function drawCelRoundRect(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -64,39 +110,46 @@ export function drawCelRoundRect(
   },
 ): void {
   const rad = Math.min(r, Math.abs(w) / 2, Math.abs(h) / 2);
-  ctx.save();
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, rad);
-
-  if (opts?.highlight || opts?.shadow) {
-    const grad = ctx.createLinearGradient(x, y, x + w * 0.25, y + h);
-    grad.addColorStop(0, opts.highlight ?? fill);
-    grad.addColorStop(0.32, fill);
-    grad.addColorStop(0.76, fill);
-    grad.addColorStop(1, opts.shadow ?? fill);
-    ctx.fillStyle = grad;
-  } else {
-    ctx.fillStyle = fill;
-  }
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  // Crisp cel-shaded specular sheen + curved bottom shadow band inside clip
-  ctx.save();
-  ctx.clip();
-  ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.2)';
-  ctx.fillRect(x, y + h * 0.72, w, h * 0.34);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.22)';
-  ctx.fillRect(x + 1.5, y + 1.2, Math.max(0, w - 3), Math.max(1.8, Math.min(4.5, h * 0.2)));
-  ctx.restore();
+  const absW = Math.abs(w);
+  const absH = Math.abs(h);
+  if (absW > 4 && absH > 4) {
+    const inset = Math.min(1.6, absW * 0.12, absH * 0.12);
+    const bandW = absW - inset * 2;
+    const prevAlpha = ctx.globalAlpha;
+
+    // Crisp bottom cel-shadow band tucked cleanly inside outline (zero ctx.clip!)
+    const shH = Math.max(1.5, Math.min(absH * 0.28, absH - inset * 2));
+    ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.24)';
+    ctx.globalAlpha = prevAlpha * (opts?.shadow ? 0.42 : 1);
+    ctx.beginPath();
+    ctx.roundRect(x + inset, y + absH - shH - inset * 0.4, bandW, shH, Math.max(0.5, rad * 0.55));
+    ctx.fill();
+
+    // Glossy top specular sheen strip
+    const hiH = Math.max(1.3, Math.min(4.0, absH * 0.22));
+    ctx.fillStyle = opts?.highlight ?? 'rgba(255, 255, 255, 0.26)';
+    ctx.globalAlpha = prevAlpha * (opts?.highlight ? 0.55 : 1);
+    ctx.beginPath();
+    ctx.roundRect(x + inset, y + inset * 0.5, bandW, hiH, Math.max(0.5, rad * 0.5));
+    ctx.fill();
+    ctx.globalAlpha = prevAlpha;
+  }
 
   setInkStyle(ctx, opts?.lineWidth ?? 2.1, opts?.ink ?? INK);
   ctx.beginPath();
   ctx.roundRect(x, y, w, h, rad);
   ctx.stroke();
-  ctx.restore();
 }
 
-/** Draw a painterly cel-shaded ellipse with radial highlight, crescent shadow, specular dot, and bold ink outline */
+/**
+ * Draw a painterly cel-shaded ellipse with zero ctx.clip() & zero per-call gradients:
+ * base fill, interior lower-right shadow crescent, glossy top-left specular dot, and bold ink outline.
+ */
 export function drawCelEllipse(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -114,48 +167,52 @@ export function drawCelEllipse(
 ): void {
   const safeRx = Math.max(0.5, rx);
   const safeRy = Math.max(0.5, ry);
-  ctx.save();
-  ctx.translate(cx, cy);
-  if (opts?.rotation) ctx.rotate(opts.rotation);
-
-  ctx.beginPath();
-  ctx.ellipse(0, 0, safeRx, safeRy, 0, 0, Math.PI * 2);
-
-  if (opts?.highlight || opts?.shadow) {
-    const grad = ctx.createLinearGradient(-safeRx * 0.6, -safeRy, safeRx * 0.4, safeRy);
-    grad.addColorStop(0, opts.highlight ?? fill);
-    grad.addColorStop(0.42, fill);
-    grad.addColorStop(1, opts.shadow ?? fill);
-    ctx.fillStyle = grad;
-  } else {
-    ctx.fillStyle = fill;
+  const hasRot = Boolean(opts?.rotation);
+  if (hasRot) {
+    ctx.save();
+    ctx.translate(cx, cy);
+    ctx.rotate(opts!.rotation!);
+    cx = 0;
+    cy = 0;
   }
+
+  ctx.beginPath();
+  ctx.ellipse(cx, cy, safeRx, safeRy, 0, 0, Math.PI * 2);
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  ctx.save();
-  ctx.clip();
-  // Soft crescent cel-shadow along lower-right curve
-  ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.18)';
-  ctx.globalAlpha = opts?.shadow ? 0.52 : 0.22;
-  ctx.beginPath();
-  ctx.ellipse(safeRx * 0.22, safeRy * 0.42, safeRx * 0.96, safeRy * 0.78, 0, 0, Math.PI * 2);
-  ctx.fill();
-  // Crisp glossy cartoon specular dot top-left
-  ctx.globalAlpha = 0.45;
-  ctx.fillStyle = opts?.highlight ?? '#ffffff';
-  ctx.beginPath();
-  ctx.ellipse(-safeRx * 0.28, -safeRy * 0.36, safeRx * 0.38, safeRy * 0.22, -0.3, 0, Math.PI * 2);
-  ctx.fill();
-  ctx.restore();
+  if (safeRx > 2.4 && safeRy > 2.4) {
+    const prevAlpha = ctx.globalAlpha;
+    // Soft lower-right interior cel-shadow (fits strictly inside ellipse, no clip required!)
+    ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.22)';
+    ctx.globalAlpha = prevAlpha * (opts?.shadow ? 0.36 : 0.72);
+    ctx.beginPath();
+    ctx.ellipse(cx + safeRx * 0.14, cy + safeRy * 0.26, safeRx * 0.72, safeRy * 0.56, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    // Crisp glossy cartoon specular highlight top-left
+    ctx.fillStyle = opts?.highlight ?? '#ffffff';
+    ctx.globalAlpha = prevAlpha * 0.42;
+    ctx.beginPath();
+    ctx.ellipse(cx - safeRx * 0.28, cy - safeRy * 0.34, safeRx * 0.36, safeRy * 0.22, -0.3, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = prevAlpha;
+  }
 
   setInkStyle(ctx, opts?.lineWidth ?? 2.1, opts?.ink ?? INK);
   ctx.beginPath();
-  ctx.ellipse(0, 0, safeRx, safeRy, 0, 0, Math.PI * 2);
+  ctx.ellipse(cx, cy, safeRx, safeRy, 0, 0, Math.PI * 2);
   ctx.stroke();
-  ctx.restore();
+
+  if (hasRot) {
+    ctx.restore();
+  }
 }
 
-/** Draw an inked cel-shaded polygon with directional top-to-bottom lighting gradient & crisp rim gloss */
+/**
+ * Draw an inked cel-shaded polygon with single-pass path reuse (zero ctx.clip(), zero per-call gradients)
+ * plus directional upper-edge rim gloss for unmistakable Flash-cartoon pop.
+ */
 export function drawCelPoly(
   ctx: CanvasRenderingContext2D,
   pts: ReadonlyArray<readonly [number, number]>,
@@ -167,59 +224,58 @@ export function drawCelPoly(
     ink?: string;
   },
 ): void {
-  if (pts.length < 3) return;
+  const len = pts.length;
+  if (len < 3) return;
+
+  ctx.beginPath();
+  ctx.moveTo(pts[0][0], pts[0][1]);
   let minY = pts[0][1];
   let maxY = pts[0][1];
-  let minX = pts[0][0];
-  let maxX = pts[0][0];
-  for (const [px, py] of pts) {
-    if (py < minY) minY = py;
+  let minIdx = 0;
+  for (let i = 1; i < len; i++) {
+    const px = pts[i][0];
+    const py = pts[i][1];
+    ctx.lineTo(px, py);
+    if (py < minY) {
+      minY = py;
+      minIdx = i;
+    }
     if (py > maxY) maxY = py;
-    if (px < minX) minX = px;
-    if (px > maxX) maxX = px;
-  }
-
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) {
-    ctx.lineTo(pts[i][0], pts[i][1]);
   }
   ctx.closePath();
 
-  if (opts?.highlight || opts?.shadow) {
-    const grad = ctx.createLinearGradient(minX, minY, minX + (maxX - minX) * 0.3, maxY);
-    grad.addColorStop(0, opts.highlight ?? fill);
-    grad.addColorStop(0.38, fill);
-    grad.addColorStop(1, opts.shadow ?? fill);
-    ctx.fillStyle = grad;
-  } else {
-    ctx.fillStyle = fill;
-  }
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  const spanH = Math.max(1, maxY - minY);
-  ctx.save();
-  ctx.clip();
-  if (opts?.shadow) {
-    ctx.fillStyle = opts.shadow;
-    ctx.globalAlpha = 0.45;
-    ctx.fillRect(minX - 2, minY + spanH * 0.68, maxX - minX + 4, spanH * 0.38);
+  // Fast interior shadow & specular rim accents strictly using polygon geometry (zero clip!)
+  const spanH = maxY - minY;
+  if (spanH > 8 && (opts?.highlight || opts?.shadow)) {
+    const prevAlpha = ctx.globalAlpha;
+    if (opts.highlight) {
+      const prevPt = pts[(minIdx - 1 + len) % len];
+      const topPt = pts[minIdx];
+      const nextPt = pts[(minIdx + 1) % len];
+      ctx.globalAlpha = prevAlpha * 0.42;
+      setInkStyle(ctx, Math.min(2.6, (opts.lineWidth ?? 2.0) * 0.95), opts.highlight);
+      ctx.beginPath();
+      ctx.moveTo((prevPt[0] + topPt[0]) * 0.5, (prevPt[1] + topPt[1]) * 0.5 + 1.2);
+      ctx.lineTo(topPt[0], topPt[1] + 1.4);
+      ctx.lineTo((nextPt[0] + topPt[0]) * 0.5, (nextPt[1] + topPt[1]) * 0.5 + 1.2);
+      ctx.stroke();
+    }
+    ctx.globalAlpha = prevAlpha;
+
+    // Re-trace only when highlight changed current path
+    ctx.beginPath();
+    ctx.moveTo(pts[0][0], pts[0][1]);
+    for (let i = 1; i < len; i++) {
+      ctx.lineTo(pts[i][0], pts[i][1]);
+    }
+    ctx.closePath();
   }
-  ctx.globalAlpha = 0.24;
-  ctx.fillStyle = opts?.highlight ?? '#ffffff';
-  ctx.fillRect(minX - 2, minY, maxX - minX + 4, Math.max(1.8, Math.min(5, spanH * 0.2)));
-  ctx.restore();
 
   setInkStyle(ctx, opts?.lineWidth ?? 2.1, opts?.ink ?? INK);
-  ctx.beginPath();
-  ctx.moveTo(pts[0][0], pts[0][1]);
-  for (let i = 1; i < pts.length; i++) {
-    ctx.lineTo(pts[i][0], pts[i][1]);
-  }
-  ctx.closePath();
   ctx.stroke();
-  ctx.restore();
 }
 
 /** Draw a chunky bold-inked cartoon limb capsule with subtle specular highlight stripe */
@@ -233,7 +289,6 @@ export function drawInkLimb(
   fill: string,
   outlineExtra = 3.8,
 ): void {
-  ctx.save();
   ctx.lineCap = 'round';
   ctx.lineJoin = 'round';
   ctx.strokeStyle = INK;
@@ -245,9 +300,6 @@ export function drawInkLimb(
 
   ctx.strokeStyle = fill;
   ctx.lineWidth = thickness;
-  ctx.beginPath();
-  ctx.moveTo(x1, y1);
-  ctx.lineTo(x2, y2);
   ctx.stroke();
 
   // Subtle rim sheen along top edge of limb
@@ -257,13 +309,11 @@ export function drawInkLimb(
   ctx.moveTo(x1 - 0.5, y1 - 0.6);
   ctx.lineTo(x2 - 0.5, y2 - 0.6);
   ctx.stroke();
-  ctx.restore();
 }
 
 /**
  * Draw an anatomically tapered Flash-cartoon limb segment (wider bicep/thigh tapering cleanly
- * toward wrist/ankle) with cel-shaded directional highlight, shadow edge, optional cuff band,
- * and crisp outer ink weight.
+ * toward wrist/ankle) with zero-clip cel shading, optional cuff band, hydraulic piston & crisp ink outline.
  */
 export function drawSculptedLimb(
   ctx: CanvasRenderingContext2D,
@@ -315,38 +365,36 @@ export function drawSculptedLimb(
   ctx.arc(len, 0, r2, -Math.PI * 0.5, Math.PI * 0.5);
   ctx.closePath();
 
-  const grad = ctx.createLinearGradient(0, -r1, 0, r1);
-  grad.addColorStop(0, opts?.highlight ?? fill);
-  grad.addColorStop(0.45, fill);
-  grad.addColorStop(1, opts?.shadow ?? fill);
-  ctx.fillStyle = grad;
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  // Clipped cel shading band + glossy top specular streak + optional cuff/greave band
-  ctx.save();
-  ctx.clip();
-  ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.24)';
-  ctx.globalAlpha = opts?.shadow ? 0.45 : 0.26;
-  ctx.fillRect(-r1, r1 * 0.18, len + r1 + r2, r1 * 1.1);
+  const prevAlpha = ctx.globalAlpha;
+  // Fast zero-clip cel-shadow lower strip & upper specular line tucked inside tapered capsule
+  const rMin = Math.min(r1, r2);
+  ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.26)';
+  ctx.globalAlpha = prevAlpha * (opts?.shadow ? 0.38 : 0.8);
+  ctx.fillRect(0, rMin * 0.15, len, rMin * 0.72);
 
-  ctx.globalAlpha = 0.28;
+  ctx.globalAlpha = prevAlpha * 0.34;
   ctx.fillStyle = opts?.highlight ?? '#ffffff';
-  ctx.fillRect(0, -r1 * 0.86, len, Math.max(1.2, r1 * 0.42));
+  ctx.fillRect(0.6, -rMin * 0.74, Math.max(0.5, len - 1.2), Math.max(1.1, rMin * 0.34));
+  ctx.globalAlpha = prevAlpha;
 
   if (opts?.cuffColor) {
-    ctx.globalAlpha = 1;
+    const cuffX = len * 0.65;
+    const cuffW = len * 0.23;
+    const rAtCuff = r1 + (r2 - r1) * 0.76;
     ctx.fillStyle = opts.cuffColor;
-    ctx.fillRect(len * 0.64, -r1 - 1, len * 0.24, (r1 + 1) * 2);
+    ctx.fillRect(cuffX, -rAtCuff + 0.3, cuffW, (rAtCuff - 0.3) * 2);
     ctx.strokeStyle = INK;
-    ctx.lineWidth = 1.1;
+    ctx.lineWidth = 1.05;
     ctx.beginPath();
-    ctx.moveTo(len * 0.64, -r1);
-    ctx.lineTo(len * 0.64, r1);
-    ctx.moveTo(len * 0.88, -r1);
-    ctx.lineTo(len * 0.88, r1);
+    ctx.moveTo(cuffX, -rAtCuff);
+    ctx.lineTo(cuffX, rAtCuff);
+    ctx.moveTo(cuffX + cuffW, -rAtCuff);
+    ctx.lineTo(cuffX + cuffW, rAtCuff);
     ctx.stroke();
   }
-  ctx.restore();
 
   setInkStyle(ctx, opts?.lineWidth ?? 1.85);
   ctx.beginPath();
@@ -360,7 +408,7 @@ export function drawSculptedLimb(
 
 /**
  * Draw a grounded, heroic Flash-cartoon boot with flat treaded sole, rounded toe cap,
- * specular toe glint, and optional ankle cuff lip.
+ * specular toe glint, and optional ankle cuff lip (zero clip & zero gradient allocations).
  */
 export function drawSculptedBoot(
   ctx: CanvasRenderingContext2D,
@@ -377,7 +425,7 @@ export function drawSculptedBoot(
   const sc = opts?.scale ?? 1;
   ctx.save();
   ctx.translate(ankleX, groundY);
-  ctx.scale(sc, sc);
+  if (sc !== 1) ctx.scale(sc, sc);
 
   // Boot upper profile (heel -> ankle -> arched vamp -> rounded toe -> flat sole)
   ctx.beginPath();
@@ -389,24 +437,26 @@ export function drawSculptedBoot(
   ctx.quadraticCurveTo(-4.4, -1.5, -3.4, -4.4);
   ctx.closePath();
 
-  const grad = ctx.createLinearGradient(0, -4.5, 0, 1);
-  grad.addColorStop(0, opts?.highlight ?? fill);
-  grad.addColorStop(0.55, fill);
-  grad.addColorStop(1, '#0f172a');
-  ctx.fillStyle = grad;
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  // Sole strip & bright glossy toe cap highlight inside clip
-  ctx.save();
-  ctx.clip();
+  // Sole strip & bright glossy toe cap highlight tucked inside boot contour (no clip!)
   ctx.fillStyle = opts?.soleColor ?? '#0f172a';
-  ctx.fillRect(-5, -0.7, 14, 2.2);
-  ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+  ctx.fillRect(-3.4, -0.5, 10.6, 1.3);
+  ctx.fillStyle = opts?.highlight ?? 'rgba(255, 255, 255, 0.34)';
   ctx.beginPath();
-  ctx.ellipse(4.4, -2.0, 2.2, 0.9, 0.25, 0, Math.PI * 2);
+  ctx.ellipse(4.1, -2.0, 2.0, 0.85, 0.25, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 
+  // Re-stroke boot silhouette
+  ctx.beginPath();
+  ctx.moveTo(-3.4, -4.4);
+  ctx.lineTo(2.0, -4.4);
+  ctx.quadraticCurveTo(4.2, -3.2, 6.8, -2.1);
+  ctx.quadraticCurveTo(8.2, -1.2, 7.6, 0.8);
+  ctx.lineTo(-3.6, 0.8);
+  ctx.quadraticCurveTo(-4.4, -1.5, -3.4, -4.4);
+  ctx.closePath();
   setInkStyle(ctx, 1.75);
   ctx.stroke();
 
@@ -497,17 +547,21 @@ export function drawWallTorch(
   const flicker = Math.sin(time * 13 + x) * 1.4;
   ctx.save();
   ctx.translate(x, y);
-  ctx.scale(scale, scale);
+  if (scale !== 1) ctx.scale(scale, scale);
 
-  // Warm radial torch light halo
-  const glow = ctx.createRadialGradient(0, -10, 2, 0, -10, 22 + flicker);
-  glow.addColorStop(0, 'rgba(254, 240, 138, 0.55)');
-  glow.addColorStop(0.5, 'rgba(249, 115, 22, 0.22)');
-  glow.addColorStop(1, 'rgba(249, 115, 22, 0)');
-  ctx.fillStyle = glow;
-  ctx.beginPath();
-  ctx.arc(0, -10, 24, 0, Math.PI * 2);
-  ctx.fill();
+  // Warm radial torch light halo via cached glow sprite (zero createRadialGradient per frame!)
+  const haloR = 23 + flicker;
+  const sprite = getGlowSprite('#f97316', '#fef08a');
+  if (sprite) {
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(sprite, -haloR, -10 - haloR, haloR * 2, haloR * 2);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = 'rgba(249, 115, 22, 0.24)';
+    ctx.beginPath();
+    ctx.arc(0, -10, haloR, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
   // Iron sconce & wooden torch shaft
   drawCelRoundRect(ctx, -2.5, -5, 5, 13, 1.5, '#78350f', { highlight: '#b45309', lineWidth: 1.5 });
@@ -562,13 +616,20 @@ export function drawGearWheel(
     ctx.lineTo(Math.cos(a3) * innerR, Math.sin(a3) * innerR);
   }
   ctx.closePath();
-  const grad = ctx.createLinearGradient(-radius, -radius, radius, radius);
-  grad.addColorStop(0, highlight);
-  grad.addColorStop(0.45, fill);
-  grad.addColorStop(1, shadow);
-  ctx.fillStyle = grad;
+  ctx.fillStyle = fill;
   ctx.fill();
   setInkStyle(ctx, 2.1);
+  ctx.stroke();
+
+  // Inner beveled specular ring
+  ctx.strokeStyle = highlight;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.72, -Math.PI * 0.85, Math.PI * 0.1);
+  ctx.stroke();
+  ctx.strokeStyle = shadow;
+  ctx.beginPath();
+  ctx.arc(0, 0, radius * 0.72, Math.PI * 0.15, Math.PI * 1.05);
   ctx.stroke();
 
   // Inner cutout ring & metallic axle hub
@@ -577,7 +638,7 @@ export function drawGearWheel(
   ctx.restore();
 }
 
-/** Draw a fluttering 2-tone Bezier cartoon cape with golden trim anchored behind shoulders */
+/** Draw a fluttering 2-tone Bezier cartoon cape with golden trim anchored behind shoulders (zero clip) */
 export function drawCartoonCape(
   ctx: CanvasRenderingContext2D,
   anchorX: number,
@@ -590,44 +651,51 @@ export function drawCartoonCape(
 ): void {
   const wave1 = Math.sin(phase * 1.45) * 4.2;
   const wave2 = Math.cos(phase * 1.95 + 0.7) * 5.0;
-  const traceCape = (): void => {
-    ctx.beginPath();
-    ctx.moveTo(anchorX, anchorY);
-    ctx.quadraticCurveTo(
-      anchorX - width * 0.68,
-      anchorY + length * 0.45 + wave1,
-      anchorX - width + wave2 * 0.42,
-      anchorY + length,
-    );
-    ctx.lineTo(anchorX - width * 0.2 + wave1 * 0.5, anchorY + length * 0.94);
-    ctx.quadraticCurveTo(anchorX - width * 0.08, anchorY + length * 0.45, anchorX + 2, anchorY + 4);
-    ctx.closePath();
-  };
+  const tipLeftX = anchorX - width + wave2 * 0.42;
+  const tipLeftY = anchorY + length;
+  const tipRightX = anchorX - width * 0.2 + wave1 * 0.5;
+  const tipRightY = anchorY + length * 0.94;
 
-  ctx.save();
-  traceCape();
-  const grad = ctx.createLinearGradient(anchorX - width, anchorY, anchorX, anchorY + length);
-  grad.addColorStop(0, fill);
-  grad.addColorStop(1, darkFill);
-  ctx.fillStyle = grad;
+  // Inner darker lining fold along rear edge
+  ctx.beginPath();
+  ctx.moveTo(anchorX, anchorY);
+  ctx.quadraticCurveTo(anchorX - width * 0.68, anchorY + length * 0.45 + wave1, tipLeftX, tipLeftY);
+  ctx.lineTo(tipRightX, tipRightY);
+  ctx.quadraticCurveTo(anchorX - width * 0.08, anchorY + length * 0.45, anchorX + 2, anchorY + 4);
+  ctx.closePath();
+  ctx.fillStyle = fill;
   ctx.fill();
 
-  // Clipped golden hem trim strictly inside cape silhouette
-  ctx.save();
-  ctx.clip();
-  ctx.strokeStyle = 'rgba(250, 204, 21, 0.78)';
-  ctx.lineWidth = 2.4;
+  // Subtle vertical darker pleat fold without clip()
+  ctx.strokeStyle = darkFill;
+  ctx.lineWidth = 2.6;
   ctx.beginPath();
-  ctx.moveTo(anchorX - width - 3, anchorY + length - 2.2);
-  ctx.lineTo(anchorX + 2, anchorY + length - 4.2);
+  ctx.moveTo(anchorX - width * 0.24, anchorY + length * 0.24);
+  ctx.quadraticCurveTo(
+    anchorX - width * 0.42,
+    anchorY + length * 0.58 + wave1 * 0.5,
+    (tipLeftX + tipRightX) * 0.5,
+    (tipLeftY + tipRightY) * 0.5 - 2,
+  );
   ctx.stroke();
-  ctx.restore();
 
-  // Stroke the actual cape Bezier silhouette (never the hem line!)
-  setInkStyle(ctx, 1.95);
-  traceCape();
+  // Golden hem trim directly along exact bottom edge from tipLeft -> tipRight!
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.85)';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.moveTo(tipLeftX + 1.2, tipLeftY - 1.6);
+  ctx.lineTo(tipRightX - 1.0, tipRightY - 1.4);
   ctx.stroke();
-  ctx.restore();
+
+  // Crisp outer ink silhouette
+  ctx.beginPath();
+  ctx.moveTo(anchorX, anchorY);
+  ctx.quadraticCurveTo(anchorX - width * 0.68, anchorY + length * 0.45 + wave1, tipLeftX, tipLeftY);
+  ctx.lineTo(tipRightX, tipRightY);
+  ctx.quadraticCurveTo(anchorX - width * 0.08, anchorY + length * 0.45, anchorX + 2, anchorY + 4);
+  ctx.closePath();
+  setInkStyle(ctx, 1.95);
+  ctx.stroke();
 }
 
 /** Draw a rotating spoked wooden/bronze/iron cartoon wheel with iron tire rim & specular bevel */
@@ -973,26 +1041,37 @@ export function drawCartoonMuzzleFlash(
 ): void {
   ctx.save();
   ctx.translate(x, y);
-  // Subtle fiery bloom halo
-  const halo = ctx.createRadialGradient(size * 0.2, 0, 2, size * 0.2, 0, size * 1.45);
-  halo.addColorStop(0, 'rgba(254, 240, 138, 0.55)');
-  halo.addColorStop(0.55, 'rgba(249, 115, 22, 0.22)');
-  halo.addColorStop(1, 'rgba(249, 115, 22, 0)');
-  ctx.fillStyle = halo;
-  ctx.beginPath();
-  ctx.arc(size * 0.2, 0, size * 1.45, 0, Math.PI * 2);
-  ctx.fill();
+  // Subtle fiery bloom halo via cached glow sprite
+  const haloR = size * 1.45;
+  const sprite = getGlowSprite(outerColor, coreColor);
+  if (sprite) {
+    ctx.globalAlpha = 0.6;
+    ctx.drawImage(sprite, size * 0.2 - haloR, -haloR, haloR * 2, haloR * 2);
+    ctx.globalAlpha = 1;
+  } else {
+    ctx.fillStyle = 'rgba(249, 115, 22, 0.25)';
+    ctx.beginPath();
+    ctx.arc(size * 0.2, 0, haloR, 0, Math.PI * 2);
+    ctx.fill();
+  }
 
-  const pts: [number, number][] = [];
   const spikes = 7;
+  ctx.beginPath();
   for (let i = 0; i < spikes * 2; i++) {
     const a = (i / (spikes * 2)) * Math.PI * 2;
     const isOuter = i % 2 === 0;
     const forwardStretch = Math.cos(a) > 0 ? 1.48 : 0.72;
     const r = (isOuter ? size : size * 0.42) * forwardStretch;
-    pts.push([Math.cos(a) * r, Math.sin(a) * r]);
+    const px = Math.cos(a) * r;
+    const py = Math.sin(a) * r;
+    if (i === 0) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
   }
-  drawCelPoly(ctx, pts, outerColor, { highlight: coreColor, lineWidth: 1.6, ink: '#7c2d12' });
+  ctx.closePath();
+  ctx.fillStyle = outerColor;
+  ctx.fill();
+  setInkStyle(ctx, 1.6, '#7c2d12');
+  ctx.stroke();
 
   ctx.fillStyle = coreColor;
   ctx.beginPath();
@@ -1005,7 +1084,7 @@ export function drawCartoonMuzzleFlash(
   ctx.restore();
 }
 
-/** Draw a glowing cel energy orb (plasma, solar, antimatter, mystic totem) */
+/** Draw a glowing cel energy orb (plasma, solar, antimatter, mystic totem) using cached glow sprite */
 export function drawEnergyOrb(
   ctx: CanvasRenderingContext2D,
   x: number,
@@ -1014,15 +1093,19 @@ export function drawEnergyOrb(
   outerColor: string,
   innerColor = '#ffffff',
 ): void {
-  ctx.save();
-  const grad = ctx.createRadialGradient(x, y, r * 0.1, x, y, r * 2.1);
-  grad.addColorStop(0, innerColor);
-  grad.addColorStop(0.42, outerColor);
-  grad.addColorStop(1, 'rgba(255,255,255,0)');
-  ctx.fillStyle = grad;
-  ctx.beginPath();
-  ctx.arc(x, y, r * 2.1, 0, Math.PI * 2);
-  ctx.fill();
+  const haloR = r * 2.15;
+  const sprite = getGlowSprite(outerColor, innerColor);
+  if (sprite) {
+    ctx.drawImage(sprite, x - haloR, y - haloR, haloR * 2, haloR * 2);
+  } else {
+    const prevAlpha = ctx.globalAlpha;
+    ctx.globalAlpha = prevAlpha * 0.3;
+    ctx.fillStyle = outerColor;
+    ctx.beginPath();
+    ctx.arc(x, y, haloR, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = prevAlpha;
+  }
 
   ctx.fillStyle = outerColor;
   ctx.beginPath();
@@ -1035,7 +1118,6 @@ export function drawEnergyOrb(
   ctx.beginPath();
   ctx.arc(x - r * 0.24, y - r * 0.24, r * 0.48, 0, Math.PI * 2);
   ctx.fill();
-  ctx.restore();
 }
 
 export interface HumanoidRigConfig {
@@ -1094,18 +1176,19 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   const legLen = cfg.legLen ?? 16.0;
   const dp = cfg.deathProgress;
 
+  const idleBreath = Math.sin(cfg.walkPhase * 1.15);
   const stride = cfg.isWalking ? Math.sin(cfg.walkPhase) : 0;
-  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 4.5 : 0;
-  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 4.5 : 0;
-  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 2.8 : Math.sin(cfg.walkPhase * 1.1) * 0.85;
+  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 4.8 : 0;
+  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 4.8 : 0;
+  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 3.0 : idleBreath * 1.1;
 
   const atk = cfg.attackAnim;
   const firing = atk > 0.42 && atk < 0.84;
-  let weaponAngle = 0;
+  let weaponAngle = cfg.isWalking ? Math.sin(cfg.walkPhase) * 0.08 : idleBreath * 0.055;
   let weaponPushX = 0;
-  let weaponPushY = 0;
-  let torsoLean = cfg.isWalking ? 0.11 : 0.03;
-  let headLag = cfg.isWalking ? -0.05 * Math.cos(cfg.walkPhase) : 0;
+  let weaponPushY = cfg.isWalking ? Math.cos(cfg.walkPhase * 2) * 0.7 : idleBreath * 0.65;
+  let torsoLean = cfg.isWalking ? 0.12 + Math.sin(cfg.walkPhase * 2) * 0.025 : 0.03 + idleBreath * 0.02;
+  let headLag = cfg.isWalking ? -0.055 * Math.cos(cfg.walkPhase) : -idleBreath * 0.028;
   let attackStanceShift = 0;
 
   const style = cfg.swingStyle ?? 'overhead';

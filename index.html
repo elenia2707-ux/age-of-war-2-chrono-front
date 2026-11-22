@@ -55,6 +55,9 @@
             </div>
           </div>
           <canvas id="minimap-canvas" width="280" height="24"></canvas>
+          <div class="fever-strip" aria-hidden="true">
+            <div id="hud-fever-bar" class="fever-strip-fill"></div>
+          </div>
         </div>
 
         <div class="top-right glass-panel">
@@ -222,7 +225,11 @@
 
       <!-- RESULT OVERLAY -->
       <section id="overlay-result" class="overlay-backdrop hidden" aria-label="전투 결과">
-        <div class="result-modal glass-modal">
+        <div id="result-modal" class="result-modal glass-modal">
+          <div id="result-confetti" class="result-confetti hidden" aria-hidden="true">
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+            <span></span><span></span><span></span><span></span><span></span><span></span>
+          </div>
           <div id="result-badge" class="result-badge">VICTORY</div>
           <h2 id="result-title">승리!</h2>
           <p id="result-subtitle" class="modal-sub"></p>

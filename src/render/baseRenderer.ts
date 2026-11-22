@@ -43,17 +43,23 @@ export function renderBase(
   ctx.ellipse(0, 3, BASE_HALF_WIDTH + 18, 11, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // Golden evolution / upgrade celebration glow aura
+  // Golden evolution / upgrade celebration glow aura (zero createRadialGradient!)
   const auraFlash = Math.max(faction.evolveFlash, faction.upgradeFlash * 0.72);
   if (auraFlash > 0.02) {
-    const grad = ctx.createRadialGradient(0, -108, 16, 0, -108, 150 + (1 - auraFlash) * 45);
-    grad.addColorStop(0, `rgba(254, 240, 138, ${(auraFlash * 0.55).toFixed(2)})`);
-    grad.addColorStop(0.6, `rgba(250, 204, 21, ${(auraFlash * 0.25).toFixed(2)})`);
-    grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
-    ctx.fillStyle = grad;
+    const rad = 148 + (1 - auraFlash) * 44;
+    ctx.fillStyle = `rgba(250, 204, 21, ${(auraFlash * 0.2).toFixed(2)})`;
     ctx.beginPath();
-    ctx.arc(0, -108, 195, 0, Math.PI * 2);
+    ctx.arc(0, -108, rad, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = `rgba(254, 240, 138, ${(auraFlash * 0.34).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.arc(0, -108, rad * 0.62, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.strokeStyle = `rgba(254, 240, 138, ${(auraFlash * 0.72).toFixed(2)})`;
+    ctx.lineWidth = 3.0;
+    ctx.beginPath();
+    ctx.arc(0, -108, rad * 0.92, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   // Fortress body (drawn facing +X, flipped horizontally for enemy!)
@@ -72,11 +78,12 @@ export function renderBase(
   const fortLv = faction.upgrades.fortress;
   if (fortLv >= 2) {
     // Gleaming golden reinforced foundation bumper & rivets
-    drawCelRoundRect(ctx, -84, -12, 170, 12, 3, '#d97706', {
+    drawCelRoundRect(ctx, -86, -12, 174, 12, 3, '#d97706', {
       highlight: '#fef08a',
       shadow: '#78350f',
       lineWidth: 2.0,
     });
+    drawRivetStrip(ctx, -78, -6, 78, -6, 8, 1.3);
   }
   if (fortLv >= 5) {
     // Glowing fortified diamond bastion crest mounted on front bastion!
@@ -84,25 +91,41 @@ export function renderBase(
       ctx,
       [
         [72, -46],
-        [82, -60],
-        [92, -46],
-        [82, -32],
+        [82, -62],
+        [93, -46],
+        [82, -30],
       ],
       pal.main,
-      { highlight: '#fef08a', shadow: pal.dark, lineWidth: 1.9 },
+      { highlight: '#fef08a', shadow: pal.dark, lineWidth: 2.0 },
     );
-    drawEnergyOrb(ctx, 82, -46, 3.6 + Math.sin(time * 5) * 0.7, '#38bdf8', '#ffffff');
+    drawEnergyOrb(ctx, 82, -46, 3.8 + Math.sin(time * 5) * 0.7, '#38bdf8', '#ffffff');
   }
   if (fortLv >= 8) {
-    // Shimmering translucent Aegis Energy Shield Dome guarding the fortress!
+    // Shimmering translucent Aegis Energy Shield Dome guarding the fortress (upgrades to Golden Sovereign rim at Lv.10!)
+    const isSovereign = fortLv >= 10;
     const domePulse = 0.22 + Math.sin(time * 4.5) * 0.08;
     ctx.save();
-    ctx.strokeStyle = faction.team === 'player' ? `rgba(96, 165, 250, ${(domePulse + 0.35).toFixed(2)})` : `rgba(248, 113, 113, ${(domePulse + 0.35).toFixed(2)})`;
-    ctx.lineWidth = 3.2;
+    ctx.strokeStyle = isSovereign
+      ? `rgba(250, 204, 21, ${(domePulse + 0.56).toFixed(2)})`
+      : faction.team === 'player'
+        ? `rgba(96, 165, 250, ${(domePulse + 0.42).toFixed(2)})`
+        : `rgba(248, 113, 113, ${(domePulse + 0.42).toFixed(2)})`;
+    ctx.lineWidth = isSovereign ? 3.8 : 3.2;
     ctx.beginPath();
     ctx.arc(4, -22, 112, Math.PI * 1.15, Math.PI * 1.98);
     ctx.stroke();
-    ctx.fillStyle = faction.team === 'player' ? `rgba(56, 189, 248, ${(domePulse * 0.45).toFixed(2)})` : `rgba(244, 63, 94, ${(domePulse * 0.45).toFixed(2)})`;
+    ctx.strokeStyle = isSovereign
+      ? `rgba(254, 249, 195, ${(domePulse * 1.45).toFixed(2)})`
+      : `rgba(255, 255, 255, ${(domePulse * 1.1).toFixed(2)})`;
+    ctx.lineWidth = isSovereign ? 1.8 : 1.4;
+    ctx.beginPath();
+    ctx.arc(4, -22, 107, Math.PI * 1.24, Math.PI * 1.9);
+    ctx.stroke();
+    ctx.fillStyle = isSovereign
+      ? `rgba(250, 204, 21, ${(domePulse * 0.34).toFixed(2)})`
+      : faction.team === 'player'
+        ? `rgba(56, 189, 248, ${(domePulse * 0.42).toFixed(2)})`
+        : `rgba(244, 63, 94, ${(domePulse * 0.42).toFixed(2)})`;
     ctx.beginPath();
     ctx.arc(4, -22, 112, Math.PI * 1.15, Math.PI * 1.98);
     ctx.lineTo(4, -22);
@@ -161,7 +184,7 @@ export function renderBase(
     }
   }
 
-  // Crisp Cel-Framed Overhead Fortress HP Bar with Delayed White Drain Trail
+  // Crisp Cel-Framed Overhead Fortress HP Bar with Delayed White Drain Trail (zero gradient!)
   const barW = 152;
   const barH = 15;
   const barY = -262;
@@ -183,26 +206,41 @@ export function renderBase(
   }
 
   if (fillW > 0.5) {
-    const grad = ctx.createLinearGradient(0, barY, 0, barY + barH);
-    if (faction.team === 'player') {
-      grad.addColorStop(0, '#60a5fa');
-      grad.addColorStop(0.55, '#2563eb');
-      grad.addColorStop(1, '#1d4ed8');
-    } else {
-      grad.addColorStop(0, '#fb923c');
-      grad.addColorStop(0.55, '#ef4444');
-      grad.addColorStop(1, '#b91c1c');
-    }
-    ctx.fillStyle = grad;
+    ctx.fillStyle = faction.team === 'player' ? '#2563eb' : '#ef4444';
     ctx.beginPath();
     ctx.roundRect(-barW / 2, barY, fillW, barH, 4);
     ctx.fill();
+    if (fillW > 5) {
+      ctx.fillStyle = faction.team === 'player' ? '#60a5fa' : '#fb923c';
+      ctx.fillRect(-barW / 2 + 2.5, barY + 1.5, fillW - 5, 4.2);
+    }
   }
 
-  setInkStyle(ctx, 2.2, faction.baseHitFlash > 0.5 ? '#fde047' : INK);
+  setInkStyle(ctx, 2.2, faction.baseHitFlash > 0.5 ? '#fde047' : fortLv >= 10 ? '#facc15' : INK);
   ctx.beginPath();
   ctx.roundRect(-barW / 2, barY, barW, barH, 5);
   ctx.stroke();
+
+  // Unobstructed MAX Lv.10 Sovereign Bastion Golden Crown Crest beside HP bar!
+  if (fortLv >= 10) {
+    const cx = dir * (barW / 2 + 14);
+    const cy = barY + barH - 2 + Math.sin(time * 3.8) * 1.2;
+    drawCelPoly(
+      ctx,
+      [
+        [cx - 9, cy],
+        [cx - 10, cy - 11],
+        [cx - 4, cy - 6],
+        [cx, cy - 13],
+        [cx + 4, cy - 6],
+        [cx + 10, cy - 11],
+        [cx + 9, cy],
+      ],
+      '#facc15',
+      { highlight: '#ffffff', shadow: '#b45309', lineWidth: 1.6 },
+    );
+    drawEnergyOrb(ctx, cx, cy - 5, 3.0, '#fef08a', '#ffffff');
+  }
 
   ctx.font = '800 9.5px system-ui, -apple-system, sans-serif';
   ctx.textAlign = 'center';
@@ -1280,7 +1318,7 @@ function drawCartoonDamageSmokeAndFire(
 }
 
 // ============================================================================
-// ALL 20 ROTATING FLASH-CARTOON TURRETS (facing RIGHT at angle 0)
+// ALL 24 BESPOKE ROTATING FLASH-CARTOON TURRETS (facing RIGHT at angle 0)
 // ============================================================================
 export function drawMountedTurret(
   ctx: CanvasRenderingContext2D,
@@ -1307,8 +1345,8 @@ export function drawTurretArt(
   const facingLeft = Math.cos(aimAngle) < 0;
 
   ctx.save();
-  const rx = -Math.cos(aimAngle) * recoil * 5;
-  const ry = -Math.sin(aimAngle) * recoil * 5;
+  const rx = -Math.cos(aimAngle) * recoil * 5.2;
+  const ry = -Math.sin(aimAngle) * recoil * 5.2;
   ctx.translate(rx, ry);
   ctx.rotate(aimAngle);
   if (facingLeft) {
@@ -1316,156 +1354,153 @@ export function drawTurretArt(
   }
 
   switch (kind) {
-    case 'rock_dropper':
-    case 'bone_catapult': {
-      drawCelRoundRect(ctx, -14, -7, 22, 14, 3, '#78350f', { highlight: '#b45309', lineWidth: 2.0 });
-      drawCelRoundRect(ctx, -6, -10, 24, 6, 2, kind === 'bone_catapult' ? '#f8fafc' : '#a16207', {
-        lineWidth: 1.8,
-      });
-      drawCelEllipse(ctx, 16, -7, 5.5, 5.5, '#94a3b8', { highlight: '#e2e8f0', lineWidth: 1.7 });
+    // ---- ERA I: STONE AGE ----
+    case 'rock_dropper': {
+      // Lashed timber boulder sling crane with rope coils & heavy flint rock
+      drawCelRoundRect(ctx, -14, -7, 22, 14, 3, '#78350f', { highlight: '#b45309', shadow: '#451a03', lineWidth: 2.0 });
+      drawCelRoundRect(ctx, -10, -8, 4, 16, 1, '#d97706', { highlight: '#fef08a', lineWidth: 1.2 });
+      drawCelRoundRect(ctx, -5, -9, 22, 6, 2, '#92400e', { highlight: '#ca8a04', lineWidth: 1.8 });
+      drawCelEllipse(ctx, 16, -6, 5.8, 5.2, '#64748b', { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 1.7 });
       drawCelEllipse(ctx, -4, 0, 5, 5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
       break;
     }
 
-    case 'obelisk_beam': {
+    case 'bone_catapult': {
+      // Prehistoric mammoth-rib & tusk torsion catapult with flaming stone!
+      drawCelRoundRect(ctx, -15, -8, 22, 16, 3.5, '#5c3412', { highlight: '#92400e', shadow: '#3b180b', lineWidth: 2.0 });
+      // Curved ivory tusk side-rails
       drawCelPoly(
         ctx,
         [
-          [-12, -9],
-          [14, -5],
-          [14, 5],
-          [-12, 9],
+          [-10, -10],
+          [12, -13],
+          [16, -8],
+          [-6, -6],
+        ],
+        '#fef3c7',
+        { highlight: '#ffffff', shadow: '#d6c3a5', lineWidth: 1.7 },
+      );
+      drawCelRoundRect(ctx, -4, -3, 25, 6, 2, '#f8fafc', { highlight: '#ffffff', shadow: '#cbd5e1', lineWidth: 1.8 });
+      drawCelEllipse(ctx, 18, 0, 6.2, 5.8, '#475569', { highlight: '#cbd5e1', lineWidth: 1.7 });
+      drawCelEllipse(ctx, -6, 1, 5.2, 5.2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 23, 0, 9, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA II: ANCIENT EGYPT ----
+    case 'obelisk_beam': {
+      // Gilded sandstone obelisk solar prism emitter with Ankh crystal tip!
+      drawCelPoly(
+        ctx,
+        [
+          [-13, -9.5],
+          [15, -5],
+          [15, 5],
+          [-13, 9.5],
         ],
         '#d97706',
         { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 },
       );
-      drawCelRoundRect(ctx, -8, -5, 10, 10, 2, pal.main, { lineWidth: 1.5 });
-      drawEnergyOrb(ctx, 18, 0, firing ? 8.5 : 5.2, '#fbbf24', '#ffffff');
+      drawCelRoundRect(ctx, -9, -5.5, 11, 11, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      drawCelRoundRect(ctx, 4, -6.5, 4, 13, 1, '#facc15', { highlight: '#ffffff', lineWidth: 1.3 });
+      drawEnergyOrb(ctx, 19, 0, firing ? 9 : 5.5, '#fbbf24', '#ffffff');
       break;
     }
 
     case 'scarab_catapult': {
-      drawCelEllipse(ctx, -3, 0, 13, 10, '#eab308', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
-      drawCelEllipse(ctx, -3, 0, 7, 5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
-      drawCelRoundRect(ctx, 4, -4, 17, 8, 3, '#f59e0b', { lineWidth: 1.8 });
-      if (firing) drawEnergyOrb(ctx, 22, 0, 7, '#f59e0b', '#fef08a');
-      break;
-    }
-
-    case 'arrow_tower':
-    case 'ballista':
-    case 'crossbow_bastion': {
-      const bodyCol = kind === 'crossbow_bastion' ? '#64748b' : '#854d0e';
-      drawCelRoundRect(ctx, -13, -6, 24, 12, 3, bodyCol, { highlight: '#cbd5e1', lineWidth: 2.0 });
-      // Bow arms
-      setInkStyle(ctx, 4.2, INK);
-      ctx.beginPath();
-      ctx.moveTo(8, -14);
-      ctx.quadraticCurveTo(15, 0, 8, 14);
-      ctx.stroke();
-      ctx.strokeStyle = kind === 'ballista' ? '#d97706' : '#475569';
-      ctx.lineWidth = 2.4;
-      ctx.stroke();
-      // Loaded heavy bolt
-      drawCelRoundRect(ctx, -4, -2, 26, 4, 1, '#e2e8f0', { lineWidth: 1.5 });
-      drawCelEllipse(ctx, -5, 0, 4.5, 4.5, pal.main, { lineWidth: 1.4 });
-      if (firing) drawCartoonMuzzleFlash(ctx, 24, 0, 8, '#fde047', '#ffffff');
-      break;
-    }
-
-    case 'keep_trebuchet': {
-      drawCelRoundRect(ctx, -14, -9, 22, 18, 3, '#78350f', { highlight: '#b45309', lineWidth: 2.1 });
-      drawCelRoundRect(ctx, -8, -4, 28, 7, 2, '#92400e', { lineWidth: 1.9 });
-      drawCelEllipse(ctx, -11, 2, 6, 6, '#475569', { lineWidth: 1.7 });
-      drawCelEllipse(ctx, 18, -1, 5.5, 5.5, '#f97316', { highlight: '#fef08a', lineWidth: 1.6 });
-      break;
-    }
-
-    case 'musket_battery':
-    case 'fortress_cannon': {
-      drawCelRoundRect(ctx, -14, -9, 18, 18, 5, '#475569', { highlight: '#94a3b8', lineWidth: 2.1 });
+      // Jeweled gold-and-emerald winged Scarab solar orb launcher!
+      drawCelEllipse(ctx, -3, 0, 14, 10.5, '#eab308', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
+      // Winged emerald scarab elytra shells
       drawCelPoly(
         ctx,
         [
-          [-4, -6.5],
-          [22, -4.5],
-          [22, 4.5],
-          [-4, 6.5],
+          [-10, -7],
+          [2, -13],
+          [8, -6],
         ],
-        '#334155',
-        { highlight: '#94a3b8', shadow: '#0f172a', lineWidth: 2.1 },
+        '#10b981',
+        { highlight: '#6ee7b7', shadow: '#065f46', lineWidth: 1.4 },
       );
-      drawCelRoundRect(ctx, 14, -5.5, 4, 11, 1, '#d97706', { highlight: '#fef08a', lineWidth: 1.4 });
-      drawCelEllipse(ctx, -5, 0, 5, 5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
-      if (firing) drawCartoonMuzzleFlash(ctx, 26, 0, 12, '#f97316', '#fef08a');
-      break;
-    }
-
-    case 'steam_repeater':
-    case 'boiler_mortar': {
-      drawCelEllipse(ctx, -5, 0, 12, 11, '#d97706', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
-      drawCelRoundRect(ctx, -10, -5, 10, 10, 2, pal.main, { lineWidth: 1.5 });
-      if (kind === 'steam_repeater') {
-        drawCelRoundRect(ctx, 4, -5.5, 20, 4, 1.2, '#f59e0b', { lineWidth: 1.6 });
-        drawCelRoundRect(ctx, 4, 1.5, 20, 4, 1.2, '#f59e0b', { lineWidth: 1.6 });
-      } else {
-        drawCelRoundRect(ctx, 3, -6.5, 19, 13, 3, '#475569', { highlight: '#94a3b8', lineWidth: 2.0 });
-      }
-      if (firing) drawCartoonMuzzleFlash(ctx, 27, 0, 13, '#f97316', '#fef08a');
-      break;
-    }
-
-    case 'mg_nest':
-    case 'howitzer_turret': {
-      drawCelRoundRect(ctx, -14, -10, 22, 20, 6, '#4d5d38', { highlight: '#798c5c', shadow: '#2b361e', lineWidth: 2.2 });
-      drawCelRoundRect(ctx, -10, -6, 10, 12, 2, pal.main, { lineWidth: 1.5 });
-      drawCelRoundRect(
+      drawCelPoly(
         ctx,
-        6,
-        kind === 'howitzer_turret' ? -5.5 : -3.2,
-        kind === 'howitzer_turret' ? 21 : 19,
-        kind === 'howitzer_turret' ? 11 : 6.4,
-        2,
-        '#334155',
-        { highlight: '#94a3b8', lineWidth: 1.9 },
+        [
+          [-10, 7],
+          [2, 13],
+          [8, 6],
+        ],
+        '#10b981',
+        { highlight: '#6ee7b7', shadow: '#065f46', lineWidth: 1.4 },
       );
-      if (firing) drawCartoonMuzzleFlash(ctx, 29, 0, 13, '#f97316', '#fef08a');
+      drawCelEllipse(ctx, -3, 0, 6.8, 5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      drawCelRoundRect(ctx, 5, -4, 17, 8, 3, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.8 });
+      drawEnergyOrb(ctx, 22, 0, firing ? 8.5 : 4.2, '#f59e0b', '#fef08a');
       break;
     }
 
-    case 'vulcan_ciws':
-    case 'missile_pod': {
-      drawCelRoundRect(ctx, -14, -10, 22, 20, 5, '#475569', { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 2.2 });
-      drawCelRoundRect(ctx, -11, -5, 14, 10, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
-      if (kind === 'vulcan_ciws') {
-        for (let i = -1; i <= 1; i++) {
-          drawCelRoundRect(ctx, 7, -1.5 + i * 3.6, 19, 2.8, 1, '#94a3b8', { lineWidth: 1.4 });
-        }
-      } else {
-        drawCelRoundRect(ctx, 4, -9, 17, 18, 3, '#334155', { highlight: '#64748b', lineWidth: 2.0 });
-        drawCelEllipse(ctx, 18, -4.5, 3.2, 3.2, '#ef4444', { lineWidth: 1.2 });
-        drawCelEllipse(ctx, 18, 4.5, 3.2, 3.2, '#ef4444', { lineWidth: 1.2 });
-      }
-      if (firing) drawCartoonMuzzleFlash(ctx, 28, 0, 13, '#f97316', '#fef08a');
+    // ---- ERA III: CLASSICAL ----
+    case 'arrow_tower': {
+      // Timber-framed twin-bow archer parapet with quiver & notched arrows
+      drawCelRoundRect(ctx, -13, -7.5, 22, 15, 3, '#854d0e', { highlight: '#ca8a04', shadow: '#451a03', lineWidth: 2.0 });
+      setInkStyle(ctx, 4.0, INK);
+      ctx.beginPath();
+      ctx.moveTo(6, -13.5);
+      ctx.quadraticCurveTo(15, 0, 6, 13.5);
+      ctx.stroke();
+      ctx.strokeStyle = '#d97706';
+      ctx.lineWidth = 2.2;
+      ctx.stroke();
+      // Loaded steel-tipped arrow + red fletching
+      drawCelRoundRect(ctx, -5, -1.6, 26, 3.2, 1, '#e2e8f0', { lineWidth: 1.3 });
+      drawCelPoly(
+        ctx,
+        [
+          [19, -3.5],
+          [26, 0],
+          [19, 3.5],
+        ],
+        '#f8fafc',
+        { lineWidth: 1.2 },
+      );
+      drawCelEllipse(ctx, -6, 0, 4.8, 4.8, pal.main, { highlight: pal.light, lineWidth: 1.4 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 25, 0, 7.5, '#fde047', '#ffffff');
       break;
     }
 
-    case 'plasma_repeater':
-    case 'ion_cannon': {
-      drawCelEllipse(ctx, -4, 0, 13, 11, '#e2e8f0', { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.2 });
-      drawCelRoundRect(ctx, -10, -5, 12, 10, 3, pal.main, { highlight: pal.light, lineWidth: 1.6 });
-      drawCelRoundRect(ctx, 5, -6, 20, 4.2, 1.5, '#cbd5e1', { lineWidth: 1.6 });
-      drawCelRoundRect(ctx, 5, 1.8, 20, 4.2, 1.5, '#cbd5e1', { lineWidth: 1.6 });
-      ctx.fillStyle = pal.glow;
-      ctx.fillRect(6, -1.8, 18, 3.6);
-      drawEnergyOrb(ctx, 26, 0, firing ? 9 : 4.2, pal.glow, '#ffffff');
+    case 'ballista': {
+      // Roman bronze-clad double-torsion siege ballista with armored shield plates!
+      drawCelRoundRect(ctx, -15, -7, 26, 14, 3, '#92400e', { highlight: '#d97706', shadow: '#451a03', lineWidth: 2.0 });
+      // Twin bronze torsion coil drums
+      drawCelEllipse(ctx, 6, -10.5, 4.6, 4.6, '#f59e0b', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 1.5 });
+      drawCelEllipse(ctx, 6, 10.5, 4.6, 4.6, '#f59e0b', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 1.5 });
+      // Reinforced Roman bow arms + bowstring
+      setInkStyle(ctx, 4.2, INK);
+      ctx.beginPath();
+      ctx.moveTo(6, -15);
+      ctx.lineTo(14, -7);
+      ctx.moveTo(6, 15);
+      ctx.lineTo(14, 7);
+      ctx.stroke();
+      ctx.strokeStyle = '#facc15';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      setInkStyle(ctx, 1.3, '#f8fafc');
+      ctx.beginPath();
+      ctx.moveTo(6, -14.5);
+      ctx.lineTo(-4, 0);
+      ctx.lineTo(6, 14.5);
+      ctx.stroke();
+      // Heavy siege iron lance bolt
+      drawCelRoundRect(ctx, -4, -2.2, 28, 4.4, 1.2, '#cbd5e1', { highlight: '#ffffff', lineWidth: 1.5 });
+      drawCelEllipse(ctx, -8, 0, 4.6, 4.6, pal.main, { highlight: pal.light, lineWidth: 1.4 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 26, 0, 9.5, '#fbbf24', '#ffffff');
       break;
     }
 
+    // ---- ERA IV: EASTERN DYNASTY ----
     case 'dragon_repeater': {
-      // Era IV: Lacquered crimson & gold repeating crossbow battery!
+      // Lacquered crimson & gold Chu-Ko-Nu repeating magazine crossbow battery!
       drawCelRoundRect(ctx, -14, -8, 22, 16, 3, '#991b1b', { highlight: '#ef4444', shadow: '#450a0a', lineWidth: 2.0 });
-      drawCelRoundRect(ctx, -8, -11, 12, 7, 2, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.5 });
+      drawCelRoundRect(ctx, -9, -12, 14, 7, 2, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.5 });
       setInkStyle(ctx, 4.2, INK);
       ctx.beginPath();
       ctx.moveTo(8, -14);
@@ -1474,79 +1509,334 @@ export function drawTurretArt(
       ctx.strokeStyle = '#facc15';
       ctx.lineWidth = 2.4;
       ctx.stroke();
-      drawCelRoundRect(ctx, -2, -2, 25, 4, 1, '#fef9c3', { lineWidth: 1.4 });
+      drawCelRoundRect(ctx, -2, -2.5, 25, 5, 1.2, '#fef9c3', { lineWidth: 1.4 });
       drawCelEllipse(ctx, -6, 0, 4.5, 4.5, pal.main, { highlight: pal.light, lineWidth: 1.4 });
-      if (firing) drawCartoonMuzzleFlash(ctx, 24, 0, 9, '#facc15', '#ffffff');
+      if (firing) drawCartoonMuzzleFlash(ctx, 25, 0, 9, '#facc15', '#ffffff');
       break;
     }
 
     case 'fire_ox_cannon': {
-      // Era IV: Ornate bronze Dragon-Head Fire-Arrow Cannon (화룡포)!
+      // Ornate bronze Dragon-Head Fire-Rocket Cannon (화룡포)!
       drawCelRoundRect(ctx, -14, -9, 18, 18, 4, '#047857', { highlight: '#34d399', shadow: '#064e3b', lineWidth: 2.1 });
       drawCelPoly(
         ctx,
         [
           [-4, -7.5],
           [18, -6.5],
-          [24, -10],
+          [24, -10.5],
           [22, 0],
-          [24, 10],
+          [24, 10.5],
           [18, 6.5],
           [-4, 7.5],
         ],
         '#d97706',
         { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 2.0 },
       );
-      drawCelEllipse(ctx, 13, -4, 2.2, 2.2, '#ef4444', { lineWidth: 1.0 });
+      drawCelEllipse(ctx, 13, -4, 2.3, 2.3, '#ef4444', { highlight: '#fef08a', lineWidth: 1.0 });
       drawCelEllipse(ctx, -6, 0, 5, 5, pal.main, { highlight: pal.light, lineWidth: 1.5 });
-      drawEnergyOrb(ctx, 24, 0, firing ? 10 : 4.6, '#ef4444', '#fef08a');
+      drawEnergyOrb(ctx, 24, 0, firing ? 10.5 : 4.8, '#ef4444', '#fef08a');
       break;
     }
 
-    case 'prism_spire':
-    case 'singularity_cannon': {
-      // Era XI: Interstellar obsidian & gold cosmic turrets
+    // ---- ERA V: MEDIEVAL ----
+    case 'crossbow_bastion': {
+      // Crenellated steel-mantlet heavy medieval arbalest turret!
+      drawCelRoundRect(ctx, -14, -8, 22, 16, 3.5, '#64748b', { highlight: '#cbd5e1', shadow: '#334155', lineWidth: 2.1 });
+      // Front steel pavise gun-shield wing
+      drawCelRoundRect(ctx, 4, -11, 5.5, 22, 2, '#94a3b8', { highlight: '#ffffff', shadow: '#475569', lineWidth: 1.6 });
+      setInkStyle(ctx, 4.2, INK);
+      ctx.beginPath();
+      ctx.moveTo(9, -14);
+      ctx.quadraticCurveTo(16, 0, 9, 14);
+      ctx.stroke();
+      ctx.strokeStyle = '#cbd5e1';
+      ctx.lineWidth = 2.4;
+      ctx.stroke();
+      drawCelRoundRect(ctx, -2, -2, 26, 4, 1, '#f8fafc', { lineWidth: 1.4 });
+      drawCelEllipse(ctx, -6, 0, 5.0, 5.0, pal.main, { highlight: pal.light, lineWidth: 1.4 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 25, 0, 9, '#fde047', '#ffffff');
+      break;
+    }
+
+    case 'keep_trebuchet': {
+      // Heavy medieval counterweight timber trebuchet with flaming boulder pouch!
+      drawCelRoundRect(ctx, -15, -9.5, 23, 19, 3, '#78350f', { highlight: '#b45309', shadow: '#451a03', lineWidth: 2.1 });
+      drawCelRoundRect(ctx, -10, -3.8, 30, 7.6, 2, '#92400e', { highlight: '#ca8a04', lineWidth: 1.9 });
+      drawCelRoundRect(ctx, -16, -5.5, 9, 11, 2, '#475569', { highlight: '#94a3b8', lineWidth: 1.7 });
+      drawCelEllipse(ctx, -4, 0, 4.6, 4.6, pal.main, { highlight: pal.light, lineWidth: 1.4 });
+      drawEnergyOrb(ctx, 20, 0, firing ? 9.5 : 5.5, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA VI: GUNPOWDER ----
+    case 'musket_battery': {
+      // Triple-barrel Renaissance volley organ-gun battery with brass carriage!
+      drawCelRoundRect(ctx, -14, -9.5, 19, 19, 4.5, '#78350f', { highlight: '#b45309', shadow: '#451a03', lineWidth: 2.1 });
+      for (let b = -1; b <= 1; b++) {
+        drawCelRoundRect(ctx, 2, -1.6 + b * 4.5, 21, 3.2, 1, '#334155', {
+          highlight: '#cbd5e1',
+          shadow: '#0f172a',
+          lineWidth: 1.45,
+        });
+      }
+      drawCelRoundRect(ctx, 13, -7.2, 3.8, 14.4, 1, '#d97706', { highlight: '#fef08a', lineWidth: 1.3 });
+      drawCelEllipse(ctx, -6, 0, 5.2, 5.2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 27, 0, 12, '#fbbf24', '#ffffff');
+      break;
+    }
+
+    case 'fortress_cannon': {
+      // Heavy cast-iron & brass-banded bastion siege cannon with flared muzzle!
+      drawCelRoundRect(ctx, -14, -10, 18, 20, 5, '#475569', { highlight: '#94a3b8', shadow: '#1e293b', lineWidth: 2.1 });
+      drawCelPoly(
+        ctx,
+        [
+          [-5, -7.5],
+          [21, -5],
+          [24, -7],
+          [24, 7],
+          [21, 5],
+          [-5, 7.5],
+        ],
+        '#1e293b',
+        { highlight: '#94a3b8', shadow: '#090d16', lineWidth: 2.1 },
+      );
+      drawCelRoundRect(ctx, 4, -6.8, 4, 13.6, 1, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.3 });
+      drawCelRoundRect(ctx, 15, -6, 3.8, 12, 1, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.3 });
+      drawCelEllipse(ctx, -6, 0, 5.2, 5.2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 29, 0, 14, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA VII: STEAMPUNK ----
+    case 'steam_repeater': {
+      // Brass twin-barrel clockwork rotary repeater with side flywheel & copper feed!
+      drawCelEllipse(ctx, -5, 0, 12, 11.5, '#d97706', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
+      drawCelEllipse(ctx, -13, -7, 4.5, 4.5, '#facc15', { highlight: '#ffffff', lineWidth: 1.3 });
+      drawCelRoundRect(ctx, -10, -5, 11, 10, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      drawCelRoundRect(ctx, 4, -5.8, 21, 4.2, 1.2, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.6 });
+      drawCelRoundRect(ctx, 4, 1.6, 21, 4.2, 1.2, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.6 });
+      drawCelRoundRect(ctx, 15, -6.8, 3.6, 13.6, 1, '#334155', { highlight: '#94a3b8', lineWidth: 1.2 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 29, 0, 13, '#f97316', '#fef08a');
+      break;
+    }
+
+    case 'boiler_mortar': {
+      // Riveted pressurized copper boiler siege mortar with pressure gauge!
+      drawCelEllipse(ctx, -6, 0, 13, 12, '#b45309', { highlight: '#fbbf24', shadow: '#78350f', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, 2, -7.5, 20, 15, 3.5, '#334155', { highlight: '#94a3b8', shadow: '#0f172a', lineWidth: 2.1 });
+      drawCelRoundRect(ctx, 18, -8.8, 5, 17.6, 1.5, '#d97706', { highlight: '#fef08a', lineWidth: 1.6 });
+      drawCelEllipse(ctx, -6, 0, 5.8, 5.8, '#f8fafc', { lineWidth: 1.4 });
+      ctx.fillStyle = '#dc2626';
+      ctx.fillRect(-6, -4, 1.6, 4.5);
+      drawCelRoundRect(ctx, -14, -4, 6, 8, 1.5, pal.main, { highlight: pal.light, lineWidth: 1.3 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 28, 0, 15, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA VIII: WORLD WAR ----
+    case 'mg_nest': {
+      // Armored olive-drab machine-gun pillbox turret with ribbed cooling jacket & ammo belt!
+      drawCelRoundRect(ctx, -14, -10, 21, 20, 6.5, '#4d5d38', { highlight: '#798c5c', shadow: '#2b361e', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, -10, -5.5, 10, 11, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      // Ribbed water-cooled MG barrel + flash hider
+      drawCelRoundRect(ctx, 5, -3.5, 20, 7, 2, '#334155', { highlight: '#94a3b8', lineWidth: 1.9 });
+      drawCelRoundRect(ctx, 9, -4.4, 8, 8.8, 1.2, '#475569', { highlight: '#cbd5e1', lineWidth: 1.3 });
+      // Brass ammo feed box on flank
+      drawCelRoundRect(ctx, -3, 6.5, 10, 5.5, 1.2, '#ca8a04', { highlight: '#fef08a', lineWidth: 1.3 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 29, 0, 12.5, '#fbbf24', '#ffffff');
+      break;
+    }
+
+    case 'howitzer_turret': {
+      // Heavy sloped wartime steel artillery cupola with muzzle brake & recoil cylinder!
+      drawCelPoly(
+        ctx,
+        [
+          [-15, -11],
+          [6, -10],
+          [11, -6],
+          [11, 6],
+          [6, 10],
+          [-15, 11],
+        ],
+        '#475569',
+        { highlight: '#94a3b8', shadow: '#1e293b', lineWidth: 2.2 },
+      );
+      drawCelRoundRect(ctx, -11, -5.5, 11, 11, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      // Heavy 155mm barrel + underside hydraulic recuperator + muzzle brake
+      drawCelRoundRect(ctx, 7, -4.6, 20, 9.2, 2, '#334155', { highlight: '#cbd5e1', shadow: '#0f172a', lineWidth: 2.0 });
+      drawCelRoundRect(ctx, 9, 4.2, 11, 3.6, 1, '#475569', { lineWidth: 1.2 });
+      drawCelRoundRect(ctx, 24, -6.2, 5, 12.4, 1.2, '#1e293b', { highlight: '#64748b', lineWidth: 1.6 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 33, 0, 15.5, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA IX: MODERN ----
+    case 'vulcan_ciws': {
+      // Iconic white Phalanx radar dome + 6-barrel rotary Vulcan gatling!
+      drawCelRoundRect(ctx, -14, -10, 21, 20, 5, '#475569', { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 2.2 });
+      // Iconic white radar radome cap
+      drawCelEllipse(ctx, -6, -9, 7, 5.5, '#f8fafc', { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 1.7 });
+      drawCelRoundRect(ctx, -11, -4.5, 13, 9, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      for (let i = -1; i <= 1; i++) {
+        drawCelRoundRect(ctx, 7, -1.5 + i * 3.6, 20, 2.8, 1, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.35 });
+      }
+      drawCelRoundRect(ctx, 19, -5.8, 3.5, 11.6, 1, '#1e293b', { lineWidth: 1.2 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 30, 0, 13.5, '#fbbf24', '#ffffff');
+      break;
+    }
+
+    case 'missile_pod': {
+      // Armored 4-tube tactical MLRS missile battery with laser designator!
+      drawCelRoundRect(ctx, -14, -10.5, 20, 21, 4, '#334155', { highlight: '#94a3b8', shadow: '#0f172a', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, -11, -5, 12, 10, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+      drawCelRoundRect(ctx, 3, -10.5, 19, 21, 3, '#475569', { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 2.0 });
+      // 4 glowing red missile warhead noses
+      drawCelEllipse(ctx, 18.5, -5.2, 3.1, 3.1, '#ef4444', { highlight: '#fca5a5', lineWidth: 1.2 });
+      drawCelEllipse(ctx, 18.5, 5.2, 3.1, 3.1, '#ef4444', { highlight: '#fca5a5', lineWidth: 1.2 });
+      drawCelEllipse(ctx, 11.5, -5.2, 2.7, 2.7, '#ef4444', { highlight: '#fca5a5', lineWidth: 1.1 });
+      drawCelEllipse(ctx, 11.5, 5.2, 2.7, 2.7, '#ef4444', { highlight: '#fca5a5', lineWidth: 1.1 });
+      if (firing) drawCartoonMuzzleFlash(ctx, 27, 0, 14, '#f97316', '#fef08a');
+      break;
+    }
+
+    // ---- ERA X: FUTURE ----
+    case 'plasma_repeater': {
+      // Sleek titanium twin-rail rapid plasma repeater with cyan cooling coils!
+      drawCelEllipse(ctx, -4, 0, 13, 10.5, '#e2e8f0', { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, -10, -4.8, 12, 9.6, 3, pal.main, { highlight: pal.light, lineWidth: 1.6 });
+      drawCelRoundRect(ctx, 5, -6.2, 21, 4.2, 1.5, '#cbd5e1', { highlight: '#ffffff', lineWidth: 1.6 });
+      drawCelRoundRect(ctx, 5, 2.0, 21, 4.2, 1.5, '#cbd5e1', { highlight: '#ffffff', lineWidth: 1.6 });
+      ctx.fillStyle = pal.glow;
+      ctx.fillRect(6, -2.0, 19, 4.0);
+      drawEnergyOrb(ctx, 27, 0, firing ? 9.5 : 4.5, pal.glow, '#ffffff');
+      break;
+    }
+
+    case 'ion_cannon': {
+      // Heavy focusing-ring orbital-grade Ion Beam Cannon with dual capacitor coils!
+      drawCelPoly(
+        ctx,
+        [
+          [-15, -11],
+          [5, -12],
+          [12, -6],
+          [12, 6],
+          [5, 12],
+          [-15, 11],
+        ],
+        '#f1f5f9',
+        { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.2 },
+      );
+      drawCelRoundRect(ctx, -11, -5.5, 13, 11, 3, pal.main, { highlight: pal.light, lineWidth: 1.6 });
+      // Long focusing emitter core + twin glowing cyan accelerator rings
+      drawCelRoundRect(ctx, 8, -4.2, 19, 8.4, 2, '#0f172a', { highlight: '#334155', lineWidth: 1.7 });
+      ctx.fillStyle = '#22d3ee';
+      ctx.fillRect(10, -2.0, 16, 4.0);
+      drawCelEllipse(ctx, 16, 0, 2.8, 9.8, '#38bdf8', { highlight: '#ffffff', lineWidth: 1.4 });
+      drawCelEllipse(ctx, 23, 0, 2.6, 8.2, '#38bdf8', { highlight: '#ffffff', lineWidth: 1.4 });
+      drawEnergyOrb(ctx, 29, 0, firing ? 11.5 : 5.8, '#22d3ee', '#ffffff');
+      break;
+    }
+
+    // ---- ERA XI: INTERSTELLAR ----
+    case 'prism_spire': {
+      // Faceted obsidian-and-amethyst floating crystal prism spire turret!
       drawCelPoly(
         ctx,
         [
           [-14, -10],
-          [8, -12],
+          [6, -12],
           [16, 0],
-          [8, 12],
+          [6, 12],
           [-14, 10],
         ],
         '#1e1b4b',
-        { highlight: '#6d28d9', lineWidth: 2.3 },
+        { highlight: '#6d28d9', shadow: '#09071a', lineWidth: 2.3 },
       );
       drawCelRoundRect(ctx, -10, -5, 12, 10, 3, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.6 });
-      drawCelEllipse(ctx, 18, 0, 3.5, 9, '#facc15', { highlight: '#fef08a', lineWidth: 1.6 });
-      drawEnergyOrb(ctx, 24, 0, firing ? 10 : 5.5, kind === 'singularity_cannon' ? '#c084fc' : pal.glow, '#fef08a');
-      break;
-    }
-
-    default: {
-      // Era XII: chrono_pylon & eternity_beam — Pearl-White, Royal Gold & Quantum Teal!
-      const isEternity = kind === 'eternity_beam';
+      // Faceted glowing prism crystal nose
       drawCelPoly(
         ctx,
         [
-          [-15, -10],
-          [6, -13],
-          [18, -5],
-          [18, 5],
-          [6, 13],
-          [-15, 10],
+          [10, -7],
+          [26, 0],
+          [10, 7],
+          [14, 0],
+        ],
+        pal.glow,
+        { highlight: '#ffffff', lineWidth: 1.5 },
+      );
+      drawEnergyOrb(ctx, 26, 0, firing ? 9.5 : 5.0, pal.glow, '#fef08a');
+      break;
+    }
+
+    case 'singularity_cannon': {
+      // Interstellar obsidian gravity-well cannon with golden dark-matter containment rings!
+      drawCelPoly(
+        ctx,
+        [
+          [-15, -11],
+          [8, -13],
+          [16, -6],
+          [16, 6],
+          [8, 13],
+          [-15, 11],
+        ],
+        '#0f0a2c',
+        { highlight: '#5b21b6', lineWidth: 2.3 },
+      );
+      drawCelRoundRect(ctx, -11, -5.5, 13, 11, 3, pal.main, { highlight: '#c084fc', lineWidth: 1.6 });
+      drawCelEllipse(ctx, 17, 0, 3.6, 11.2, '#facc15', { highlight: '#ffffff', lineWidth: 1.6 });
+      drawCelEllipse(ctx, 23, 0, 3.0, 9.0, '#c084fc', { highlight: '#ffffff', lineWidth: 1.5 });
+      drawEnergyOrb(ctx, 27, 0, firing ? 11.5 : 6.4, '#a855f7', '#09071a');
+      break;
+    }
+
+    // ---- ERA XII: TRANSCENDENT ----
+    case 'chrono_pylon': {
+      // Sacred pearl-white & royal gold Chrono Hourglass Pylon turret!
+      drawCelPoly(
+        ctx,
+        [
+          [-14, -10],
+          [5, -12],
+          [16, -5],
+          [16, 5],
+          [5, 12],
+          [-14, 10],
         ],
         '#f8fafc',
         { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 2.2 },
       );
-      drawCelRoundRect(ctx, -11, -5.5, 14, 11, 3, '#0f766e', { highlight: '#2dd4bf', lineWidth: 1.5 });
-      drawCelRoundRect(ctx, -8, -3, 8, 6, 1.5, pal.main, { highlight: pal.light, lineWidth: 1.2 });
-      drawCelEllipse(ctx, 17, 0, 3.4, isEternity ? 11.5 : 8.5, '#facc15', { highlight: '#ffffff', lineWidth: 1.5 });
-      if (isEternity) {
-        drawCelEllipse(ctx, 23, 0, 2.8, 9.2, '#2dd4bf', { highlight: '#ffffff', lineWidth: 1.4 });
-      }
-      drawEnergyOrb(ctx, isEternity ? 28 : 24, 0, firing ? 11.5 : 6.0, '#2dd4bf', '#fef9c3');
+      drawCelRoundRect(ctx, -10, -5.5, 13, 11, 3, '#0f766e', { highlight: '#2dd4bf', lineWidth: 1.5 });
+      drawCelRoundRect(ctx, -7, -3, 7, 6, 1.5, pal.main, { highlight: pal.light, lineWidth: 1.2 });
+      drawCelEllipse(ctx, 16, 0, 3.4, 8.8, '#facc15', { highlight: '#ffffff', lineWidth: 1.5 });
+      drawEnergyOrb(ctx, 24, 0, firing ? 10 : 5.6, '#2dd4bf', '#fef9c3');
+      break;
+    }
+
+    default: {
+      // Era XII: eternity_beam — Colossal Triple-Halo Transcendental Eternity Lance!
+      drawCelPoly(
+        ctx,
+        [
+          [-16, -11],
+          [6, -13.5],
+          [19, -5.5],
+          [19, 5.5],
+          [6, 13.5],
+          [-16, 11],
+        ],
+        '#f8fafc',
+        { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 2.3 },
+      );
+      drawCelRoundRect(ctx, -12, -6, 15, 12, 3, '#f59e0b', { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.5 });
+      drawCelRoundRect(ctx, -8, -3.2, 8, 6.4, 1.5, pal.main, { highlight: pal.light, lineWidth: 1.2 });
+      drawCelEllipse(ctx, 17, 0, 3.5, 12, '#facc15', { highlight: '#ffffff', lineWidth: 1.5 });
+      drawCelEllipse(ctx, 23.5, 0, 3.0, 9.8, '#2dd4bf', { highlight: '#ffffff', lineWidth: 1.45 });
+      drawEnergyOrb(ctx, 29, 0, firing ? 12.5 : 6.6, '#2dd4bf', '#fef9c3');
       break;
     }
   }

@@ -2188,14 +2188,18 @@ function drawStarArchon(
   ctx.quadraticCurveTo(-15, -3, -3 + pulse * 0.6, 13);
   ctx.quadraticCurveTo(9.5, -3, 10.5, -20);
   ctx.closePath();
-  const tailGrad = ctx.createLinearGradient(0, -22, 0, 13);
-  tailGrad.addColorStop(0, pal.main);
-  tailGrad.addColorStop(0.55, '#a855f7');
-  tailGrad.addColorStop(1, '#fef08a');
-  ctx.fillStyle = tailGrad;
+  ctx.fillStyle = '#a855f7';
   ctx.fill();
   setInkStyle(ctx, 2.05);
   ctx.stroke();
+  // Luminous golden energy core inside cosmic tail
+  ctx.fillStyle = '#fef08a';
+  ctx.beginPath();
+  ctx.moveTo(-4.5, -15);
+  ctx.quadraticCurveTo(-6, -3, -2.5 + pulse * 0.5, 9);
+  ctx.quadraticCurveTo(3.5, -3, 4.5, -15);
+  ctx.closePath();
+  ctx.fill();
   ctx.restore();
 
   // Gilded obsidian celestial torso armor + pulsing galaxy chest core!

@@ -83,13 +83,11 @@ export function renderUltimateAtmosphere(
     ctx.save();
     ctx.globalAlpha = fade;
 
-    // 1. Dramatic sky-to-ground atmospheric gradient
-    const skyGrad = ctx.createLinearGradient(0, 0, 0, WORLD_HEIGHT);
-    skyGrad.addColorStop(0, topTint);
-    skyGrad.addColorStop(0.62, botTint);
-    skyGrad.addColorStop(1, 'rgba(0, 0, 0, 0)');
-    ctx.fillStyle = skyGrad;
-    ctx.fillRect(0, 0, viewportW, WORLD_HEIGHT);
+    // 1. Dramatic sky-to-ground atmospheric wash (zero per-frame gradient allocation!)
+    ctx.fillStyle = topTint;
+    ctx.fillRect(0, 0, viewportW, WORLD_HEIGHT * 0.42);
+    ctx.fillStyle = botTint;
+    ctx.fillRect(0, WORLD_HEIGHT * 0.34, viewportW, WORLD_HEIGHT * 0.48);
 
     // 2. Signature sky centerpiece per Ultimate!
     if (kind === 'meteor') {
@@ -112,14 +110,21 @@ export function renderUltimateAtmosphere(
       const sy = 104;
       ctx.save();
       ctx.translate(cx, sy);
-      const sunGrad = ctx.createRadialGradient(0, 0, 10, 0, 0, 160);
-      sunGrad.addColorStop(0, 'rgba(255, 251, 235, 0.85)');
-      sunGrad.addColorStop(0.32, 'rgba(251, 191, 36, 0.48)');
-      sunGrad.addColorStop(0.7, 'rgba(245, 158, 11, 0.14)');
-      sunGrad.addColorStop(1, 'rgba(245, 158, 11, 0)');
-      ctx.fillStyle = sunGrad;
+      ctx.fillStyle = 'rgba(245, 158, 11, 0.14)';
       ctx.beginPath();
-      ctx.arc(0, 0, 160, 0, Math.PI * 2);
+      ctx.arc(0, 0, 156, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(251, 191, 36, 0.30)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 102, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.56)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 58, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(255, 251, 235, 0.85)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 30, 0, Math.PI * 2);
       ctx.fill();
 
       // Rotating golden sun rays
@@ -209,13 +214,13 @@ export function renderUltimateAtmosphere(
         const fx = viewportW * (0.14 + i * 0.24);
         const fPulse = Math.max(0, Math.sin(t * 9.5 + i * 1.9));
         if (fPulse < 0.2) continue;
-        const g = ctx.createRadialGradient(fx, GROUND_Y - 115, 2, fx, GROUND_Y - 115, 56 * fPulse);
-        g.addColorStop(0, `rgba(254, 240, 138, ${(0.55 * fPulse).toFixed(2)})`);
-        g.addColorStop(0.5, `rgba(249, 115, 22, ${(0.28 * fPulse).toFixed(2)})`);
-        g.addColorStop(1, 'rgba(249, 115, 22, 0)');
-        ctx.fillStyle = g;
+        ctx.fillStyle = `rgba(249, 115, 22, ${(0.28 * fPulse).toFixed(2)})`;
         ctx.beginPath();
-        ctx.arc(fx, GROUND_Y - 115, 56 * fPulse, 0, Math.PI * 2);
+        ctx.arc(fx, GROUND_Y - 115, 52 * fPulse, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.fillStyle = `rgba(254, 240, 138, ${(0.55 * fPulse).toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(fx, GROUND_Y - 115, 24 * fPulse, 0, Math.PI * 2);
         ctx.fill();
       }
       ctx.fillStyle = `rgba(148, 163, 184, ${(0.12 + pulse * 0.06).toFixed(2)})`;
@@ -282,13 +287,13 @@ export function renderUltimateAtmosphere(
       ctx.save();
       ctx.translate(cx, 62);
       const pulse = 0.78 + Math.sin(t * 10) * 0.22;
-      const g = ctx.createRadialGradient(0, 0, 10, 0, 0, 165);
-      g.addColorStop(0, `rgba(103, 232, 249, ${(0.55 * pulse).toFixed(2)})`);
-      g.addColorStop(0.55, `rgba(6, 182, 212, ${(0.22 * pulse).toFixed(2)})`);
-      g.addColorStop(1, 'rgba(6, 182, 212, 0)');
-      ctx.fillStyle = g;
+      ctx.fillStyle = `rgba(6, 182, 212, ${(0.20 * pulse).toFixed(2)})`;
       ctx.beginPath();
       ctx.ellipse(0, 0, 175, 62, 0, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(103, 232, 249, ${(0.42 * pulse).toFixed(2)})`;
+      ctx.beginPath();
+      ctx.ellipse(0, 0, 108, 34, 0, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = 'rgba(103, 232, 249, 0.72)';
@@ -309,14 +314,17 @@ export function renderUltimateAtmosphere(
       // Cosmic void star-streaks pulling radially inward toward an open-sky singularity rift!
       const rx = cx;
       const ry = 118;
-      const riftGrad = ctx.createRadialGradient(rx, ry, 8, rx, ry, 185);
-      riftGrad.addColorStop(0, 'rgba(5, 2, 13, 0.82)');
-      riftGrad.addColorStop(0.35, 'rgba(147, 51, 234, 0.44)');
-      riftGrad.addColorStop(0.75, 'rgba(88, 28, 135, 0.14)');
-      riftGrad.addColorStop(1, 'rgba(88, 28, 135, 0)');
-      ctx.fillStyle = riftGrad;
+      ctx.fillStyle = 'rgba(88, 28, 135, 0.16)';
       ctx.beginPath();
-      ctx.arc(rx, ry, 185, 0, Math.PI * 2);
+      ctx.arc(rx, ry, 182, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(147, 51, 234, 0.34)';
+      ctx.beginPath();
+      ctx.arc(rx, ry, 106, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(5, 2, 13, 0.78)';
+      ctx.beginPath();
+      ctx.arc(rx, ry, 42, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.strokeStyle = 'rgba(233, 213, 255, 0.48)';
@@ -335,14 +343,17 @@ export function renderUltimateAtmosphere(
       // Giant Celestial Astral Chrono-Clock Mandala positioned cleanly in the open sky band!
       ctx.save();
       ctx.translate(cx, 122);
-      const aura = ctx.createRadialGradient(0, 0, 12, 0, 0, 170);
-      aura.addColorStop(0, 'rgba(254, 249, 195, 0.65)');
-      aura.addColorStop(0.4, 'rgba(45, 212, 191, 0.32)');
-      aura.addColorStop(0.78, 'rgba(250, 204, 21, 0.12)');
-      aura.addColorStop(1, 'rgba(45, 212, 191, 0)');
-      ctx.fillStyle = aura;
+      ctx.fillStyle = 'rgba(250, 204, 21, 0.12)';
       ctx.beginPath();
-      ctx.arc(0, 0, 170, 0, Math.PI * 2);
+      ctx.arc(0, 0, 168, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(45, 212, 191, 0.24)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 108, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(254, 249, 195, 0.45)';
+      ctx.beginPath();
+      ctx.arc(0, 0, 56, 0, Math.PI * 2);
       ctx.fill();
 
       // Outer golden clock dial & 12 hour markers
@@ -391,8 +402,14 @@ export function renderUltimateAtmosphere(
 }
 
 /** Smooth cartoon oval crater scorch marks + radial fissure cracks + cooling molten ember glow on road */
-export function renderScorchMarks(ctx: CanvasRenderingContext2D, scorches: ScorchMark[]): void {
+export function renderScorchMarks(
+  ctx: CanvasRenderingContext2D,
+  scorches: ScorchMark[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
   for (const s of scorches) {
+    if (s.x + s.radius * 1.4 < viewMinX || s.x - s.radius * 1.4 > viewMaxX) continue;
     const lifeFrac = Math.max(0, s.life / s.maxLife);
     const alpha = Math.min(1, lifeFrac * 2.4);
     const rx = Math.max(15, s.radius * 1.02);
@@ -449,8 +466,14 @@ export function renderScorchMarks(ctx: CanvasRenderingContext2D, scorches: Scorc
 }
 
 /** Weapon-distinct anime/cartoon glossy crescent slashes, twin ribbons, seismic smashes & Mach spear thrusts */
-export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffect[]): void {
+export function renderSlashes(
+  ctx: CanvasRenderingContext2D,
+  slashes: SlashEffect[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
   for (const sl of slashes) {
+    if (sl.x + sl.radius * 2 < viewMinX || sl.x - sl.radius * 2 > viewMaxX) continue;
     const frac = Math.max(0, sl.life / sl.maxLife);
     const prog = 1 - frac;
 
@@ -638,19 +661,27 @@ export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffec
   }
 }
 
-/** Bold-ink cel-shaded cartoon projectiles with dual-layer tapered glowing motion trails */
-export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: ProjectileEntity[]): void {
+/** Bold-ink cel-shaded cartoon projectiles with dual-layer tapered glowing motion trails (zero gradient alloc!) */
+export function renderProjectiles(
+  ctx: CanvasRenderingContext2D,
+  projectiles: ProjectileEntity[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
   for (const p of projectiles) {
+    if (p.x + 60 < viewMinX || p.x - 60 > viewMaxX) continue;
     const angle = Math.atan2(p.vy, p.vx);
     const pal = getTeamPalette(p.team);
 
     ctx.save();
-    // Dual-layer sleek tapered motion trail (outer color aura + bright inner streak)
+    // Dual-layer sleek tapered motion trail (zero per-projectile createLinearGradient!)
     const speed = Math.hypot(p.vx, p.vy);
     if (speed > 40) {
       const tailLen = Math.min(44, speed * 0.062);
       const tx = p.x - (p.vx / speed) * tailLen;
       const ty = p.y - (p.vy / speed) * tailLen;
+      const mx = (tx + p.x) * 0.5;
+      const my = (ty + p.y) * 0.5;
       const trailCol =
         p.style === 'quantum_orb'
           ? 'rgba(45, 212, 191, 0.72)'
@@ -667,14 +698,19 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
                     : 'rgba(226, 232, 240, 0.42)';
       const outerW = p.style === 'boulder' || p.style === 'cannonball' ? 7.5 : p.style === 'plasma' || p.style === 'quantum_orb' ? 6.5 : 4.2;
 
-      const grad = ctx.createLinearGradient(tx, ty, p.x, p.y);
-      grad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-      grad.addColorStop(1, trailCol);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = outerW;
       ctx.lineCap = 'round';
+      ctx.strokeStyle = trailCol;
+      ctx.globalAlpha = 0.4;
+      ctx.lineWidth = outerW * 0.68;
       ctx.beginPath();
       ctx.moveTo(tx, ty);
+      ctx.lineTo(mx, my);
+      ctx.stroke();
+
+      ctx.globalAlpha = 0.92;
+      ctx.lineWidth = outerW;
+      ctx.beginPath();
+      ctx.moveTo(mx, my);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
 
@@ -689,16 +725,15 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
         p.style === 'rocket' ||
         p.style === 'fire_arrow'
       ) {
-        const innerGrad = ctx.createLinearGradient((tx + p.x) * 0.5, (ty + p.y) * 0.5, p.x, p.y);
-        innerGrad.addColorStop(0, 'rgba(255, 255, 255, 0)');
-        innerGrad.addColorStop(1, 'rgba(255, 255, 255, 0.85)');
-        ctx.strokeStyle = innerGrad;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+        ctx.globalAlpha = 0.9;
         ctx.lineWidth = Math.max(1.5, outerW * 0.36);
         ctx.beginPath();
-        ctx.moveTo((tx + p.x) * 0.5, (ty + p.y) * 0.5);
+        ctx.moveTo((mx + p.x) * 0.5, (my + p.y) * 0.5);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
       }
+      ctx.globalAlpha = 1;
     }
 
     ctx.translate(p.x, p.y);
@@ -880,8 +915,14 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
 }
 
 /** High-craft forked lightning, Tesla arcs, Solar Wrath, Orbital Laser, Black Hole Vortex, Flames & Mach Railgun beams */
-export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]): void {
+export function renderBeams(
+  ctx: CanvasRenderingContext2D,
+  beams: BeamEffect[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
   for (const b of beams) {
+    if (Math.max(b.x1, b.x2) + 120 < viewMinX || Math.min(b.x1, b.x2) - 120 > viewMaxX) continue;
     const ratio = Math.max(0, b.life / b.maxLife);
     const prog = 1 - ratio;
     ctx.save();
@@ -961,60 +1002,30 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
       const w = Math.max(12, b.width * (0.54 + ratio * 0.8) * pulse);
       const h = b.y2 - b.y1;
 
-      // Outer radiant atmospheric beam wash
-      const outerGrad = ctx.createLinearGradient(b.x1 - w * 2.1, 0, b.x1 + w * 2.1, 0);
-      outerGrad.addColorStop(0, 'rgba(255,255,255,0)');
-      outerGrad.addColorStop(
-        0.22,
-        isChronoNova
-          ? `rgba(45,212,191,${(ratio * 0.42).toFixed(2)})`
-          : isSolar
-            ? `rgba(245,158,11,${(ratio * 0.42).toFixed(2)})`
-            : `rgba(6,182,212,${(ratio * 0.42).toFixed(2)})`,
-      );
-      outerGrad.addColorStop(
-        0.5,
-        isChronoNova
-          ? `rgba(254,240,138,${(ratio * 0.55).toFixed(2)})`
-          : isSolar
-            ? `rgba(254,240,138,${(ratio * 0.52).toFixed(2)})`
-            : `rgba(186,230,253,${(ratio * 0.52).toFixed(2)})`,
-      );
-      outerGrad.addColorStop(
-        0.78,
-        isChronoNova
-          ? `rgba(250,204,21,${(ratio * 0.42).toFixed(2)})`
-          : isSolar
-            ? `rgba(245,158,11,${(ratio * 0.42).toFixed(2)})`
-            : `rgba(6,182,212,${(ratio * 0.42).toFixed(2)})`,
-      );
-      outerGrad.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = outerGrad;
-      ctx.fillRect(b.x1 - w * 2.1, b.y1, w * 4.2, h);
+      // Zero-allocation layered cel energy column (outer wash -> vibrant core -> incandescent center)
+      ctx.fillStyle = isChronoNova
+        ? `rgba(45, 212, 191, ${(ratio * 0.26).toFixed(2)})`
+        : isSolar
+          ? `rgba(245, 158, 11, ${(ratio * 0.26).toFixed(2)})`
+          : `rgba(6, 182, 212, ${(ratio * 0.26).toFixed(2)})`;
+      ctx.fillRect(b.x1 - w * 1.95, b.y1, w * 3.9, h);
 
-      // Blinding solid energy column
-      const grad = ctx.createLinearGradient(b.x1 - w * 1.15, 0, b.x1 + w * 1.15, 0);
-      grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(
-        0.24,
-        isChronoNova
-          ? `rgba(45,212,191,${(ratio * 0.92).toFixed(2)})`
-          : isSolar
-            ? `rgba(245,158,11,${(ratio * 0.88).toFixed(2)})`
-            : `rgba(6,182,212,${(ratio * 0.88).toFixed(2)})`,
-      );
-      grad.addColorStop(0.5, `rgba(255,255,255,${Math.min(1, ratio * 1.25).toFixed(2)})`);
-      grad.addColorStop(
-        0.76,
-        isChronoNova
-          ? `rgba(250,204,21,${(ratio * 0.88).toFixed(2)})`
-          : isSolar
-            ? `rgba(245,158,11,${(ratio * 0.88).toFixed(2)})`
-            : `rgba(6,182,212,${(ratio * 0.88).toFixed(2)})`,
-      );
-      grad.addColorStop(1, 'rgba(255,255,255,0)');
-      ctx.fillStyle = grad;
+      ctx.fillStyle = isChronoNova
+        ? `rgba(45, 212, 191, ${(ratio * 0.52).toFixed(2)})`
+        : isSolar
+          ? `rgba(251, 191, 36, ${(ratio * 0.52).toFixed(2)})`
+          : `rgba(56, 189, 248, ${(ratio * 0.52).toFixed(2)})`;
       ctx.fillRect(b.x1 - w * 1.15, b.y1, w * 2.3, h);
+
+      ctx.fillStyle = isChronoNova
+        ? `rgba(254, 240, 138, ${(ratio * 0.84).toFixed(2)})`
+        : isSolar
+          ? `rgba(254, 240, 138, ${(ratio * 0.82).toFixed(2)})`
+          : `rgba(186, 230, 253, ${(ratio * 0.82).toFixed(2)})`;
+      ctx.fillRect(b.x1 - w * 0.68, b.y1, w * 1.36, h);
+
+      ctx.fillStyle = `rgba(255, 255, 255, ${Math.min(1, ratio * 1.2).toFixed(2)})`;
+      ctx.fillRect(b.x1 - w * 0.3, b.y1, w * 0.6, h);
 
       // Spiraling plasma / time-helix ribbons coiling down the beam column!
       const helixCount = isChronoNova ? 2 : 1;
@@ -1104,34 +1115,39 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
     } else if (b.style === 'black_hole_vortex') {
       const r = Math.max(22, b.width * (0.58 + Math.sin(ratio * Math.PI) * 0.58));
       const spin = prog * 10 + b.seed;
+      const jetBot = Math.min(GROUND_Y, b.y1 + r * 1.25);
 
-      // Relativistic vertical polar astrophysical jets blasting from singularity poles!
-      const jetGrad = ctx.createLinearGradient(b.x1, b.y1 - r * 2.6, b.x1, b.y1 + r * 1.4);
-      jetGrad.addColorStop(0, 'rgba(192, 132, 252, 0)');
-      jetGrad.addColorStop(0.35, `rgba(232, 121, 249, ${(ratio * 0.65).toFixed(2)})`);
-      jetGrad.addColorStop(0.55, `rgba(255, 255, 255, ${(ratio * 0.9).toFixed(2)})`);
-      jetGrad.addColorStop(0.85, `rgba(168, 85, 247, ${(ratio * 0.55).toFixed(2)})`);
-      jetGrad.addColorStop(1, 'rgba(168, 85, 247, 0)');
-      ctx.fillStyle = jetGrad;
+      // Relativistic vertical polar astrophysical jets blasting from singularity poles (zero gradient alloc!)
+      ctx.fillStyle = `rgba(192, 132, 252, ${(ratio * 0.42).toFixed(2)})`;
       ctx.beginPath();
-      ctx.moveTo(b.x1 - 3, b.y1);
-      ctx.lineTo(b.x1 - 12 * ratio, b.y1 - r * 2.5);
-      ctx.lineTo(b.x1 + 12 * ratio, b.y1 - r * 2.5);
-      ctx.lineTo(b.x1 + 3, b.y1);
-      ctx.lineTo(b.x1 + 10 * ratio, Math.min(GROUND_Y, b.y1 + r * 1.25));
-      ctx.lineTo(b.x1 - 10 * ratio, Math.min(GROUND_Y, b.y1 + r * 1.25));
+      ctx.moveTo(b.x1 - 4, b.y1);
+      ctx.lineTo(b.x1 - 12 * ratio, b.y1 - r * 2.45);
+      ctx.lineTo(b.x1 + 12 * ratio, b.y1 - r * 2.45);
+      ctx.lineTo(b.x1 + 4, b.y1);
+      ctx.lineTo(b.x1 + 10 * ratio, jetBot);
+      ctx.lineTo(b.x1 - 10 * ratio, jetBot);
       ctx.closePath();
       ctx.fill();
 
-      // Gravitational lensing outer halo
-      const g = ctx.createRadialGradient(b.x1, b.y1, r * 0.35, b.x1, b.y1, r * 1.85);
-      g.addColorStop(0, '#05020d');
-      g.addColorStop(0.42, `rgba(168, 85, 247, ${(ratio * 0.9).toFixed(2)})`);
-      g.addColorStop(0.74, `rgba(126, 34, 206, ${(ratio * 0.42).toFixed(2)})`);
-      g.addColorStop(1, 'rgba(126, 34, 206, 0)');
-      ctx.fillStyle = g;
+      ctx.fillStyle = `rgba(255, 255, 255, ${(ratio * 0.78).toFixed(2)})`;
       ctx.beginPath();
-      ctx.arc(b.x1, b.y1, r * 1.85, 0, Math.PI * 2);
+      ctx.moveTo(b.x1 - 2, b.y1);
+      ctx.lineTo(b.x1 - 4.5 * ratio, b.y1 - r * 1.9);
+      ctx.lineTo(b.x1 + 4.5 * ratio, b.y1 - r * 1.9);
+      ctx.lineTo(b.x1 + 2, b.y1);
+      ctx.lineTo(b.x1 + 4 * ratio, jetBot);
+      ctx.lineTo(b.x1 - 4 * ratio, jetBot);
+      ctx.closePath();
+      ctx.fill();
+
+      // Gravitational lensing outer halo (layered translucent rings — zero gradient alloc!)
+      ctx.fillStyle = `rgba(126, 34, 206, ${(ratio * 0.24).toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(b.x1, b.y1, r * 1.82, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = `rgba(168, 85, 247, ${(ratio * 0.52).toFixed(2)})`;
+      ctx.beginPath();
+      ctx.arc(b.x1, b.y1, r * 1.18, 0, Math.PI * 2);
       ctx.fill();
 
       ctx.save();
@@ -1506,21 +1522,24 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
         drawEnergyOrb(ctx, 14, 0, 6.8, '#ef4444', '#fef9c3');
         ctx.restore();
       } else if (ord.kind === 'fire_arrows') {
-        // Blazing siege fire-arrow with flaming streak ribbon
+        // Blazing siege fire-arrow with flaming streak ribbon (zero gradient alloc!)
         if (ord.trail.length > 1) {
-          ctx.save();
-          ctx.lineCap = 'round';
           const p0 = ord.trail[0];
-          const g = ctx.createLinearGradient(p0.x, p0.y, ord.x, ord.y);
-          g.addColorStop(0, 'rgba(249, 115, 22, 0)');
-          g.addColorStop(1, 'rgba(251, 146, 60, 0.82)');
-          ctx.strokeStyle = g;
-          ctx.lineWidth = 4.6;
+          const mx = (p0.x + ord.x) * 0.5;
+          const my = (p0.y + ord.y) * 0.5;
+          ctx.lineCap = 'round';
+          ctx.strokeStyle = 'rgba(249, 115, 22, 0.34)';
+          ctx.lineWidth = 3.2;
           ctx.beginPath();
           ctx.moveTo(p0.x, p0.y);
+          ctx.lineTo(mx, my);
+          ctx.stroke();
+          ctx.strokeStyle = 'rgba(251, 146, 60, 0.82)';
+          ctx.lineWidth = 4.6;
+          ctx.beginPath();
+          ctx.moveTo(mx, my);
           ctx.lineTo(ord.x, ord.y);
           ctx.stroke();
-          ctx.restore();
         }
         ctx.save();
         ctx.translate(ord.x, ord.y);
@@ -1546,13 +1565,11 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
         // Rotating dual-ring red laser-designator reticle + vertical laser acquisition beam!
         const pulse = 0.72 + Math.sin(t * 20 + ord.targetX) * 0.28;
         ctx.save();
-        // Vertical translucent laser designator beam
-        const lockGrad = ctx.createLinearGradient(ord.targetX, 0, ord.targetX, GROUND_Y);
-        lockGrad.addColorStop(0, 'rgba(244, 63, 94, 0)');
-        lockGrad.addColorStop(0.6, `rgba(244, 63, 94, ${(0.18 * pulse).toFixed(2)})`);
-        lockGrad.addColorStop(1, `rgba(251, 113, 133, ${(0.45 * pulse).toFixed(2)})`);
-        ctx.fillStyle = lockGrad;
-        ctx.fillRect(ord.targetX - 3, 0, 6, GROUND_Y);
+        // Vertical translucent laser designator beam (zero gradient alloc!)
+        ctx.fillStyle = `rgba(244, 63, 94, ${(0.16 * pulse).toFixed(2)})`;
+        ctx.fillRect(ord.targetX - 3, 20, 6, GROUND_Y - 20);
+        ctx.fillStyle = `rgba(251, 113, 133, ${(0.34 * pulse).toFixed(2)})`;
+        ctx.fillRect(ord.targetX - 1.5, GROUND_Y * 0.48, 3, GROUND_Y * 0.52);
 
         // Ground elliptical lock-on reticle
         ctx.strokeStyle = `rgba(244, 63, 94, ${(0.88 * pulse).toFixed(2)})`;
@@ -1698,13 +1715,24 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
 }
 
 /** High-craft cartoon explosions, 12-point hit starbursts, perspective ground shockwaves, muzzle flashes & impact crosses */
-export function renderParticles(ctx: CanvasRenderingContext2D, particles: ParticleEntity[]): void {
+export function renderParticles(
+  ctx: CanvasRenderingContext2D,
+  particles: ParticleEntity[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
+  if (particles.length === 0) return;
+  ctx.save();
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
   for (const p of particles) {
+    const pad = Math.max(40, p.size * 2.6);
+    if (p.x + pad < viewMinX || p.x - pad > viewMaxX) continue;
     const frac = Math.max(0, p.life / p.maxLife);
     const prog = 1 - frac;
-
-    ctx.save();
-    ctx.globalAlpha = Math.min(1, frac * 1.45) * p.alpha;
+    const baseAlpha = Math.min(1, frac * 1.45) * p.alpha;
+    ctx.globalAlpha = baseAlpha;
 
     if (p.shape === 'ground_shockwave') {
       // Crisp 3D perspective elliptical ground shockwave + radial ground speed-lines!
@@ -1712,16 +1740,15 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       const ry = Math.max(3.5, rx * 0.25);
 
       // Soft outer colored glow ring
-      ctx.save();
-      ctx.globalAlpha *= 0.45;
+      ctx.globalAlpha = baseAlpha * 0.45;
       ctx.strokeStyle = p.color;
       ctx.lineWidth = Math.max(3.5, 9 * frac);
       ctx.beginPath();
       ctx.ellipse(p.x, p.y, rx, ry, 0, 0, Math.PI * 2);
       ctx.stroke();
-      ctx.restore();
 
       // Crisp main colored ring
+      ctx.globalAlpha = baseAlpha;
       ctx.strokeStyle = p.color;
       ctx.lineWidth = Math.max(1.8, 4.4 * frac);
       ctx.beginPath();
@@ -1751,6 +1778,7 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
     } else if (p.shape === 'muzzle_flash') {
       // Directional 3-prong cel-shaded weapon muzzle blast cone!
       const sz = Math.max(6, p.size * (0.65 + frac * 0.65));
+      ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation ?? 0);
 
@@ -1780,10 +1808,12 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       ctx.beginPath();
       ctx.arc(sz * 0.12, 0, sz * 0.24, 0, Math.PI * 2);
       ctx.fill();
+      ctx.restore();
     } else if (p.shape === 'impact_cross') {
       // Razor-sharp anime X-hit impact flare with elongated diamond rays!
       const len = Math.max(10, p.size * (0.7 + prog * 0.65));
       const thick = Math.max(1.8, p.size * 0.18 * frac);
+      ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation ?? 0.35);
 
@@ -1804,10 +1834,12 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       // Blinding white razor inner cross
       drawDiamondRay(len * 0.92, thick * 0.72, '#ffffff');
       drawDiamondRay(thick * 0.68, len * 0.68, '#ffffff');
+      ctx.restore();
     } else if (p.shape === 'flash_star') {
       // Dynamic 12-point uneven anime hit-starburst + crisp ink outline + radial needles!
       const rOuter = Math.max(9, p.size * (0.48 + frac * 0.98));
       const rInner = rOuter * 0.32;
+      ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation ?? 0);
       ctx.beginPath();
@@ -1843,10 +1875,11 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
           ctx.stroke();
         }
       }
+      ctx.restore();
     } else if (p.shape === 'fireball') {
       // Rich 3-lobe clustered cel-shaded cartoon explosion cloud (keeps fighters clearly readable!)
       const r = Math.max(9, p.size * (0.52 + prog * 0.68));
-      ctx.globalAlpha *= frac > 0.32 ? 0.86 : Math.max(0.16, frac * 1.7);
+      ctx.globalAlpha = baseAlpha * (frac > 0.32 ? 0.86 : Math.max(0.16, frac * 1.7));
       const outerCol = frac > 0.24 ? p.color : '#ea580c';
       const inkCol = 'rgba(124, 45, 18, 0.74)';
 
@@ -1879,7 +1912,7 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
     } else if (p.shape === 'dust_wave') {
       const rx = Math.max(9, p.size * (0.95 + prog * 1.28));
       const ry = Math.max(4, p.size * 0.36 * frac + 2);
-      ctx.globalAlpha *= 0.68;
+      ctx.globalAlpha = baseAlpha * 0.68;
       drawCelEllipse(ctx, p.x, p.y - ry * 0.5, rx, ry, p.color, { lineWidth: 1.3, ink: 'rgba(20,24,36,0.34)' });
       ctx.strokeStyle = 'rgba(255, 255, 255, 0.42)';
       ctx.lineWidth = 1.7;
@@ -1901,7 +1934,7 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       }
     } else if (p.shape === 'smoke') {
       const r = Math.max(4.5, p.size * (1.08 - frac * 0.25));
-      ctx.globalAlpha *= 0.44;
+      ctx.globalAlpha = baseAlpha * 0.44;
       ctx.fillStyle = p.color;
       ctx.beginPath();
       ctx.arc(p.x, p.y, r, 0, Math.PI * 2);
@@ -1911,6 +1944,7 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       ctx.arc(p.x - r * 0.25, p.y - r * 0.25, r * 0.45, 0, Math.PI * 2);
       ctx.fill();
     } else if (p.shape === 'debris') {
+      ctx.save();
       ctx.translate(p.x, p.y);
       ctx.rotate(p.rotation ?? prog * 6);
       const sz = Math.max(4, p.size * 1.38);
@@ -1918,12 +1952,12 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
         highlight: 'rgba(255,255,255,0.38)',
         lineWidth: 1.5,
       });
+      ctx.restore();
     } else if (p.shape === 'spark') {
       const tx = p.x - p.vx * 0.048;
       const ty = p.y - p.vy * 0.048;
       ctx.strokeStyle = p.color;
       ctx.lineWidth = Math.max(2.3, p.size * frac + 2.0);
-      ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(tx, ty);
       ctx.lineTo(p.x, p.y);
@@ -1944,19 +1978,27 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
       ctx.arc(p.x, p.y, Math.max(2, p.size * (0.5 + frac * 0.5)), 0, Math.PI * 2);
       ctx.fill();
     }
-
-    ctx.restore();
   }
+
+  ctx.restore();
 }
 
 /** Crisp comic spring-pop damage numbers with bold dark outline, sparkling crit stars, and gleaming gold coins */
-export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[]): void {
+export function renderPopups(
+  ctx: CanvasRenderingContext2D,
+  popups: DamagePopup[],
+  viewMinX = -Infinity,
+  viewMaxX = Infinity,
+): void {
+  if (popups.length === 0) return;
   ctx.save();
   ctx.textAlign = 'center';
   ctx.textBaseline = 'middle';
   ctx.lineJoin = 'round';
+  let lastFontSize = -1;
 
   for (const pop of popups) {
+    if (pop.x + 80 < viewMinX || pop.x - 80 > viewMaxX) continue;
     const frac = Math.max(0, pop.life / pop.maxLife);
     const age = pop.maxLife - pop.life;
     const isCrit = pop.kind === 'crit' || pop.text.endsWith('!');
@@ -1974,7 +2016,10 @@ export function renderPopups(ctx: CanvasRenderingContext2D, popups: DamagePopup[
 
     const fontSize = Math.round(14.5 * pop.scale * popMult);
     ctx.globalAlpha = Math.min(1, frac * 1.75);
-    ctx.font = `900 ${fontSize}px 'Pretendard', system-ui, -apple-system, sans-serif`;
+    if (fontSize !== lastFontSize) {
+      lastFontSize = fontSize;
+      ctx.font = `900 ${fontSize}px 'Pretendard', system-ui, -apple-system, sans-serif`;
+    }
 
     if (isCrit && frac > 0.25) {
       ctx.lineWidth = 7.5;
@@ -2042,13 +2087,11 @@ export function renderSupplyCrates(
     const pulse = 0.65 + Math.sin(time * 5.2 + c.uid) * 0.25;
 
     ctx.save();
-    // Glowing golden sky beacon guiding both armies to midfield!
-    const beaconGrad = ctx.createLinearGradient(c.x, GROUND_Y, c.x, 40);
-    beaconGrad.addColorStop(0, `rgba(250, 204, 21, ${(pulse * 0.34).toFixed(2)})`);
-    beaconGrad.addColorStop(0.65, `rgba(254, 240, 138, ${(pulse * 0.12).toFixed(2)})`);
-    beaconGrad.addColorStop(1, 'rgba(254, 240, 138, 0)');
-    ctx.fillStyle = beaconGrad;
+    // Glowing golden sky beacon guiding both armies to midfield (zero gradient alloc!)
+    ctx.fillStyle = `rgba(254, 240, 138, ${(pulse * 0.14).toFixed(2)})`;
     ctx.fillRect(c.x - 16, 40, 32, GROUND_Y - 40);
+    ctx.fillStyle = `rgba(250, 204, 21, ${(pulse * 0.22).toFixed(2)})`;
+    ctx.fillRect(c.x - 8, GROUND_Y * 0.36, 16, GROUND_Y * 0.64);
 
     // Ground contact shadow
     ctx.fillStyle = 'rgba(10, 14, 24, 0.36)';

@@ -22,6 +22,21 @@ import { bindButtonTap } from './tap';
 
 export type DockTab = 'units' | 'turrets' | 'upgrades';
 
+const FEVER_KILLS_TARGET = 10;
+
+interface CachedCardRef {
+  btn: HTMLButtonElement;
+  kind: 'unit' | 'upgrade' | 'expand_slot' | 'turret' | 'sell_turret';
+  unitId?: UnitVisualKind;
+  turretId?: TurretVisualKind;
+  upgradeId?: UpgradeId;
+  costEl: HTMLElement | null;
+  queueBadgeEl: HTMLElement | null;
+  levelBadgeEl: HTMLElement | null;
+  slotCostEl: HTMLElement | null;
+  refundEl: HTMLElement | null;
+}
+
 function setTextIfChanged(el: Element, text: string): void {
   if (el.textContent !== text) {
     el.textContent = text;
@@ -54,6 +69,7 @@ export class HudController {
   private timerEl = document.getElementById('hud-timer')!;
   private minimapCanvas = document.getElementById('minimap-canvas') as HTMLCanvasElement;
   private minimapShell = document.getElementById('minimap-shell')!;
+  private feverBarEl = document.getElementById('hud-fever-bar');
 
   private speedBtn = document.getElementById('btn-speed') as HTMLButtonElement;
   private speedLabelEl = document.getElementById('speed-label')!;
@@ -91,14 +107,44 @@ export class HudController {
   private renderedEra = -1;
   private renderedTab: DockTab | null = null;
   private renderedUpgradeCategory: UpgradeCategory | null = null;
+  private cachedCards: CachedCardRef[] = [];
+  private queueProgressEl: HTMLElement | null = null;
   private lastQueueSignature = '';
   private suppressUpgradeClickUntil = 0;
+
+  // Dirty-check caches (prevents redundant 60Hz DOM/layout writes & toLocaleString allocs on iOS WebKit!)
+  private lastGold = -1;
+  private lastXp = -1;
+  private lastXpEra = -1;
+  private lastEraIndex = -1;
+  private lastPlayerHp = -1;
+  private lastEnemyHp = -1;
+  private lastPlayerPct = '';
+  private lastEnemyPct = '';
+  private lastEvolvePct = '';
+  private lastUltPct = '';
+  private lastFeverPct = '';
+  private lastFeverActive: boolean | null = null;
+  private lastQueuePct = '';
+  private lastSpeed = -1;
+  private lastInstalledTurrets = -1;
+  private lastTurretSlots = -1;
+  private lastUpgradeTotal = -1;
+
+  // Minimap throttle state (~20Hz idle, instantaneous on camera drag/era change)
+  private hudFrameTick = 0;
+  private lastMinimapCamX = -9999;
+  private lastMinimapEra = -1;
+  private lastMinimapUltCount = -1;
+
+  private pulseTimers = new WeakMap<Element, number>();
 
   private engine: GameEngine;
   private camera: BattleCamera;
   private onToggleMute: () => boolean;
   private onTogglePause: () => void;
   private onUnlockAudio: () => void;
+  private onUiTap?: () => void;
 
   constructor(params: {
     engine: GameEngine;
@@ -106,14 +152,33 @@ export class HudController {
     onToggleMute: () => boolean;
     onTogglePause: () => void;
     onUnlockAudio: () => void;
+    onUiTap?: () => void;
   }) {
     this.engine = params.engine;
     this.camera = params.camera;
     this.onToggleMute = params.onToggleMute;
     this.onTogglePause = params.onTogglePause;
     this.onUnlockAudio = params.onUnlockAudio;
+    this.onUiTap = params.onUiTap;
 
     this.bindEvents();
+  }
+
+  private pulseClass(el: Element | null, className: string, durationMs = 260): void {
+    if (!el) return;
+    const prev = this.pulseTimers.get(el);
+    if (prev !== undefined) {
+      window.clearTimeout(prev);
+    }
+    el.classList.remove(className);
+    requestAnimationFrame(() => {
+      el.classList.add(className);
+    });
+    const timer = window.setTimeout(() => {
+      el.classList.remove(className);
+      this.pulseTimers.delete(el);
+    }, durationMs);
+    this.pulseTimers.set(el, timer);
   }
 
   public setVisible(visible: boolean): void {
@@ -122,6 +187,8 @@ export class HudController {
     if (!visible) {
       this.queueBar.classList.add('hidden');
       this.sellHighlightMode = false;
+      this.topHud.classList.remove('fever-mode');
+      this.minimapShell.classList.remove('fever-mode');
     }
   }
 
@@ -137,13 +204,17 @@ export class HudController {
     this.bannerTitle.style.color = accentColor;
     this.bannerSub.textContent = subtitle;
     this.bannerEl.style.borderColor = accentColor;
-    this.bannerEl.classList.remove('hidden');
+    this.bannerEl.classList.remove('hidden', 'banner-enter');
+    requestAnimationFrame(() => {
+      this.bannerEl.classList.add('banner-enter');
+    });
 
     if (this.bannerTimer !== null) {
       window.clearTimeout(this.bannerTimer);
     }
     this.bannerTimer = window.setTimeout(() => {
       this.bannerEl.classList.add('hidden');
+      this.bannerEl.classList.remove('banner-enter');
       this.bannerTimer = null;
     }, 2800);
   }
@@ -152,44 +223,133 @@ export class HudController {
     this.renderedEra = -1;
     this.renderedTab = null;
     this.renderedUpgradeCategory = null;
+    this.cachedCards = [];
+    this.queueProgressEl = null;
     this.lastQueueSignature = '';
+    this.lastGold = -1;
+    this.lastXp = -1;
+    this.lastXpEra = -1;
+    this.lastEraIndex = -1;
+    this.lastPlayerHp = -1;
+    this.lastEnemyHp = -1;
+    this.lastPlayerPct = '';
+    this.lastEnemyPct = '';
+    this.lastEvolvePct = '';
+    this.lastUltPct = '';
+    this.lastFeverPct = '';
+    this.lastFeverActive = null;
+    this.lastQueuePct = '';
+    this.lastSpeed = -1;
+    this.lastInstalledTurrets = -1;
+    this.lastTurretSlots = -1;
+    this.lastUpgradeTotal = -1;
+    this.lastMinimapEra = -1;
   }
 
   public update(snapshot: GameSnapshot): void {
     const p = snapshot.player;
     const e = snapshot.enemy;
     const era = getEra(p.eraIndex);
+    this.hudFrameTick++;
 
-    // Top stats (use setTextIfChanged to prevent 60Hz DOM text-node churn on iOS WebKit)
-    setTextIfChanged(this.goldEl, Math.floor(p.gold).toLocaleString());
-    setTextIfChanged(
-      this.xpEl,
-      era.evolveXp > 0
-        ? `${Math.floor(p.xp).toLocaleString()}/${era.evolveXp.toLocaleString()}`
-        : `${Math.floor(p.xp).toLocaleString()} XP`,
-    );
-    setTextIfChanged(this.eraBadgeEl, `${era.roman} ${era.shortName}`);
-
-    setTextIfChanged(this.playerHpEl, Math.ceil(p.baseHp).toLocaleString());
-    setTextIfChanged(this.enemyHpEl, Math.ceil(e.baseHp).toLocaleString());
-    this.playerHpBar.style.width = `${Math.max(0, Math.min(100, (p.baseHp / p.baseMaxHp) * 100)).toFixed(1)}%`;
-    this.enemyHpBar.style.width = `${Math.max(0, Math.min(100, (e.baseHp / e.baseMaxHp) * 100)).toFixed(1)}%`;
-    if (p.feverTimer > 0) {
-      setTextIfChanged(this.timerEl, `FEVER ${Math.ceil(p.feverTimer)}s`);
-      this.timerEl.classList.add('fever-active');
-    } else {
-      setTextIfChanged(this.timerEl, formatDuration(snapshot.elapsed));
-      this.timerEl.classList.remove('fever-active');
+    // Top stats (dirty-checked integers prevent 60Hz toLocaleString() & text-node churn!)
+    const goldInt = Math.floor(p.gold);
+    if (goldInt !== this.lastGold) {
+      this.lastGold = goldInt;
+      setTextIfChanged(this.goldEl, goldInt.toLocaleString());
     }
 
-    // Speed visual (only touch label span when speed actually changes!)
-    setTextIfChanged(this.speedLabelEl, `${snapshot.speed}x`);
-    this.speedBtn.classList.toggle('active', snapshot.speed === 2);
+    const xpInt = Math.floor(p.xp);
+    if (xpInt !== this.lastXp || p.eraIndex !== this.lastXpEra) {
+      this.lastXp = xpInt;
+      this.lastXpEra = p.eraIndex;
+      setTextIfChanged(
+        this.xpEl,
+        era.evolveXp > 0
+          ? `${xpInt.toLocaleString()}/${era.evolveXp.toLocaleString()}`
+          : `${xpInt.toLocaleString()} XP`,
+      );
+    }
 
-    // Turret slot count badge & total upgrade level badge (across all 20 upgrades!)
-    const installedCount = p.turrets.filter((t) => t !== null).length;
-    setTextIfChanged(this.turretSlotCountEl, `${installedCount}/${p.turretSlots}`);
-    setTextIfChanged(this.upgradeLevelTotalEl, `Lv${getTotalUpgradeLevel(p.upgrades)}`);
+    if (p.eraIndex !== this.lastEraIndex) {
+      const evolved = this.lastEraIndex >= 0 && p.eraIndex > this.lastEraIndex;
+      this.lastEraIndex = p.eraIndex;
+      setTextIfChanged(this.eraBadgeEl, `${era.roman} ${era.shortName}`);
+      if (evolved) {
+        this.pulseClass(this.eraBadgeEl, 'era-pop', 680);
+        this.pulseClass(this.topHud, 'era-flash', 520);
+      }
+    }
+
+    const pHpInt = Math.ceil(p.baseHp);
+    if (pHpInt !== this.lastPlayerHp) {
+      this.lastPlayerHp = pHpInt;
+      setTextIfChanged(this.playerHpEl, pHpInt.toLocaleString());
+    }
+    const eHpInt = Math.ceil(e.baseHp);
+    if (eHpInt !== this.lastEnemyHp) {
+      this.lastEnemyHp = eHpInt;
+      setTextIfChanged(this.enemyHpEl, eHpInt.toLocaleString());
+    }
+
+    const pPct = `${Math.max(0, Math.min(100, (p.baseHp / p.baseMaxHp) * 100)).toFixed(1)}%`;
+    if (pPct !== this.lastPlayerPct) {
+      this.lastPlayerPct = pPct;
+      this.playerHpBar.style.width = pPct;
+    }
+    const ePct = `${Math.max(0, Math.min(100, (e.baseHp / e.baseMaxHp) * 100)).toFixed(1)}%`;
+    if (ePct !== this.lastEnemyPct) {
+      this.lastEnemyPct = ePct;
+      this.enemyHpBar.style.width = ePct;
+    }
+
+    // Chrono Fever live gauge & active golden HUD state
+    const feverActive = p.feverTimer > 0;
+    if (feverActive !== this.lastFeverActive) {
+      this.lastFeverActive = feverActive;
+      this.timerEl.classList.toggle('fever-active', feverActive);
+      this.topHud.classList.toggle('fever-mode', feverActive);
+      this.minimapShell.classList.toggle('fever-mode', feverActive);
+      this.feverBarEl?.classList.toggle('fever-active', feverActive);
+    }
+    if (feverActive) {
+      setTextIfChanged(this.timerEl, `FEVER ${Math.ceil(p.feverTimer)}s`);
+    } else {
+      setTextIfChanged(this.timerEl, formatDuration(snapshot.elapsed));
+    }
+    if (this.feverBarEl) {
+      const feverFrac = feverActive
+        ? Math.max(0, Math.min(1, p.feverTimer / Math.max(1, p.feverDuration)))
+        : Math.max(0, Math.min(1, p.feverKills / FEVER_KILLS_TARGET));
+      const feverPct = `${(feverFrac * 100).toFixed(1)}%`;
+      if (feverPct !== this.lastFeverPct) {
+        this.lastFeverPct = feverPct;
+        this.feverBarEl.style.width = feverPct;
+      }
+    }
+
+    // Speed visual
+    if (snapshot.speed !== this.lastSpeed) {
+      this.lastSpeed = snapshot.speed;
+      setTextIfChanged(this.speedLabelEl, `${snapshot.speed}x`);
+      this.speedBtn.classList.toggle('active', snapshot.speed === 2);
+    }
+
+    // Turret slot count badge & total upgrade level badge (across all 24 upgrades!)
+    let installedCount = 0;
+    for (let i = 0; i < p.turrets.length; i++) {
+      if (p.turrets[i] !== null) installedCount++;
+    }
+    if (installedCount !== this.lastInstalledTurrets || p.turretSlots !== this.lastTurretSlots) {
+      this.lastInstalledTurrets = installedCount;
+      this.lastTurretSlots = p.turretSlots;
+      setTextIfChanged(this.turretSlotCountEl, `${installedCount}/${p.turretSlots}`);
+    }
+    const upgradeTotal = getTotalUpgradeLevel(p.upgrades);
+    if (upgradeTotal !== this.lastUpgradeTotal) {
+      this.lastUpgradeTotal = upgradeTotal;
+      setTextIfChanged(this.upgradeLevelTotalEl, `Lv${upgradeTotal}`);
+    }
 
     // Rebuild bottom action cards only when era, active tab, or upgrade page changes
     if (
@@ -203,7 +363,7 @@ export class HudController {
       this.renderedUpgradeCategory = this.upgradeCategory;
     }
 
-    // Update affordability & badges on cards
+    // Update affordability & badges on cached card DOM references (zero querySelector!)
     this.updateActionCardStates(snapshot);
 
     // Update production queue floating bar
@@ -217,26 +377,33 @@ export class HudController {
       setTextIfChanged(this.evolveKicker, '시대 진화');
       setTextIfChanged(this.evolveLabel, `${nextEra.roman} ${nextEra.shortName}`);
       setTextIfChanged(this.evolveSub, ready ? '진화 가능!' : `${Math.max(0, Math.ceil(era.evolveXp - p.xp))} XP`);
-      this.evolveFill.style.height = `${(frac * 100).toFixed(1)}%`;
+      const evPct = `${(frac * 100).toFixed(1)}%`;
+      if (evPct !== this.lastEvolvePct) {
+        this.lastEvolvePct = evPct;
+        this.evolveFill.style.height = evPct;
+      }
       this.evolveBtn.classList.toggle('ready', ready);
       this.evolveBtn.disabled = !ready;
     } else {
       setTextIfChanged(this.evolveKicker, '최종 시대');
       setTextIfChanged(this.evolveLabel, `${era.roman} ${era.shortName}`);
       setTextIfChanged(this.evolveSub, 'MAX');
-      this.evolveFill.style.height = '100%';
+      if (this.lastEvolvePct !== '100%') {
+        this.lastEvolvePct = '100%';
+        this.evolveFill.style.height = '100%';
+      }
       this.evolveBtn.classList.remove('ready');
       this.evolveBtn.disabled = true;
     }
 
     // Update Ultimate power button (requires BOTH cooldown == 0 AND spendable XP >= ultXpCost!)
     const ultXpCost = this.engine.getUltimateXpCost('player');
-    const fmtXpShort = (n: number) =>
-      n >= 10000
-        ? `${Math.round(n / 1000)}kXP`
-        : n >= 1000
-          ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}kXP`
-          : `${n}XP`;
+    const ultXpTag =
+      ultXpCost >= 10000
+        ? `${Math.round(ultXpCost / 1000)}kXP`
+        : ultXpCost >= 1000
+          ? `${(ultXpCost / 1000).toFixed(1).replace(/\.0$/, '')}kXP`
+          : `${ultXpCost}XP`;
     const cdReady = p.ultimateCooldown <= 0;
     const xpReady = p.xp >= ultXpCost;
     const ultReady = cdReady && xpReady;
@@ -244,43 +411,63 @@ export class HudController {
       ? Math.max(0, 1 - p.ultimateCooldown / Math.max(1, p.ultimateMaxCooldown))
       : Math.min(1, p.xp / Math.max(1, ultXpCost));
 
-    setTextIfChanged(this.ultKicker, `필살·${fmtXpShort(ultXpCost)}`);
+    setTextIfChanged(this.ultKicker, `필살·${ultXpTag}`);
     setTextIfChanged(this.ultLabel, era.ultimate.shortName);
     setTextIfChanged(this.ultSub, !cdReady ? `${Math.ceil(p.ultimateCooldown)}s` : xpReady ? 'READY!' : 'XP 부족');
-    this.ultFill.style.height = `${(ultFrac * 100).toFixed(1)}%`;
+    const ultPct = `${(ultFrac * 100).toFixed(1)}%`;
+    if (ultPct !== this.lastUltPct) {
+      this.lastUltPct = ultPct;
+      this.ultFill.style.height = ultPct;
+    }
     this.ultBtn.classList.toggle('ready', ultReady);
     this.ultBtn.classList.toggle('xp-short', cdReady && !xpReady);
     this.ultBtn.disabled = !ultReady;
 
-    // Render live minimap
-    renderMinimap(this.minimapCanvas, snapshot, this.camera);
+    // Render live minimap (~20Hz steady state, immediate when camera drags or era/ult changes)
+    const camMoved = Math.abs(this.camera.x - this.lastMinimapCamX) > 1;
+    const eraChanged = p.eraIndex !== this.lastMinimapEra;
+    const ultChanged = snapshot.ultimates.length !== this.lastMinimapUltCount;
+    if (camMoved || eraChanged || ultChanged || this.hudFrameTick % 3 === 0) {
+      this.lastMinimapCamX = this.camera.x;
+      this.lastMinimapEra = p.eraIndex;
+      this.lastMinimapUltCount = snapshot.ultimates.length;
+      renderMinimap(this.minimapCanvas, snapshot, this.camera);
+    }
   }
 
   private bindEvents(): void {
     bindButtonTap(this.speedBtn, () => {
       this.onUnlockAudio();
+      this.onUiTap?.();
       const nextSpeed = this.engine.toggleSpeed();
+      this.lastSpeed = nextSpeed;
       setTextIfChanged(this.speedLabelEl, `${nextSpeed}x`);
       this.speedBtn.classList.toggle('active', nextSpeed === 2);
+      this.pulseClass(this.speedBtn, 'tap-pop', 180);
     });
 
     bindButtonTap(this.muteBtn, () => {
       const muted = this.onToggleMute();
       this.setMutedVisual(muted);
+      if (!muted) this.onUiTap?.();
+      this.pulseClass(this.muteBtn, 'tap-pop', 180);
     });
 
     bindButtonTap(this.pauseBtn, () => {
       this.onUnlockAudio();
+      this.onUiTap?.();
       this.onTogglePause();
     });
 
     bindButtonTap(this.tabUnitsBtn, () => {
       this.onUnlockAudio();
+      this.onUiTap?.();
       this.switchTab('units');
     });
 
     bindButtonTap(this.tabTurretsBtn, () => {
       this.onUnlockAudio();
+      this.onUiTap?.();
       this.switchTab('turrets');
     });
 
@@ -288,6 +475,7 @@ export class HudController {
 
     bindButtonTap(this.tabUpgradesBtn, () => {
       this.onUnlockAudio();
+      this.onUiTap?.();
       if (this.activeTab === 'upgrades') {
         const idx = categoryOrder.indexOf(this.upgradeCategory);
         this.setUpgradeCategory(categoryOrder[(idx + 1) % categoryOrder.length]);
@@ -299,12 +487,13 @@ export class HudController {
     for (const btn of this.upgPageButtons) {
       bindButtonTap(btn, () => {
         this.onUnlockAudio();
+        this.onUiTap?.();
         const cat = btn.dataset.upgCat as UpgradeCategory | undefined;
         if (cat) this.setUpgradeCategory(cat);
       });
     }
 
-    // Horizontal swipe on upgrade cards steps smoothly across all 5 categories
+    // Horizontal swipe on upgrade cards steps smoothly across all 6 categories
     let swipeStartX = 0;
     let swipeTracking = false;
     this.actionCardsEl.addEventListener('pointerdown', (ev) => {
@@ -318,6 +507,7 @@ export class HudController {
       const dx = ev.clientX - swipeStartX;
       if (Math.abs(dx) > 36) {
         this.suppressUpgradeClickUntil = performance.now() + 260;
+        this.onUiTap?.();
         const idx = categoryOrder.indexOf(this.upgradeCategory);
         const nextIdx = (idx + (dx < 0 ? 1 : -1) + categoryOrder.length) % categoryOrder.length;
         this.setUpgradeCategory(categoryOrder[nextIdx]);
@@ -329,12 +519,16 @@ export class HudController {
 
     bindButtonTap(this.evolveBtn, () => {
       this.onUnlockAudio();
-      this.engine.evolve('player');
+      if (this.engine.evolve('player')) {
+        this.pulseClass(this.evolveBtn, 'bought-flash', 420);
+      }
     });
 
     bindButtonTap(this.ultBtn, () => {
       this.onUnlockAudio();
-      this.engine.triggerUltimate('player');
+      if (this.engine.triggerUltimate('player')) {
+        this.pulseClass(this.ultBtn, 'bought-flash', 420);
+      }
     });
 
     // Interactive Minimap touch & drag camera jump
@@ -385,6 +579,7 @@ export class HudController {
   private buildActionCards(eraIndex: number, tab: DockTab): void {
     const era = getEra(eraIndex);
     this.actionCardsEl.innerHTML = '';
+    this.cachedCards = [];
 
     if (tab === 'units') {
       this.actionCardsEl.dataset.cols = String(era.units.length);
@@ -407,9 +602,22 @@ export class HudController {
 
         bindButtonTap(btn, () => {
           this.onUnlockAudio();
-          this.engine.enqueueUnit('player', unit.id as UnitVisualKind);
+          if (this.engine.enqueueUnit('player', unit.id as UnitVisualKind)) {
+            this.onUiTap?.();
+            this.pulseClass(btn, 'tap-pop', 190);
+          }
         });
         this.actionCardsEl.appendChild(btn);
+        this.cachedCards.push({
+          btn,
+          kind: 'unit',
+          unitId: unit.id as UnitVisualKind,
+          costEl: btn.querySelector<HTMLElement>('.card-cost'),
+          queueBadgeEl: btn.querySelector<HTMLElement>('.card-queue-badge'),
+          levelBadgeEl: null,
+          slotCostEl: null,
+          refundEl: null,
+        });
       }
       return;
     }
@@ -440,11 +648,23 @@ export class HudController {
           () => {
             if (performance.now() < this.suppressUpgradeClickUntil) return;
             this.onUnlockAudio();
-            this.engine.buyUpgrade('player', upg.id);
+            if (this.engine.buyUpgrade('player', upg.id)) {
+              this.pulseClass(btn, 'bought-flash', 340);
+            }
           },
           { cancelOnSwipe: true },
         );
         this.actionCardsEl.appendChild(btn);
+        this.cachedCards.push({
+          btn,
+          kind: 'upgrade',
+          upgradeId: upg.id,
+          costEl: btn.querySelector<HTMLElement>('[data-upg-cost]'),
+          queueBadgeEl: null,
+          levelBadgeEl: btn.querySelector<HTMLElement>('[data-upg-level]'),
+          slotCostEl: null,
+          refundEl: null,
+        });
       }
       return;
     }
@@ -470,9 +690,20 @@ export class HudController {
     `;
     bindButtonTap(expandBtn, () => {
       this.onUnlockAudio();
-      this.engine.expandTurretSlot('player');
+      if (this.engine.expandTurretSlot('player')) {
+        this.pulseClass(expandBtn, 'bought-flash', 300);
+      }
     });
     this.actionCardsEl.appendChild(expandBtn);
+    this.cachedCards.push({
+      btn: expandBtn,
+      kind: 'expand_slot',
+      costEl: null,
+      queueBadgeEl: null,
+      levelBadgeEl: null,
+      slotCostEl: expandBtn.querySelector<HTMLElement>('[data-slot-cost]'),
+      refundEl: null,
+    });
 
     // 2 & 3. Era Turrets
     for (const turret of era.turrets) {
@@ -494,10 +725,21 @@ export class HudController {
         this.sellHighlightMode = false;
         const ok = this.engine.installTurret('player', turret.id as TurretVisualKind);
         if (ok) {
+          this.pulseClass(btn, 'bought-flash', 300);
           this.camera.jumpToWorldX(260);
         }
       });
       this.actionCardsEl.appendChild(btn);
+      this.cachedCards.push({
+        btn,
+        kind: 'turret',
+        turretId: turret.id as TurretVisualKind,
+        costEl: btn.querySelector<HTMLElement>('.card-cost'),
+        queueBadgeEl: null,
+        levelBadgeEl: null,
+        slotCostEl: null,
+        refundEl: null,
+      });
     }
 
     // 4. Sell Turret Card
@@ -523,113 +765,139 @@ export class HudController {
       if (this.sellHighlightMode || installed.length === 1) {
         this.engine.sellTurret('player');
         this.sellHighlightMode = false;
+        this.pulseClass(sellBtn, 'tap-pop', 200);
       } else {
         // First tap focuses base & highlights turrets; tap a turret on base OR tap Sell again to sell oldest
         this.sellHighlightMode = true;
+        this.onUiTap?.();
         this.camera.jumpToWorldX(220);
       }
     });
     this.actionCardsEl.appendChild(sellBtn);
+    this.cachedCards.push({
+      btn: sellBtn,
+      kind: 'sell_turret',
+      costEl: null,
+      queueBadgeEl: null,
+      levelBadgeEl: null,
+      slotCostEl: null,
+      refundEl: sellBtn.querySelector<HTMLElement>('[data-sell-refund]'),
+    });
   }
 
   private updateActionCardStates(snapshot: GameSnapshot): void {
     const p = snapshot.player;
     const era = getEra(p.eraIndex);
-    const cards = this.actionCardsEl.querySelectorAll<HTMLButtonElement>('.action-card');
+    const cards = this.cachedCards;
 
     if (this.activeTab === 'units') {
       const queueFull = p.queue.length >= 5;
-      for (const card of cards) {
-        const unitId = card.dataset.unitId as UnitVisualKind;
+      for (let i = 0; i < cards.length; i++) {
+        const ref = cards[i];
+        const unitId = ref.unitId;
+        if (!unitId) continue;
         const def = era.units.find((u) => u.id === unitId);
         if (!def) continue;
         const effCost = this.engine.getEffectiveUnitCost('player', def.cost);
         const canAfford = p.gold >= effCost && !queueFull;
-        card.classList.toggle('unaffordable', !canAfford);
+        ref.btn.classList.toggle('unaffordable', !canAfford);
 
-        const costEl = card.querySelector<HTMLElement>('.card-cost');
-        if (costEl) {
-          setTextIfChanged(costEl, `${effCost.toLocaleString()}G`);
+        if (ref.costEl) {
+          setTextIfChanged(ref.costEl, `${effCost.toLocaleString()}G`);
         }
 
-        const queuedCount = p.queue.filter((q) => q.unitId === unitId).length;
-        const badge = card.querySelector<HTMLElement>('.card-queue-badge');
-        if (badge) {
-          badge.classList.toggle('hidden', queuedCount === 0);
-          setTextIfChanged(badge, `x${queuedCount}`);
+        let queuedCount = 0;
+        for (let q = 0; q < p.queue.length; q++) {
+          if (p.queue[q].unitId === unitId) queuedCount++;
+        }
+        if (ref.queueBadgeEl) {
+          ref.queueBadgeEl.classList.toggle('hidden', queuedCount === 0);
+          if (queuedCount > 0) {
+            setTextIfChanged(ref.queueBadgeEl, `x${queuedCount}`);
+          }
         }
       }
       return;
     }
 
     if (this.activeTab === 'upgrades') {
-      for (const card of cards) {
-        const upgId = card.dataset.upgradeId as UpgradeId;
-        const def = UPGRADE_BY_ID[upgId];
-        if (!def) continue;
+      for (let i = 0; i < cards.length; i++) {
+        const ref = cards[i];
+        const upgId = ref.upgradeId;
+        if (!upgId || !UPGRADE_BY_ID[upgId]) continue;
         const level = p.upgrades[upgId];
         const nextCost = getNextUpgradeCost(upgId, level);
         const maxed = nextCost === null;
 
-        const levelBadge = card.querySelector<HTMLElement>('[data-upg-level]');
-        if (levelBadge) {
-          setTextIfChanged(levelBadge, maxed ? 'MAX' : `Lv.${level}`);
-          levelBadge.classList.toggle('maxed', maxed);
+        if (ref.levelBadgeEl) {
+          setTextIfChanged(ref.levelBadgeEl, maxed ? 'MAX' : `Lv.${level}`);
+          ref.levelBadgeEl.classList.toggle('maxed', maxed);
         }
 
-        const costEl = card.querySelector<HTMLElement>('[data-upg-cost]');
-        if (costEl) {
-          setTextIfChanged(costEl, maxed ? 'MAX' : `${nextCost.toLocaleString()}G`);
+        if (ref.costEl) {
+          setTextIfChanged(ref.costEl, maxed ? 'MAX' : `${nextCost.toLocaleString()}G`);
         }
 
-        card.disabled = maxed;
-        card.classList.toggle('maxed', maxed);
-        card.classList.toggle('unaffordable', maxed || p.gold < nextCost);
+        ref.btn.disabled = maxed;
+        ref.btn.classList.toggle('maxed', maxed);
+        ref.btn.classList.toggle('unaffordable', maxed || p.gold < nextCost);
       }
       return;
     }
 
-    const hasEmptySlot = p.turrets.slice(0, p.turretSlots).some((t) => t === null);
-    const installed = p.turrets.filter((t) => t !== null);
+    let hasEmptySlot = false;
+    for (let i = 0; i < p.turretSlots; i++) {
+      if (p.turrets[i] === null) {
+        hasEmptySlot = true;
+        break;
+      }
+    }
+    let installedCount = 0;
+    let oldestTurret = null as (typeof p.turrets)[number];
+    for (let i = 0; i < p.turrets.length; i++) {
+      const t = p.turrets[i];
+      if (t !== null) {
+        installedCount++;
+        if (!oldestTurret || t.eraIndex < oldestTurret.eraIndex) {
+          oldestTurret = t;
+        }
+      }
+    }
     const nextSlotCost = this.engine.getNextTurretSlotCost('player');
 
-    for (const card of cards) {
-      const kind = card.dataset.kind;
-      if (kind === 'expand_slot') {
-        const costEl = card.querySelector<HTMLElement>('[data-slot-cost]');
+    for (let i = 0; i < cards.length; i++) {
+      const ref = cards[i];
+      if (ref.kind === 'expand_slot') {
         if (nextSlotCost === null) {
-          if (costEl) setTextIfChanged(costEl, 'MAX');
-          card.disabled = true;
-          card.classList.add('unaffordable');
+          if (ref.slotCostEl) setTextIfChanged(ref.slotCostEl, 'MAX');
+          ref.btn.disabled = true;
+          ref.btn.classList.add('unaffordable');
         } else {
-          if (costEl) setTextIfChanged(costEl, `${nextSlotCost.toLocaleString()}G`);
+          if (ref.slotCostEl) setTextIfChanged(ref.slotCostEl, `${nextSlotCost.toLocaleString()}G`);
           const affordable = p.gold >= nextSlotCost;
-          card.disabled = false;
-          card.classList.toggle('unaffordable', !affordable);
+          ref.btn.disabled = false;
+          ref.btn.classList.toggle('unaffordable', !affordable);
         }
-      } else if (kind === 'turret') {
-        const tid = card.dataset.turretId as TurretVisualKind;
+      } else if (ref.kind === 'turret') {
+        const tid = ref.turretId;
         const def = era.turrets.find((t) => t.id === tid);
         if (!def) continue;
         const effCost = this.engine.getEffectiveTurretCost('player', def.cost);
-        const costEl = card.querySelector<HTMLElement>('.card-cost');
-        if (costEl) setTextIfChanged(costEl, `${effCost.toLocaleString()}G`);
+        if (ref.costEl) setTextIfChanged(ref.costEl, `${effCost.toLocaleString()}G`);
         const ok = hasEmptySlot && p.gold >= effCost;
-        card.classList.toggle('unaffordable', !ok);
-      } else if (kind === 'sell_turret') {
-        const canSell = installed.length > 0;
-        card.disabled = !canSell;
-        card.classList.toggle('unaffordable', !canSell);
-        card.classList.toggle('sell-active', this.sellHighlightMode && canSell);
-        const refundEl = card.querySelector<HTMLElement>('[data-sell-refund]');
-        if (refundEl) {
-          if (!canSell) {
-            setTextIfChanged(refundEl, '포탑 없음');
+        ref.btn.classList.toggle('unaffordable', !ok);
+      } else if (ref.kind === 'sell_turret') {
+        const canSell = installedCount > 0;
+        ref.btn.disabled = !canSell;
+        ref.btn.classList.toggle('unaffordable', !canSell);
+        ref.btn.classList.toggle('sell-active', this.sellHighlightMode && canSell);
+        if (ref.refundEl) {
+          if (!canSell || !oldestTurret) {
+            setTextIfChanged(ref.refundEl, '포탑 없음');
           } else {
-            const oldest = installed.reduce((best, cur) => (cur!.eraIndex < best!.eraIndex ? cur : best))!;
             setTextIfChanged(
-              refundEl,
-              this.sellHighlightMode ? '다시 눌러 판매' : `+${Math.round(oldest.cost * 0.5)}G`,
+              ref.refundEl,
+              this.sellHighlightMode ? '다시 눌러 판매' : `+${Math.round(oldestTurret.cost * 0.5)}G`,
             );
           }
         }
@@ -640,16 +908,27 @@ export class HudController {
   private updateQueueBar(snapshot: GameSnapshot): void {
     const queue = snapshot.player.queue;
     if (queue.length === 0) {
-      this.queueBar.classList.add('hidden');
-      this.lastQueueSignature = '';
+      if (this.lastQueueSignature !== '') {
+        this.queueBar.classList.add('hidden');
+        this.lastQueueSignature = '';
+        this.queueProgressEl = null;
+        this.lastQueuePct = '';
+      }
       return;
     }
 
-    this.queueBar.classList.remove('hidden');
-    const signature = queue.map((q) => q.unitId).join(',');
+    if (this.lastQueueSignature === '') {
+      this.queueBar.classList.remove('hidden');
+    }
+    let signature = '';
+    for (let i = 0; i < queue.length; i++) {
+      signature += (i > 0 ? ',' : '') + queue[i].unitId;
+    }
     if (signature !== this.lastQueueSignature) {
       this.lastQueueSignature = signature;
       this.queueBar.innerHTML = '';
+      this.queueProgressEl = null;
+      this.lastQueuePct = '';
       queue.forEach((item, idx) => {
         const slot = document.createElement('button');
         slot.type = 'button';
@@ -664,18 +943,24 @@ export class HudController {
         `;
         bindButtonTap(slot, () => {
           this.onUnlockAudio();
+          this.onUiTap?.();
           this.engine.cancelQueuedUnit('player', idx);
         });
         this.queueBar.appendChild(slot);
+        if (idx === 0) {
+          this.queueProgressEl = slot.querySelector<HTMLElement>('.queue-progress');
+        }
       });
     }
 
-    // Update live training progress bar on first slot
+    // Update live training progress bar on first slot (dirty-checked cached element!)
     const head = queue[0];
-    const progressEl = this.queueBar.querySelector<HTMLElement>('.queue-progress');
-    if (head && progressEl) {
-      const pct = Math.max(0, Math.min(100, (1 - head.remaining / head.trainTime) * 100));
-      progressEl.style.width = `${pct.toFixed(1)}%`;
+    if (head && this.queueProgressEl) {
+      const pct = `${Math.max(0, Math.min(100, (1 - head.remaining / head.trainTime) * 100)).toFixed(1)}%`;
+      if (pct !== this.lastQueuePct) {
+        this.lastQueuePct = pct;
+        this.queueProgressEl.style.width = pct;
+      }
     }
   }
 }

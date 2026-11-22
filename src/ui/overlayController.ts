@@ -17,6 +17,8 @@ export class OverlayController {
   private titleRecordsEl = document.getElementById('title-records')!;
   private latestRecords: PlayerRecords | null = null;
 
+  private resultModal = document.getElementById('result-modal');
+  private resultConfetti = document.getElementById('result-confetti');
   private resultBadge = document.getElementById('result-badge')!;
   private resultTitle = document.getElementById('result-title')!;
   private resultSub = document.getElementById('result-subtitle')!;
@@ -40,6 +42,15 @@ export class OverlayController {
     bindButtonTap(document.getElementById('btn-result-title') as HTMLButtonElement, callbacks.onReturnTitle);
   }
 
+  private replayModalEnter(overlayEl: Element): void {
+    const modal = overlayEl.querySelector('.glass-modal');
+    if (!modal) return;
+    modal.classList.remove('modal-enter');
+    requestAnimationFrame(() => {
+      modal.classList.add('modal-enter');
+    });
+  }
+
   public showTitle(records: PlayerRecords): void {
     this.latestRecords = records;
     this.renderTitleRecords(records);
@@ -47,6 +58,7 @@ export class OverlayController {
     this.titleOverlay.classList.remove('hidden');
     this.pauseOverlay.classList.add('hidden');
     this.resultOverlay.classList.add('hidden');
+    this.replayModalEnter(this.titleOverlay);
   }
 
   public hideAllGameOverlays(): void {
@@ -57,6 +69,7 @@ export class OverlayController {
 
   public showPause(): void {
     this.pauseOverlay.classList.remove('hidden');
+    this.replayModalEnter(this.pauseOverlay);
   }
 
   public hidePause(): void {
@@ -73,33 +86,39 @@ export class OverlayController {
     const reachedEra = getEra(snapshot.player.eraIndex);
     const bestTime = records.bestVictoryTimeSec[snapshot.difficulty];
 
+    this.resultModal?.classList.toggle('victory-mode', won);
+    this.resultModal?.classList.toggle('defeat-mode', !won);
+    this.resultConfetti?.classList.toggle('hidden', !won);
+
     this.resultBadge.textContent = won ? (isNewBestTime ? 'NEW RECORD · VICTORY' : 'VICTORY') : 'DEFEAT';
     this.resultBadge.classList.toggle('defeat', !won);
+    this.resultBadge.classList.toggle('new-record', won && isNewBestTime);
     this.resultTitle.textContent = won ? '적 기지 파괴!' : '기지 함락';
     this.resultSub.textContent = won
       ? `${diff.name} 난이도를 ${formatDuration(snapshot.elapsed)} 만에 제패했습니다.`
       : `${reachedEra.name}에서 적의 공세에 기지가 무너졌습니다.`;
 
     this.resultStats.innerHTML = `
-      <div class="result-stat-item">
+      <div class="result-stat-item" style="--stagger:0">
         <span>전투 시간</span>
         <strong class="num">${formatDuration(snapshot.elapsed)}</strong>
       </div>
-      <div class="result-stat-item">
+      <div class="result-stat-item" style="--stagger:1">
         <span>도달 시대</span>
         <strong>${reachedEra.roman} ${reachedEra.name}</strong>
       </div>
-      <div class="result-stat-item">
+      <div class="result-stat-item" style="--stagger:2">
         <span>처치 적군 / 생산 유닛</span>
         <strong class="num">${snapshot.player.kills} / ${snapshot.player.unitsSpawned}</strong>
       </div>
-      <div class="result-stat-item">
+      <div class="result-stat-item" style="--stagger:3">
         <span>${diff.name} 최고 기록</span>
         <strong class="num">${formatDuration(bestTime)}</strong>
       </div>
     `;
 
     this.resultOverlay.classList.remove('hidden');
+    this.replayModalEnter(this.resultOverlay);
   }
 
   public setPortraitWarning(isPortrait: boolean): void {

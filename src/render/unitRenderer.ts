@@ -29,6 +29,148 @@ export type UnitAnimFrame =
   | 'hurt_0'
   | 'death_0';
 
+// ============================================================================
+// BOUNDED LRU OFFSCREEN UNIT SPRITE-FRAME CACHE (60fps iPhone WebKit 2x Brawl)
+// ============================================================================
+interface CachedUnitSprite {
+  canvas: HTMLCanvasElement;
+  originX: number; // world-unit offset from left of tile to foot origin (0,0)
+  originY: number; // world-unit offset from top of tile to foot origin (0,0)
+  worldW: number;
+  worldH: number;
+}
+
+const UNIT_CACHE_MAX_ENTRIES = 192;
+const UNIT_CACHE_SCALE = 1.5;
+const MAX_BAKES_PER_FRAME = 4;
+const unitSpriteCache = new Map<string, CachedUnitSprite>();
+let unitCacheBakesThisFrame = 0;
+
+const LARGE_UNITS = new Set<UnitVisualKind>([
+  'dino_rider',
+  'sphinx_chariot',
+  'chariot',
+  'hwacha_cart',
+  'dragon_general',
+  'heavy_cavalry',
+  'catapult',
+  'field_cannon',
+  'steam_walker',
+  'mortar_team',
+  'early_tank',
+  'mbt',
+  'colossus_mech',
+  'star_archon',
+  'omega_titan',
+  'aegis_seraph',
+  'chrono_sovereign',
+]);
+
+export function resetUnitCacheFrameBudget(): void {
+  unitCacheBakesThisFrame = 0;
+}
+
+export function clearUnitSpriteCache(): void {
+  unitSpriteCache.clear();
+}
+
+export function getUnitSpriteCacheSize(): number {
+  return unitSpriteCache.size;
+}
+
+function getSpriteBounds(kind: UnitVisualKind): { left: number; right: number; top: number; bottom: number } {
+  if (kind === 'chrono_sovereign' || kind === 'omega_titan') {
+    return { left: 96, right: 118, top: 164, bottom: 30 };
+  }
+  if (kind === 'colossus_mech' || kind === 'star_archon' || kind === 'steam_walker') {
+    return { left: 86, right: 108, top: 136, bottom: 28 };
+  }
+  if (LARGE_UNITS.has(kind)) {
+    return { left: 86, right: 108, top: 112, bottom: 28 };
+  }
+  return { left: 68, right: 92, top: 96, bottom: 24 };
+}
+
+function getOrBakeUnitSprite(p: UnitPoseParams): CachedUnitSprite | null {
+  if (typeof document === 'undefined') return null;
+  // Transient death/hurt poses render directly (rare & smooth)
+  if (p.deathProgress > 0.001 || p.hitFlash > 0.28) return null;
+
+  let mode: 'w' | 'a' | 'i';
+  let bucket: number;
+  let quantWalkPhase: number;
+  let quantAttackAnim = 0;
+  let quantIsWalking = false;
+
+  if (p.attackAnim > 0.02) {
+    mode = 'a';
+    bucket = Math.min(7, Math.floor(p.attackAnim * 8));
+    quantAttackAnim = (bucket + 0.5) / 8;
+    quantWalkPhase = 0;
+  } else if (p.isWalking) {
+    mode = 'w';
+    const norm = (((p.walkPhase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2);
+    bucket = Math.floor(norm * 12) % 12;
+    quantWalkPhase = ((bucket + 0.5) / 12) * Math.PI * 2;
+    quantIsWalking = true;
+  } else {
+    mode = 'i';
+    const norm = (((p.walkPhase % (Math.PI * 2)) + Math.PI * 2) % (Math.PI * 2)) / (Math.PI * 2);
+    bucket = Math.floor(norm * 4) % 4;
+    quantWalkPhase = ((bucket + 0.5) / 4) * Math.PI * 2;
+  }
+
+  const key = `${p.kind}:${p.team[0]}:${mode}:${bucket}`;
+  const existing = unitSpriteCache.get(key);
+  if (existing) {
+    // Refresh LRU order cheaply
+    unitSpriteCache.delete(key);
+    unitSpriteCache.set(key, existing);
+    return existing;
+  }
+
+  if (unitCacheBakesThisFrame >= MAX_BAKES_PER_FRAME) {
+    return null;
+  }
+
+  const bounds = getSpriteBounds(p.kind);
+  const worldW = bounds.left + bounds.right;
+  const worldH = bounds.top + bounds.bottom;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.ceil(worldW * UNIT_CACHE_SCALE);
+  canvas.height = Math.ceil(worldH * UNIT_CACHE_SCALE);
+  const sctx = canvas.getContext('2d');
+  if (!sctx) return null;
+
+  unitCacheBakesThisFrame++;
+  // Origin X mirrors cleanly when enemy flips horizontally
+  const originX = p.team === 'player' ? bounds.left : bounds.right;
+  const originY = bounds.top;
+
+  sctx.save();
+  sctx.scale(UNIT_CACHE_SCALE, UNIT_CACHE_SCALE);
+  sctx.translate(originX, originY);
+  renderUnitPose(sctx, {
+    kind: p.kind,
+    team: p.team,
+    walkPhase: quantWalkPhase,
+    attackAnim: quantAttackAnim,
+    hitFlash: 0,
+    deathProgress: 0,
+    isWalking: quantIsWalking,
+    isAttacking: mode === 'a',
+  });
+  sctx.restore();
+
+  const entry: CachedUnitSprite = { canvas, originX, originY, worldW, worldH };
+  if (unitSpriteCache.size >= UNIT_CACHE_MAX_ENTRIES) {
+    const oldestKey = unitSpriteCache.keys().next().value;
+    if (oldestKey !== undefined) unitSpriteCache.delete(oldestKey);
+  }
+  unitSpriteCache.set(key, entry);
+  return entry;
+}
+
 /**
  * Resolve canonical discrete animation phase label (useful for state tests & debug inspection)
  * while the vector renderer interpolates smoothly at 60fps.
@@ -83,7 +225,8 @@ export function renderUnitPose(ctx: CanvasRenderingContext2D, p: UnitPoseParams)
 
 /**
  * Render a full in-world unit entity with smooth oval shadow, hover bob,
- * cartoon squash-and-stretch hit/attack response, upgrade aura, and fighting-game delayed HP bar.
+ * cached 60fps offscreen sprite blit, cartoon squash-and-stretch hit/attack response,
+ * Vanguard Shield shimmer, upgrade aura, and fighting-game delayed HP bar.
  */
 export function renderUnitEntity(
   ctx: CanvasRenderingContext2D,
@@ -126,32 +269,31 @@ export function renderUnitEntity(
   ctx.ellipse(drawX, groundY + 1, shadowRx, shadowRy, 0, 0, Math.PI * 2);
   ctx.fill();
 
-  // 1b. Chrono Fever OR Veteran Hero (★★★) Pulsing Golden Ground Ring!
+  // 1b. Chrono Fever OR Veteran Hero (★★ / ★★★) Pulsing Golden Ground Ring!
   if (unit.state !== 'dead' && (feverActive || unit.vetRank >= 2)) {
     const pulse = 0.65 + Math.sin(wallTime * 8 + unit.uid) * 0.28;
-    ctx.save();
     ctx.strokeStyle =
       feverActive || unit.vetRank === 3
-        ? `rgba(250, 204, 21, ${(0.75 * pulse).toFixed(2)})`
-        : `rgba(254, 240, 138, ${(0.45 * pulse).toFixed(2)})`;
+        ? `rgba(250, 204, 21, ${(0.78 * pulse).toFixed(2)})`
+        : `rgba(254, 240, 138, ${(0.48 * pulse).toFixed(2)})`;
     ctx.lineWidth = feverActive || unit.vetRank === 3 ? 2.4 : 1.7;
     ctx.beginPath();
     ctx.ellipse(drawX, groundY + 1, shadowRx * (1.22 + pulse * 0.14), shadowRy * 1.32, 0, 0, Math.PI * 2);
     ctx.stroke();
-    ctx.restore();
   }
 
-  // 2. Golden Upgrade Power-Up Aura (smooth glowing column & floor ring)
+  // 2. Golden Upgrade Power-Up Aura (zero-gradient crisp double-tier column & expanding ring)
   if (unit.state !== 'dead' && unit.upgradeFlash > 0.04) {
     const f = unit.upgradeFlash;
-    const auraW = shadowRx * 1.5;
-    const auraH = unit.def.height * 1.18 + 10;
-    const grad = ctx.createLinearGradient(drawX, spriteY, drawX, spriteY - auraH);
-    grad.addColorStop(0, `rgba(250, 204, 21, ${(f * 0.5).toFixed(2)})`);
-    grad.addColorStop(1, 'rgba(250, 204, 21, 0)');
-    ctx.fillStyle = grad;
+    const auraW = shadowRx * 1.48;
+    const auraH = unit.def.height * 1.15 + 10;
+    ctx.fillStyle = `rgba(250, 204, 21, ${(f * 0.22).toFixed(2)})`;
     ctx.beginPath();
     ctx.roundRect(drawX - auraW / 2, spriteY - auraH, auraW, auraH, 10);
+    ctx.fill();
+    ctx.fillStyle = `rgba(254, 240, 138, ${(f * 0.28).toFixed(2)})`;
+    ctx.beginPath();
+    ctx.roundRect(drawX - auraW * 0.32, spriteY - auraH * 0.62, auraW * 0.64, auraH * 0.62, 7);
     ctx.fill();
 
     ctx.strokeStyle = `rgba(254, 240, 138, ${(f * 0.85).toFixed(2)})`;
@@ -187,9 +329,38 @@ export function renderUnitEntity(
 
   ctx.save();
   ctx.translate(drawX + recoilDx, spriteY);
-  ctx.scale(scaleX, scaleY);
-  renderUnitPose(ctx, pose);
+  if (scaleX !== 1 || scaleY !== 1) {
+    ctx.scale(scaleX, scaleY);
+  }
+  const cachedSprite = getOrBakeUnitSprite(pose);
+  if (cachedSprite) {
+    ctx.drawImage(
+      cachedSprite.canvas,
+      -cachedSprite.originX,
+      -cachedSprite.originY,
+      cachedSprite.worldW,
+      cachedSprite.worldH,
+    );
+  } else {
+    renderUnitPose(ctx, pose);
+  }
   ctx.restore();
+
+  // 3b. Subtle Cyan Vanguard Energy Barrier front arc on actively shielded units!
+  if (unit.state !== 'dead' && unit.shield > 0.5 && unit.maxShield > 0) {
+    const shPulse = 0.42 + Math.sin(wallTime * 6.5 + unit.uid) * 0.16;
+    const shRadius = Math.max(20, unit.def.height * 0.54);
+    const shCenterY = spriteY - unit.def.height * 0.56;
+    ctx.strokeStyle = `rgba(56, 189, 248, ${shPulse.toFixed(2)})`;
+    ctx.lineWidth = unit.hitFlash > 0.35 ? 3.2 : 2.0;
+    ctx.beginPath();
+    if (dir === 1) {
+      ctx.arc(drawX + recoilDx + 4, shCenterY, shRadius, -0.82, 0.82);
+    } else {
+      ctx.arc(drawX + recoilDx - 4, shCenterY, shRadius, Math.PI - 0.82, Math.PI + 0.82);
+    }
+    ctx.stroke();
+  }
 
   // 4. Crisp Comic Starburst + Directional Manga Speed-Lines on fresh hit!
   if (unit.state !== 'dead' && unit.hitFlash > 0.54) {
@@ -206,17 +377,17 @@ export function renderUnitEntity(
     ctx.strokeStyle = unit.lastHitCrit ? 'rgba(254, 240, 138, 0.92)' : 'rgba(255, 255, 255, 0.85)';
     ctx.lineWidth = unit.lastHitCrit ? 2.4 : 1.7;
     ctx.lineCap = 'round';
+    ctx.beginPath();
     for (let i = 0; i < lineCount; i++) {
-      const spread = ((i / Math.max(1, lineCount - 1)) - 0.5) * 1.65;
+      const spread = (i / Math.max(1, lineCount - 1) - 0.5) * 1.65;
       const baseAngle = dir === 1 ? Math.PI : 0; // kick away from incoming hit
       const a = baseAngle + spread;
       const d1 = rOuter * 0.72;
       const d2 = rOuter * (1.35 + (i % 2) * 0.45) * (0.65 + f * 0.55);
-      ctx.beginPath();
       ctx.moveTo(Math.cos(a) * d1, Math.sin(a) * d1);
       ctx.lineTo(Math.cos(a) * d2, Math.sin(a) * d2);
-      ctx.stroke();
     }
+    ctx.stroke();
 
     // Crisp multi-spike comic impact starburst
     ctx.beginPath();
@@ -243,7 +414,7 @@ export function renderUnitEntity(
   const showHpBar =
     unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5 || unit.shield > 0.5);
 
-  // 5. Crisp Cel-Framed Overhead HP Bar with Delayed White/Gold Fighting-Game Trail!
+  // 5. Crisp Cel-Framed Overhead HP Bar with Delayed White/Gold Trail (zero per-unit gradient!)
   if (showHpBar) {
     const barW = Math.max(34, Math.min(78, unit.def.width * 1.18));
     const barH = 6.5;
@@ -254,7 +425,7 @@ export function renderUnitEntity(
     const trailW = Math.max(fillW, barW * trailRatio);
     const barLeft = drawX - barW / 2;
 
-    // Rounded dark-ink pill frame (flashes bright gold/white on hit)
+    // Rounded dark-ink pill frame
     ctx.fillStyle = '#141c2c';
     ctx.beginPath();
     ctx.roundRect(barLeft, barY, barW, barH, 3);
@@ -268,22 +439,16 @@ export function renderUnitEntity(
       ctx.fill();
     }
 
-    // Live HP fill with smooth glossy top highlight
+    // Live HP fill with crisp 2-tone cel top sheen (zero createLinearGradient!)
     if (fillW > 0.5) {
-      const hpGrad = ctx.createLinearGradient(0, barY, 0, barY + barH);
-      if (unit.team === 'player') {
-        hpGrad.addColorStop(0, '#60a5fa');
-        hpGrad.addColorStop(0.55, '#2563eb');
-        hpGrad.addColorStop(1, '#1d4ed8');
-      } else {
-        hpGrad.addColorStop(0, '#fb7185');
-        hpGrad.addColorStop(0.55, '#ef4444');
-        hpGrad.addColorStop(1, '#b91c1c');
-      }
-      ctx.fillStyle = hpGrad;
+      ctx.fillStyle = unit.team === 'player' ? '#2563eb' : '#ef4444';
       ctx.beginPath();
       ctx.roundRect(barLeft, barY, fillW, barH, 2.5);
       ctx.fill();
+      if (fillW > 3) {
+        ctx.fillStyle = unit.team === 'player' ? '#60a5fa' : '#fb7185';
+        ctx.fillRect(barLeft + 1.5, barY + 0.8, fillW - 3, 2.0);
+      }
     }
 
     setInkStyle(ctx, 1.8, unit.hitFlash > 0.55 ? (unit.lastHitCrit ? '#fde047' : '#ffffff') : INK);
@@ -313,8 +478,7 @@ export function renderUnitEntity(
   if (unit.state !== 'dead' && unit.vetRank > 0) {
     const hasShieldBar = showHpBar && unit.shield > 0.5 && unit.maxShield > 0;
     const starY = spriteY - topOffset - (hasShieldBar ? 23 : showHpBar ? 19 : 9);
-    const stars = '★'.repeat(unit.vetRank);
-    ctx.save();
+    const stars = unit.vetRank === 3 ? '★★★' : unit.vetRank === 2 ? '★★' : '★';
     ctx.font = '900 10.5px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
@@ -323,7 +487,6 @@ export function renderUnitEntity(
     ctx.strokeText(stars, drawX, starY);
     ctx.fillStyle = unit.vetRank === 3 ? '#fef08a' : '#facc15';
     ctx.fillText(stars, drawX, starY);
-    ctx.restore();
   }
 
   ctx.restore();

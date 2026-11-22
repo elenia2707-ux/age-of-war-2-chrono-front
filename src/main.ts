@@ -26,6 +26,7 @@ const hud = new HudController({
   engine,
   camera,
   onUnlockAudio: () => sound.unlock(),
+  onUiTap: () => sound.play('ui_tap'),
   onToggleMute: () => {
     const muted = sound.toggleMute();
     const rec = loadRecords();
@@ -49,18 +50,22 @@ hud.setMutedVisual(sound.isMuted());
 const overlays = new OverlayController({
   onStart: (difficulty) => {
     sound.unlock();
+    sound.play('ui_tap');
     startMatch(difficulty);
   },
   onResume: () => {
     sound.unlock();
+    sound.play('ui_tap');
     engine.setPaused(false);
     overlays.hidePause();
   },
   onRestart: () => {
     sound.unlock();
+    sound.play('ui_tap');
     startMatch(currentDifficulty);
   },
   onReturnTitle: () => {
+    sound.play('ui_tap');
     engine.status = 'title';
     hud.setVisible(false);
     overlays.showTitle(loadRecords());
@@ -69,6 +74,7 @@ const overlays = new OverlayController({
 
 engine.setCallbacks({
   onSound: (cue) => sound.play(cue),
+  onUltimateSound: (kind) => sound.playUltimate(kind),
   onBanner: (title, sub, accent) => hud.showBanner(title, sub, accent),
 });
 
@@ -414,13 +420,14 @@ function frame(now: number): void {
 
 requestAnimationFrame(frame);
 
-// Expose clean debug hook on window for automated E2E visual verification
+// Expose clean debug hook on window for automated E2E visual & performance verification
 (
   window as unknown as {
     __CHRONO_FRONT__?: {
       engine: GameEngine;
       camera: BattleCamera;
       hud: HudController;
+      getPerfStats: () => ReturnType<GameRenderer['getPerfStats']>;
       spritesReady: Promise<void>;
     };
   }
@@ -428,6 +435,7 @@ requestAnimationFrame(frame);
   engine,
   camera,
   hud,
+  getPerfStats: () => renderer.getPerfStats(),
   spritesReady: Promise.resolve(),
 };
 

@@ -1,6 +1,174 @@
 import { getEra } from '../data/eras';
-import { GROUND_Y, WORLD_HEIGHT } from '../game/constants';
+import { GROUND_Y, WORLD_HEIGHT, WORLD_WIDTH } from '../game/constants';
 import { INK, drawCelEllipse, drawCelPoly, drawCelRoundRect, setInkStyle } from './cartoonPrimitives';
+
+// ============================================================================
+// OFFSCREEN PARALLAX LAYER & GROUND TILE CACHE (iPhone Safari/PWA 60fps)
+// ============================================================================
+interface EraBgCacheEntry {
+  eraIndex: number;
+  viewportBucket: number;
+  skyCanvas: HTMLCanvasElement;
+  skyW: number;
+  farCanvas: HTMLCanvasElement;
+  farW: number;
+  midFarCanvas: HTMLCanvasElement;
+  midFarW: number;
+  midCanvas: HTMLCanvasElement;
+  midW: number;
+  groundTile: HTMLCanvasElement;
+  groundTileW: number;
+  groundYOffset: number;
+}
+
+const eraBgCache = new Map<string, EraBgCacheEntry>();
+const MAX_CACHED_ERAS = 2;
+const BG_CACHE_SCALE = 1.25;
+
+export function clearBackgroundCache(): void {
+  eraBgCache.clear();
+}
+
+export function getBackgroundCacheSize(): number {
+  return eraBgCache.size;
+}
+
+function createLayerCanvas(
+  worldW: number,
+  worldH: number,
+  scale = BG_CACHE_SCALE,
+): { canvas: HTMLCanvasElement; ctx: CanvasRenderingContext2D } | null {
+  if (typeof document === 'undefined') return null;
+  const canvas = document.createElement('canvas');
+  canvas.width = Math.max(1, Math.ceil(worldW * scale));
+  canvas.height = Math.max(1, Math.ceil(worldH * scale));
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return null;
+  ctx.scale(scale, scale);
+  return { canvas, ctx };
+}
+
+function getOrBuildEraBgCache(eraIndex: number, viewportW: number): EraBgCacheEntry | null {
+  if (typeof document === 'undefined') return null;
+  // Quantize viewport width to 64px buckets so minor resizes don't thrash cache
+  const viewportBucket = Math.max(832, Math.ceil(viewportW / 64) * 64);
+  const key = `${eraIndex}:${viewportBucket}`;
+  const existing = eraBgCache.get(key);
+  if (existing) {
+    eraBgCache.delete(key);
+    eraBgCache.set(key, existing);
+    return existing;
+  }
+
+  const era = getEra(eraIndex);
+  const p = era.palette;
+  const maxScroll = Math.max(0, WORLD_WIDTH - viewportBucket) + 120;
+  const skyH = GROUND_Y + 8;
+
+  // 1. Sky + Horizon Bloom + Sun + God-Rays + Nebula (0.045x parallax)
+  const skyW = Math.ceil(viewportBucket + maxScroll * 0.045 + 32);
+  const skyLayer = createLayerCanvas(skyW, skyH);
+  if (!skyLayer) return null;
+  drawStaticSkyAndAtmosphere(skyLayer.ctx, eraIndex, skyW, viewportBucket, p);
+
+  // 2. Far Horizon Landmarks + First Atmospheric Depth Haze (0.14x parallax)
+  const farW = Math.ceil(viewportBucket + maxScroll * 0.14 + 48);
+  const farLayer = createLayerCanvas(farW, skyH);
+  if (!farLayer) return null;
+  drawFarLayer(farLayer.ctx, eraIndex, 0, farW, 1.8, p.farHill, p.sunColor, p.accent);
+  drawDepthHaze(farLayer.ctx, eraIndex, farW, 130, 0.72);
+
+  // 3. Mid-Far Architectural Skyline + Second Soft Haze Veil (0.27x parallax)
+  const midFarW = Math.ceil(viewportBucket + maxScroll * 0.27 + 64);
+  const midFarLayer = createLayerCanvas(midFarW, skyH);
+  if (!midFarLayer) return null;
+  drawMidFarLayer(midFarLayer.ctx, eraIndex, 0, midFarW, 1.8, p.farHill, p.midHill, p.sunColor, p.accent);
+  drawDepthHaze(midFarLayer.ctx, eraIndex, midFarW, 92, 0.56);
+
+  // 4. Mid Rolling Hills & Era Props (0.44x parallax)
+  const midW = Math.ceil(viewportBucket + maxScroll * 0.44 + 80);
+  const midLayer = createLayerCanvas(midW, skyH);
+  if (!midLayer) return null;
+  drawMidLayer(midLayer.ctx, eraIndex, 0, midW, 1.8, p.midHill, p.nearProp, p.accent);
+
+  // 5. Repeating Ground Road Tile Strip (256px = 4x 64px seamless road tiles, 1.0x)
+  const groundTileW = 256;
+  const groundYOffset = GROUND_Y - 5;
+  const groundTileH = WORLD_HEIGHT - groundYOffset + 40;
+  const groundLayer = createLayerCanvas(groundTileW, groundTileH, 1.5);
+  if (!groundLayer) return null;
+  groundLayer.ctx.translate(0, -groundYOffset);
+  drawCartoonGround(
+    groundLayer.ctx,
+    eraIndex,
+    0,
+    groundTileW,
+    p.groundTop,
+    p.groundMid,
+    p.groundDark,
+    p.accent,
+  );
+
+  const entry: EraBgCacheEntry = {
+    eraIndex,
+    viewportBucket,
+    skyCanvas: skyLayer.canvas,
+    skyW,
+    farCanvas: farLayer.canvas,
+    farW,
+    midFarCanvas: midFarLayer.canvas,
+    midFarW,
+    midCanvas: midLayer.canvas,
+    midW,
+    groundTile: groundLayer.canvas,
+    groundTileW,
+    groundYOffset,
+  };
+
+  if (eraBgCache.size >= MAX_CACHED_ERAS) {
+    const oldestKey = eraBgCache.keys().next().value;
+    if (oldestKey !== undefined) eraBgCache.delete(oldestKey);
+  }
+  eraBgCache.set(key, entry);
+  return entry;
+}
+
+function drawStaticSkyAndAtmosphere(
+  ctx: CanvasRenderingContext2D,
+  eraIndex: number,
+  skyW: number,
+  viewportW: number,
+  p: ReturnType<typeof getEra>['palette'],
+): void {
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 6);
+  skyGrad.addColorStop(0, p.skyTop);
+  skyGrad.addColorStop(0.5, p.skyMid);
+  skyGrad.addColorStop(0.86, p.skyBottom);
+  skyGrad.addColorStop(1, p.skyBottom);
+  ctx.fillStyle = skyGrad;
+  ctx.fillRect(0, 0, skyW + 4, GROUND_Y + 6);
+
+  const horGlow = ctx.createLinearGradient(0, GROUND_Y - 145, 0, GROUND_Y);
+  horGlow.addColorStop(0, 'rgba(255,255,255,0)');
+  horGlow.addColorStop(
+    1,
+    eraIndex === 11
+      ? 'rgba(94, 234, 212, 0.22)'
+      : eraIndex === 10
+        ? 'rgba(192, 132, 252, 0.22)'
+        : eraIndex === 9
+          ? 'rgba(56, 189, 248, 0.20)'
+          : eraIndex === 7
+            ? 'rgba(249, 115, 22, 0.22)'
+            : eraIndex === 3
+              ? 'rgba(251, 207, 232, 0.24)'
+              : 'rgba(254, 240, 138, 0.16)',
+  );
+  ctx.fillStyle = horGlow;
+  ctx.fillRect(0, GROUND_Y - 145, skyW + 4, 145);
+
+  drawSkyAtmosphere(ctx, eraIndex, 0, viewportW, 1.8, p.sunColor, p.accent);
+}
 
 export function renderBackground(
   ctx: CanvasRenderingContext2D,
@@ -9,26 +177,40 @@ export function renderBackground(
   viewportW: number,
   time: number,
   transition?: { active: boolean; fromEra: number; toEra: number; progress: number },
+  lowDetail = false,
 ): void {
   ctx.save();
 
   if (transition && transition.active) {
-    renderSingleEraBackground(ctx, transition.fromEra, cameraX, viewportW, time);
+    const p = easeInOut(transition.progress);
+    renderSingleEraBackground(ctx, transition.fromEra, cameraX, viewportW, time, lowDetail);
     ctx.save();
-    ctx.globalAlpha = easeInOut(transition.progress);
-    renderSingleEraBackground(ctx, transition.toEra, cameraX, viewportW, time);
+    ctx.globalAlpha = p;
+    renderSingleEraBackground(ctx, transition.toEra, cameraX, viewportW, time, lowDetail);
     ctx.restore();
 
-    const glowAlpha = Math.sin(transition.progress * Math.PI) * 0.25;
-    if (glowAlpha > 0.01) {
-      ctx.fillStyle = `rgba(255, 232, 150, ${glowAlpha.toFixed(3)})`;
+    // Sweeping vertical Chrono-Wave light curtain & golden prism edge across screen during evolution!
+    const sweepX = -60 + p * (viewportW + 120);
+    const waveAlpha = Math.sin(transition.progress * Math.PI);
+    if (waveAlpha > 0.01) {
+      const toAccent = getEra(transition.toEra).palette.accent;
+      ctx.fillStyle = `rgba(255, 236, 165, ${(waveAlpha * 0.22).toFixed(3)})`;
       ctx.fillRect(0, 0, viewportW, WORLD_HEIGHT);
+
+      ctx.fillStyle = `rgba(254, 240, 138, ${(waveAlpha * 0.42).toFixed(3)})`;
+      ctx.fillRect(sweepX - 36, 0, 72, WORLD_HEIGHT);
+      ctx.fillStyle = toAccent;
+      ctx.globalAlpha = waveAlpha * 0.55;
+      ctx.fillRect(sweepX - 10, 0, 20, WORLD_HEIGHT);
+      ctx.fillStyle = '#ffffff';
+      ctx.globalAlpha = waveAlpha * 0.85;
+      ctx.fillRect(sweepX - 3, 0, 6, WORLD_HEIGHT);
     }
     ctx.restore();
     return;
   }
 
-  renderSingleEraBackground(ctx, eraIndex, cameraX, viewportW, time);
+  renderSingleEraBackground(ctx, eraIndex, cameraX, viewportW, time, lowDetail);
   ctx.restore();
 }
 
@@ -46,10 +228,62 @@ function renderSingleEraBackground(
   cameraX: number,
   viewportW: number,
   time: number,
+  lowDetail = false,
 ): void {
   const era = getEra(eraIndex);
   const p = era.palette;
 
+  // Fast Path (Browser / iPhone Safari / PWA): blit pre-baked multi-layer offscreen parallax strips!
+  const cached = getOrBuildEraBgCache(eraIndex, viewportW);
+  if (cached) {
+    const skyH = GROUND_Y + 8;
+    const clampedCam = Math.max(0, cameraX);
+
+    // 1. Sky + Sun + God-Rays + Nebula (0.045x)
+    const skyShift = Math.min(cached.skyW - viewportW, clampedCam * 0.045);
+    ctx.drawImage(cached.skyCanvas, -skyShift, 0, cached.skyW, skyH);
+
+    // 2. Live subtle twinkling star highlights for night/sci-fi/cosmic/chrono eras (zero gradients!)
+    if (eraIndex >= 8 && !lowDetail) {
+      const starCount = eraIndex === 8 ? 10 : 18;
+      ctx.fillStyle = eraIndex === 11 ? '#fef08a' : '#e0f2fe';
+      for (let i = 0; i < starCount; i++) {
+        const sx = wrapScroll(i * 197 + 41 - clampedCam * 0.03, viewportW + 40, 20);
+        const sy = 16 + ((i * 83) % (eraIndex === 8 ? 112 : 185));
+        ctx.globalAlpha = 0.25 + 0.72 * Math.abs(Math.sin(time * 2.3 + i * 1.4));
+        ctx.fillRect(sx - 1.2, sy - 1.2, 2.4, 2.4);
+      }
+      ctx.globalAlpha = 1;
+    }
+
+    // 3. Far Parallax Strip + Haze 1 (0.14x)
+    const farShift = Math.min(cached.farW - viewportW, clampedCam * 0.14);
+    ctx.drawImage(cached.farCanvas, -farShift, 0, cached.farW, skyH);
+
+    // 4. Mid-Far Architectural Parallax Strip + Haze 2 (0.27x)
+    const midFarShift = Math.min(cached.midFarW - viewportW, clampedCam * 0.27);
+    ctx.drawImage(cached.midFarCanvas, -midFarShift, 0, cached.midFarW, skyH);
+
+    // 5. Mid Rolling Hills & Props Parallax Strip (0.44x)
+    const midShift = Math.min(cached.midW - viewportW, clampedCam * 0.44);
+    ctx.drawImage(cached.midCanvas, -midShift, 0, cached.midW, skyH);
+
+    // 6. Ambient Drifting Era Motes
+    if (!lowDetail) {
+      drawAmbientMotes(ctx, eraIndex, clampedCam, viewportW, time, p.accent);
+    }
+
+    // 7. Repeating Seamless Battlefield Road Tile Strip (1.0x)
+    const tileW = cached.groundTileW;
+    const tileH = WORLD_HEIGHT - cached.groundYOffset + 40;
+    const offsetX = -(((clampedCam % tileW) + tileW) % tileW);
+    for (let x = offsetX; x < viewportW + tileW; x += tileW) {
+      ctx.drawImage(cached.groundTile, x, cached.groundYOffset, tileW, tileH);
+    }
+    return;
+  }
+
+  // Direct Vector Fallback (Node/Vitest headless verification)
   // 1. Rich Multi-Stop Painterly Sky Gradient + Horizon Atmospheric Glow
   const skyGrad = ctx.createLinearGradient(0, 0, 0, GROUND_Y + 6);
   skyGrad.addColorStop(0, p.skyTop);
@@ -2263,9 +2497,10 @@ export function renderForegroundParallax(
   cameraX: number,
   viewportW: number,
   time: number,
+  lowDetail = false,
 ): void {
   const offset = -(cameraX * 1.18);
-  const spacing = 220;
+  const spacing = lowDetail ? 340 : 220;
   const startIdx = Math.floor((-offset - 120) / spacing);
   const endIdx = Math.ceil((viewportW - offset + 120) / spacing);
   const era = getEra(eraIndex);
@@ -2336,6 +2571,10 @@ export function renderForegroundParallax(
   }
 
   // Dynamic Era Weather Overlay (desert wind, wartime rain, cyberpunk neon rain, cosmic meteors!)
+  if (lowDetail) {
+    ctx.restore();
+    return;
+  }
   if (eraIndex === 1) {
     ctx.strokeStyle = 'rgba(254, 240, 138, 0.16)';
     ctx.lineWidth = 2.0;

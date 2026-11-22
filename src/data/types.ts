@@ -180,12 +180,19 @@ export type SoundCue =
   | 'laser'
   | 'railgun'
   | 'explosion'
+  | 'crit'
+  | 'shield_break'
   | 'spawn'
   | 'turret_build'
+  | 'upgrade'
   | 'sell'
   | 'evolve'
+  | 'fever'
+  | 'crate_open'
+  | 'promote'
   | 'ultimate'
   | 'hit_base'
+  | 'ui_tap'
   | 'victory'
   | 'defeat';
 
@@ -525,6 +532,7 @@ export interface ActiveUltimate {
 
 export interface EngineCallbacks {
   onSound?: (cue: SoundCue) => void;
+  onUltimateSound?: (kind: UltimateKind) => void;
   onBanner?: (title: string, subtitle: string, accent: string) => void;
 }
 
