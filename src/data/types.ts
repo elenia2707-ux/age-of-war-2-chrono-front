@@ -58,9 +58,14 @@ export type UpgradeId =
   | 'economy'
   | 'bounty'
   | 'discount'
-  | 'fortress';
+  | 'fortress'
+  // Special (특수)
+  | 'xp_mastery'
+  | 'ult_efficiency'
+  | 'executioner'
+  | 'turret_rapid';
 
-export type UpgradeCategory = 'offense' | 'defense' | 'tactics' | 'empire';
+export type UpgradeCategory = 'offense' | 'defense' | 'tactics' | 'empire' | 'special';
 
 export type UpgradeLevels = Record<UpgradeId, number>;
 
@@ -218,6 +223,7 @@ export interface UltimateDef {
   name: string;
   shortName: string;
   description: string;
+  xpCost: number;
   cooldown: number;
   duration: number;
   strikeCount: number;

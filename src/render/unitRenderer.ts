@@ -141,22 +141,28 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
     ctx.stroke();
   }
 
-  // 3. Cartoon Squash-and-Stretch Impact Recoil & Forward Attack Lunge (zero camera shake!)
+  // 3. Cartoon Squash-and-Stretch Impact Recoil & Dynamic Attack Lunge (zero camera shake!)
   let recoilDx = 0;
   let scaleX = 1;
   let scaleY = 1;
 
-  if (unit.state !== 'dead' && unit.hitFlash > 0.28) {
-    const punch = (unit.hitFlash - 0.28) / 0.72;
+  if (unit.state !== 'dead' && unit.hitFlash > 0.24) {
+    const punch = (unit.hitFlash - 0.24) / 0.76;
     const isBig = unit.lastHitCrit;
-    recoilDx = -dir * (isBig ? 7.5 : 4.5) * punch;
-    scaleX = 1 - (isBig ? 0.14 : 0.08) * punch;
-    scaleY = 1 + (isBig ? 0.13 : 0.08) * punch;
-  } else if (unit.state !== 'dead' && unit.attackAnim > 0.32 && unit.attackAnim <= 0.78) {
-    const strikePeak = Math.sin(((unit.attackAnim - 0.32) / 0.46) * Math.PI);
-    recoilDx = dir * 3.2 * strikePeak;
-    scaleX = 1 + 0.06 * strikePeak;
-    scaleY = 1 - 0.04 * strikePeak;
+    recoilDx = -dir * (isBig ? 9.5 : 5.4) * punch;
+    scaleX = 1 - (isBig ? 0.17 : 0.10) * punch;
+    scaleY = 1 + (isBig ? 0.15 : 0.09) * punch;
+  } else if (unit.state !== 'dead' && unit.attackAnim > 0.72) {
+    // Wind-up compression crouch before explosive lunge
+    const coil = (1 - unit.attackAnim) / 0.28;
+    recoilDx = -dir * 2.4 * coil;
+    scaleX = 1 - 0.05 * coil;
+    scaleY = 1 + 0.05 * coil;
+  } else if (unit.state !== 'dead' && unit.attackAnim > 0.26 && unit.attackAnim <= 0.72) {
+    const strikePeak = Math.sin(((unit.attackAnim - 0.26) / 0.46) * Math.PI);
+    recoilDx = dir * 5.8 * strikePeak;
+    scaleX = 1 + 0.11 * strikePeak;
+    scaleY = 1 - 0.08 * strikePeak;
   }
 
   ctx.save();
@@ -165,31 +171,50 @@ export function renderUnitEntity(ctx: CanvasRenderingContext2D, unit: UnitEntity
   renderUnitPose(ctx, pose);
   ctx.restore();
 
-  // 4. Crisp Comic Starburst Impact Flash directly over torso on fresh hit!
-  if (unit.state !== 'dead' && unit.hitFlash > 0.62) {
-    const f = (unit.hitFlash - 0.62) / 0.38;
-    const iy = spriteY - unit.def.height * 0.56;
+  // 4. Crisp Comic Starburst + Directional Manga Speed-Lines on fresh hit!
+  if (unit.state !== 'dead' && unit.hitFlash > 0.54) {
+    const f = (unit.hitFlash - 0.54) / 0.46;
+    const iy = spriteY - unit.def.height * 0.58;
     const ix = drawX + recoilDx;
-    const rOuter = (unit.lastHitCrit ? 19 : 12) * (0.45 + f * 0.75);
-    const rInner = rOuter * 0.36;
+    const rOuter = (unit.lastHitCrit ? 22 : 13.5) * (0.48 + f * 0.75);
+    const rInner = rOuter * 0.34;
     ctx.save();
     ctx.translate(ix, iy);
+
+    // Directional manga impact speed-lines radiating backward away from blow!
+    const lineCount = unit.lastHitCrit ? 7 : 4;
+    ctx.strokeStyle = unit.lastHitCrit ? 'rgba(254, 240, 138, 0.92)' : 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = unit.lastHitCrit ? 2.4 : 1.7;
+    ctx.lineCap = 'round';
+    for (let i = 0; i < lineCount; i++) {
+      const spread = ((i / Math.max(1, lineCount - 1)) - 0.5) * 1.65;
+      const baseAngle = dir === 1 ? Math.PI : 0; // kick away from incoming hit
+      const a = baseAngle + spread;
+      const d1 = rOuter * 0.72;
+      const d2 = rOuter * (1.35 + (i % 2) * 0.45) * (0.65 + f * 0.55);
+      ctx.beginPath();
+      ctx.moveTo(Math.cos(a) * d1, Math.sin(a) * d1);
+      ctx.lineTo(Math.cos(a) * d2, Math.sin(a) * d2);
+      ctx.stroke();
+    }
+
+    // Crisp multi-spike comic impact starburst
     ctx.beginPath();
-    const spikes = unit.lastHitCrit ? 8 : 6;
+    const spikes = unit.lastHitCrit ? 10 : 7;
     for (let i = 0; i < spikes * 2; i++) {
-      const a = (i / (spikes * 2)) * Math.PI * 2 + f * 0.4;
+      const a = (i / (spikes * 2)) * Math.PI * 2 + f * 0.45;
       const r = i % 2 === 0 ? rOuter : rInner;
       if (i === 0) ctx.moveTo(Math.cos(a) * r, Math.sin(a) * r);
       else ctx.lineTo(Math.cos(a) * r, Math.sin(a) * r);
     }
     ctx.closePath();
-    ctx.fillStyle = unit.lastHitCrit ? 'rgba(253, 224, 71, 0.94)' : 'rgba(255, 255, 255, 0.9)';
+    ctx.fillStyle = unit.lastHitCrit ? 'rgba(253, 224, 71, 0.96)' : 'rgba(255, 255, 255, 0.92)';
     ctx.fill();
     setInkStyle(ctx, 1.5, unit.lastHitCrit ? '#b45309' : '#334155');
     ctx.stroke();
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(0, 0, rInner * 0.85, 0, Math.PI * 2);
+    ctx.arc(0, 0, rInner * 0.88, 0, Math.PI * 2);
     ctx.fill();
     ctx.restore();
   }

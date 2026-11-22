@@ -7,6 +7,7 @@ export const UPGRADE_CATEGORIES: readonly { id: UpgradeCategory; label: string }
   { id: 'defense', label: '방어' },
   { id: 'tactics', label: '전술' },
   { id: 'empire', label: '제국' },
+  { id: 'special', label: '특수' },
 ] as const;
 
 const STANDARD_UPGRADE_COSTS = [80, 170, 360, 760, 1550, 3200, 6500, 13000, 25000, 48000] as const;
@@ -191,6 +192,50 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costs: FORTRESS_UPGRADE_COSTS,
     spriteKey: 'icon/upg_fortress',
   },
+
+  // ============================================================================
+  // PAGE 5: 특수 (SPECIAL — 4종)
+  // ============================================================================
+  {
+    id: 'xp_mastery',
+    category: 'special',
+    name: '경험 숙련',
+    shortName: '경험숙련',
+    effectText: '획득 XP +12%',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: ECONOMY_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_xp_mastery',
+  },
+  {
+    id: 'ult_efficiency',
+    category: 'special',
+    name: '필살 절약',
+    shortName: '필살절약',
+    effectText: '필살 XP -5%',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: SPECIALIST_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_ult_efficiency',
+  },
+  {
+    id: 'executioner',
+    category: 'special',
+    name: '처형 본능',
+    shortName: '처형본능',
+    effectText: '빈사 추뎀 +12%',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: TACTICAL_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_executioner',
+  },
+  {
+    id: 'turret_rapid',
+    category: 'special',
+    name: '포탑 속사',
+    shortName: '포탑속사',
+    effectText: '포탑 공속·사거리',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: FORTRESS_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_turret_rapid',
+  },
 ];
 
 export const UPGRADE_BY_ID: Record<UpgradeId, UpgradeDef> = Object.fromEntries(
@@ -219,6 +264,10 @@ export function createInitialUpgrades(): UpgradeLevels {
     bounty: 0,
     discount: 0,
     fortress: 0,
+    xp_mastery: 0,
+    ult_efficiency: 0,
+    executioner: 0,
+    turret_rapid: 0,
   };
 }
 
@@ -239,7 +288,11 @@ export function getTotalUpgradeLevel(upgrades: UpgradeLevels): number {
     upgrades.economy +
     upgrades.bounty +
     upgrades.discount +
-    upgrades.fortress
+    upgrades.fortress +
+    upgrades.xp_mastery +
+    upgrades.ult_efficiency +
+    upgrades.executioner +
+    upgrades.turret_rapid
   );
 }
 
@@ -385,3 +438,30 @@ export function getBaseMaxHpMult(upgrades: UpgradeLevels): number {
 
 /** Instant base repair ratio on each fortress upgrade purchase (15% of base max HP) */
 export const FORTRESS_UPGRADE_REPAIR_RATIO = 0.15;
+
+// ---- SPECIAL ----
+
+/** All XP gain multiplier (+12% per xp_mastery level across kills, losses & base hits) */
+export function getXpMasteryMult(upgrades: UpgradeLevels): number {
+  return 1 + upgrades.xp_mastery * 0.12;
+}
+
+/** Ultimate XP cost multiplier (-5% per ult_efficiency level, floor 0.50x) */
+export function getUltimateXpCostMult(upgrades: UpgradeLevels): number {
+  return Math.max(0.5, 1 - upgrades.ult_efficiency * 0.05);
+}
+
+/** Bonus damage multiplier vs low-HP enemies (<= 40% HP): +12% per executioner level */
+export function getExecutionerDamageMult(upgrades: UpgradeLevels): number {
+  return 1 + upgrades.executioner * 0.12;
+}
+
+/** Turret fire rate multiplier (+10% faster turret cadence per turret_rapid level) */
+export function getTurretAttackSpeedMult(upgrades: UpgradeLevels): number {
+  return 1 + upgrades.turret_rapid * 0.1;
+}
+
+/** Extra turret range multiplier (+6% per turret_rapid level, stacks with range_optics) */
+export function getTurretRapidRangeMult(upgrades: UpgradeLevels): number {
+  return 1 + upgrades.turret_rapid * 0.06;
+}

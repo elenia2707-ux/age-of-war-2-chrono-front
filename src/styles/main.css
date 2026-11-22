@@ -438,7 +438,7 @@ body {
   pointer-events: auto;
   flex: 1 1 auto;
   min-width: 0;
-  max-width: 572px;
+  max-width: 596px;
   border-radius: var(--radius-md);
   padding: 4px;
   display: flex;
@@ -710,6 +710,14 @@ body {
 
 .ult-btn.ready {
   border-color: rgba(251, 146, 60, 0.95);
+}
+
+.ult-btn.xp-short .power-fill {
+  background: linear-gradient(180deg, rgba(168, 85, 247, 0.36), rgba(99, 102, 241, 0.56));
+}
+
+.ult-btn.xp-short .power-sub {
+  color: #d8b4fe;
 }
 
 @keyframes readyPulse {
@@ -1191,31 +1199,38 @@ body {
 }
 
 /* ============================================================================
-   16-UPGRADE 4-CATEGORY 2x2 SWITCHER (공격 · 방어 · 전술 · 제국)
+   20-UPGRADE 5-CATEGORY SYMMETRICAL SWITCHER (공격·방어·전술 / 제국·특수)
    ============================================================================ */
 .upgrade-page-switch {
   display: grid;
-  grid-template-columns: repeat(2, 1fr);
+  grid-template-columns: repeat(6, 1fr);
   grid-template-rows: repeat(2, 1fr);
   gap: 3px;
-  width: 68px;
-  flex: 0 0 68px;
+  width: 92px;
+  flex: 0 0 92px;
 }
 
 .upg-page-btn {
+  grid-column: span 2;
   border: 1.5px solid rgba(255, 255, 255, 0.14);
   border-radius: 6px;
   background: rgba(255, 255, 255, 0.06);
   color: #cbd5e1;
-  font-size: 9.5px;
+  font-size: 9px;
   font-weight: 800;
   cursor: pointer;
-  padding: 0 2px;
+  padding: 0 1px;
   display: flex;
   align-items: center;
   justify-content: center;
   line-height: 1;
+  white-space: nowrap;
   transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease, transform 0.08s ease;
+}
+
+.upg-page-btn:nth-child(4),
+.upg-page-btn:nth-child(5) {
+  grid-column: span 3;
 }
 
 .upg-page-btn:active {
@@ -1244,6 +1259,12 @@ body {
   background: rgba(245, 189, 66, 0.34);
   border-color: rgba(250, 204, 21, 0.92);
   color: #fef08a;
+}
+
+.upg-page-btn.cat-special.active {
+  background: rgba(6, 182, 212, 0.34);
+  border-color: rgba(34, 211, 238, 0.94);
+  color: #cffafe;
 }
 
 .card-sprite-placeholder {
@@ -1293,7 +1314,7 @@ body {
     height: 26px;
   }
   .dock-left {
-    max-width: 584px;
+    max-width: 604px;
     padding: 3px;
     gap: 4px;
   }
@@ -1303,12 +1324,12 @@ body {
     gap: 2px;
   }
   .upgrade-page-switch {
-    width: 60px;
-    flex: 0 0 60px;
+    width: 82px;
+    flex: 0 0 82px;
     gap: 2px;
   }
   .upg-page-btn {
-    font-size: 8.8px;
+    font-size: 8.4px;
   }
   .action-cards {
     gap: 4px;

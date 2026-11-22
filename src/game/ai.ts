@@ -43,10 +43,12 @@ export class EnemyAI {
     const criticalThreat = closestPlayerX > WORLD_WIDTH * 0.72 && enemyUnits.length < 3;
     const underThreat = closestPlayerX > WORLD_WIDTH * 0.56 || enemy.baseHp < enemy.baseMaxHp * 0.72;
 
-    // 2. Ultimate usage (Normal / Hard) when player army pushes past midfield
+    // 2. Ultimate usage (Normal / Hard) respects XP cost & avoids delaying imminent evolution unless critical
+    const nearEvolution = era.evolveXp > 0 && enemy.xp >= era.evolveXp * 0.78;
     if (
       diff.aiUsesUltimate &&
-      enemy.ultimateCooldown <= 0 &&
+      engine.canUseUltimate('enemy') &&
+      (!nearEvolution || criticalThreat) &&
       playerUnits.length >= (engine.difficulty === 'hard' ? 3 : 4) &&
       closestPlayerX > WORLD_WIDTH * 0.45
     ) {
@@ -181,32 +183,37 @@ export class EnemyAI {
     // Cap target upgrade level gracefully by both difficulty ceiling and era progression
     const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + 1));
 
-    // Tactical priority order across all 16 upgrades based on live battlefield pressure
+    // Tactical priority order across all 20 upgrades based on live battlefield pressure
     let priority: UpgradeId[];
     if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
-      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets), regen, thorns, armor
+      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets), turret_rapid, regen, thorns, armor
       priority = [
         'fortress',
+        'turret_rapid',
         'armor',
         'regeneration',
         'thorns',
         'weapons',
         'lifesteal',
+        'executioner',
         'ultimate_power',
+        'ult_efficiency',
         'attack_speed',
         'range_optics',
         'armor_pierce',
         'siege_craft',
         'mobility',
         'crit_mastery',
+        'xp_mastery',
         'discount',
         'economy',
         'bounty',
       ];
     } else if (enemy.upgrades.economy < Math.min(eraCap, 3) && !underThreat) {
-      // Early/mid economic, discount & bounty snowballing
+      // Early/mid economic, XP mastery, discount & bounty snowballing
       priority = [
         'economy',
+        'xp_mastery',
         'discount',
         'bounty',
         'weapons',
@@ -214,20 +221,24 @@ export class EnemyAI {
         'regeneration',
         'attack_speed',
         'range_optics',
+        'executioner',
         'lifesteal',
         'armor_pierce',
         'mobility',
         'crit_mastery',
         'siege_craft',
+        'turret_rapid',
+        'ult_efficiency',
         'thorns',
         'ultimate_power',
         'fortress',
       ];
     } else if (activeAllies >= 3) {
-      // Active push -> scale DPS, pierce, siege, lifesteal & march momentum
+      // Active push -> scale DPS, executioner, pierce, siege, lifesteal & march momentum
       priority = [
         'weapons',
         'attack_speed',
+        'executioner',
         'armor_pierce',
         'siege_craft',
         'crit_mastery',
@@ -235,9 +246,12 @@ export class EnemyAI {
         'range_optics',
         'armor',
         'mobility',
+        'xp_mastery',
         'ultimate_power',
+        'ult_efficiency',
         'regeneration',
         'thorns',
+        'turret_rapid',
         'discount',
         'bounty',
         'economy',
@@ -247,14 +261,18 @@ export class EnemyAI {
       priority = [
         'armor',
         'weapons',
+        'xp_mastery',
         'regeneration',
         'attack_speed',
+        'executioner',
         'range_optics',
         'thorns',
         'armor_pierce',
         'lifesteal',
+        'turret_rapid',
         'mobility',
         'crit_mastery',
+        'ult_efficiency',
         'discount',
         'siege_craft',
         'economy',

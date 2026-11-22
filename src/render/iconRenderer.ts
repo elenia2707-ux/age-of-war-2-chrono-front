@@ -480,5 +480,99 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
       drawCelEllipse(ctx, 0, -4, 6.2, 6.2, '#4ade80', { highlight: '#dcfce7', lineWidth: 1.8 });
       break;
     }
+
+    // ---- SPECIAL (특수) ----
+    case 'xp_mastery': {
+      // Glowing cyan-gold celestial XP mastery star crystal + upward boost chevron!
+      drawCelPoly(
+        ctx,
+        [
+          [-6, -24],
+          [10, -4],
+          [-6, 22],
+          [-22, -4],
+        ],
+        '#0ea5e9',
+        { highlight: '#bae6fd', shadow: '#0369a1', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, -6, -3, 6.5, '#38bdf8', '#ffffff');
+      drawCelPoly(
+        ctx,
+        [
+          [16, -22],
+          [28, -6],
+          [21, -6],
+          [21, 18],
+          [11, 18],
+          [11, -6],
+          [4, -6],
+        ],
+        '#facc15',
+        { highlight: '#fef08a', shadow: '#b45309', lineWidth: 2.1 },
+      );
+      break;
+    }
+
+    case 'ult_efficiency': {
+      // Violet-cyan arcane efficiency hourglass / lightning prism saving ultimate XP!
+      drawCelPoly(
+        ctx,
+        [
+          [-18, -22],
+          [18, -22],
+          [5, 0],
+          [18, 22],
+          [-18, 22],
+          [-5, 0],
+        ],
+        '#a855f7',
+        { highlight: '#f5d0fe', shadow: '#581c87', lineWidth: 2.4 },
+      );
+      drawCelRoundRect(ctx, -21, -25, 42, 6, 2, '#facc15', { highlight: '#fef08a', lineWidth: 1.8 });
+      drawCelRoundRect(ctx, -21, 19, 42, 6, 2, '#facc15', { highlight: '#fef08a', lineWidth: 1.8 });
+      drawEnergyOrb(ctx, 0, 0, 6.5, '#22d3ee', '#ffffff');
+      break;
+    }
+
+    case 'executioner': {
+      // Menacing crimson-gold curved executioner scythe / skull finisher crest!
+      ctx.save();
+      ctx.rotate(-0.18);
+      drawCelRoundRect(ctx, -18, -22, 6.5, 46, 2.5, '#78350f', { highlight: '#ca8a04', shadow: '#451a03', lineWidth: 2.1 });
+      drawCelPoly(
+        ctx,
+        [
+          [-14, -22],
+          [24, -18],
+          [12, -2],
+          [-12, -10],
+        ],
+        '#ef4444',
+        { highlight: '#fca5a5', shadow: '#7f1d1d', lineWidth: 2.4 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [-6, -19],
+          [21, -17],
+          [12, -8],
+        ],
+        '#fef08a',
+        { lineWidth: 1.4 },
+      );
+      drawEnergyOrb(ctx, 10, 12, 7.5, '#f43f5e', '#fef08a');
+      ctx.restore();
+      break;
+    }
+
+    case 'turret_rapid': {
+      // Twin rapid-fire turret barrels with glowing cyan speed chevrons!
+      drawCelRoundRect(ctx, -24, -14, 22, 28, 5, '#475569', { highlight: '#cbd5e1', shadow: '#1e293b', lineWidth: 2.4 });
+      drawCelRoundRect(ctx, -4, -12, 28, 8, 2.5, '#f59e0b', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
+      drawCelRoundRect(ctx, -4, 4, 28, 8, 2.5, '#f59e0b', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.1 });
+      drawEnergyOrb(ctx, 25, -8, 5.2, '#22d3ee', '#ffffff');
+      drawEnergyOrb(ctx, 25, 8, 5.2, '#22d3ee', '#ffffff');
+      break;
+    }
   }
 }

@@ -846,156 +846,203 @@ export interface HumanoidRigConfig {
 }
 
 /**
- * Deluxe Age-of-War-2 / Kingdom-Rush articulated humanoid rig with smooth breathing,
- * cel-shaded gradients, weapon swing motion-blur smears, and expressive faces.
+ * Deluxe Age-of-War-2 / Kingdom-Rush articulated humanoid rig with heroic V-tapered silhouette,
+ * armored cuffs & knee guards, 12-principles anticipation/follow-through, and anime weapon smears.
  */
 export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: HumanoidRigConfig): void {
-  const s = cfg.scale ?? 1;
-  const torsoW = cfg.torsoW ?? 16;
-  const torsoH = cfg.torsoH ?? 19;
-  const headR = cfg.headR ?? 8.2;
-  const legLen = cfg.legLen ?? 14;
+  const s = (cfg.scale ?? 1) * 1.04;
+  const torsoW = cfg.torsoW ?? 16.5;
+  const torsoH = cfg.torsoH ?? 19.5;
+  const headR = cfg.headR ?? 8.3;
+  const legLen = cfg.legLen ?? 14.5;
   const dp = cfg.deathProgress;
 
   const stride = cfg.isWalking ? Math.sin(cfg.walkPhase) : 0;
-  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 3.8 : 0;
-  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 3.8 : 0;
-  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 2.5 : Math.sin(cfg.walkPhase * 0.9) * 0.7;
+  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 4.4 : 0;
+  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 4.4 : 0;
+  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 2.8 : Math.sin(cfg.walkPhase * 1.1) * 0.9;
 
   const atk = cfg.attackAnim;
-  const firing = atk > 0.45 && atk < 0.82;
+  const firing = atk > 0.42 && atk < 0.84;
   let weaponAngle = 0;
   let weaponPushX = 0;
   let weaponPushY = 0;
-  let torsoLean = cfg.isWalking ? 0.09 : 0.02;
+  let torsoLean = cfg.isWalking ? 0.11 : 0.03;
+  let headLag = cfg.isWalking ? -0.05 * Math.cos(cfg.walkPhase) : 0;
+  let attackStanceShift = 0;
 
   const style = cfg.swingStyle ?? 'overhead';
   if (atk > 0.01) {
     if (style === 'overhead') {
       if (atk > 0.72) {
+        // Dramatic coiled wind-up!
         const t = (1 - atk) / 0.28;
-        weaponAngle = -1.48 * t;
-        torsoLean = -0.15 * t;
-      } else if (atk > 0.32) {
-        const t = (0.72 - atk) / 0.4;
-        weaponAngle = -1.48 + 2.52 * Math.sin(t * Math.PI * 0.5);
-        torsoLean = -0.15 + 0.36 * t;
-        weaponPushX = 4.5 * t;
+        const ease = Math.sin(t * Math.PI * 0.5);
+        weaponAngle = -1.88 * ease;
+        torsoLean = -0.24 * ease;
+        weaponPushX = -3.5 * ease;
+        headLag = -0.1 * ease;
+        attackStanceShift = -2.2 * ease;
+      } else if (atk > 0.30) {
+        // Explosive snap downward cleave!
+        const t = (0.72 - atk) / 0.42;
+        const snap = Math.sin(t * Math.PI * 0.5);
+        weaponAngle = -1.88 + 3.16 * snap;
+        torsoLean = -0.24 + 0.52 * snap;
+        weaponPushX = -3.5 + 10.5 * snap;
+        headLag = 0.12 * snap;
+        attackStanceShift = 4.2 * snap;
       } else {
-        const t = atk / 0.32;
-        weaponAngle = 1.04 * t;
-        torsoLean = 0.21 * t;
-        weaponPushX = 4.5 * t;
+        // Heavy follow-through recovery
+        const t = atk / 0.30;
+        weaponAngle = 1.28 * t;
+        torsoLean = 0.28 * t;
+        weaponPushX = 7.0 * t;
+        attackStanceShift = 4.2 * t;
       }
     } else if (style === 'thrust') {
       if (atk > 0.68) {
         const t = (1 - atk) / 0.32;
-        weaponPushX = -5.5 * t;
-        torsoLean = -0.1 * t;
-      } else if (atk > 0.28) {
-        const t = (0.68 - atk) / 0.4;
-        weaponPushX = -5.5 + 17 * Math.sin(t * Math.PI * 0.5);
-        torsoLean = 0.2 * t;
+        weaponPushX = -8.5 * t;
+        torsoLean = -0.16 * t;
+        attackStanceShift = -2.5 * t;
+      } else if (atk > 0.26) {
+        const t = (0.68 - atk) / 0.42;
+        const snap = Math.sin(t * Math.PI * 0.5);
+        weaponPushX = -8.5 + 29 * snap;
+        torsoLean = -0.16 + 0.42 * snap;
+        attackStanceShift = 5.0 * snap;
       } else {
-        const t = atk / 0.28;
-        weaponPushX = 11.5 * t;
-        torsoLean = 0.16 * t;
+        const t = atk / 0.26;
+        weaponPushX = 20.5 * t;
+        torsoLean = 0.26 * t;
+        attackStanceShift = 5.0 * t;
       }
     } else if (style === 'aim') {
-      const recoil = atk > 0.42 ? Math.sin(((atk - 0.42) / 0.58) * Math.PI) : 0;
-      weaponPushX = -4.5 * recoil;
-      weaponAngle = -0.16 * recoil;
-      torsoLean = -0.09 * recoil;
+      const recoil = atk > 0.40 ? Math.sin(((atk - 0.40) / 0.60) * Math.PI) : 0;
+      weaponPushX = -6.2 * recoil;
+      weaponAngle = -0.24 * recoil;
+      torsoLean = -0.14 * recoil;
+      headLag = -0.08 * recoil;
+      attackStanceShift = -2.2 * recoil;
     } else if (style === 'throw') {
       if (atk > 0.62) {
         const t = (1 - atk) / 0.38;
-        weaponAngle = -1.72 * t;
-        torsoLean = -0.18 * t;
+        weaponAngle = -2.0 * t;
+        torsoLean = -0.24 * t;
+        attackStanceShift = -2.5 * t;
       } else {
         const t = (0.62 - atk) / 0.62;
-        weaponAngle = -1.72 + 2.35 * t;
-        torsoLean = -0.18 + 0.38 * t;
-        weaponPushX = 5 * t;
+        weaponAngle = -2.0 + 2.8 * t;
+        torsoLean = -0.24 + 0.52 * t;
+        weaponPushX = 7.5 * t;
+        attackStanceShift = 4.0 * t;
       }
     } else if (style === 'staff') {
       const surge = Math.sin(atk * Math.PI);
-      weaponPushY = -5.5 * surge;
-      weaponAngle = -0.32 * surge;
-      torsoLean = 0.12 * surge;
+      weaponPushY = -7.5 * surge;
+      weaponAngle = -0.42 * surge;
+      torsoLean = 0.16 * surge;
+      headLag = -0.08 * surge;
     } else if (style === 'dual') {
       const slash = Math.sin(atk * Math.PI);
-      weaponAngle = -1.2 + slash * 2.25;
-      weaponPushX = 6.5 * slash;
-      torsoLean = 0.22 * slash;
+      weaponAngle = -1.55 + slash * 2.85;
+      weaponPushX = 9.0 * slash;
+      torsoLean = 0.28 * slash;
+      attackStanceShift = 4.5 * slash;
     }
   }
 
   const mood: 'normal' | 'attack' | 'hurt' | 'dead' =
-    dp > 0.2 ? 'dead' : cfg.hitFlash > 0.32 ? 'hurt' : atk > 0.25 ? 'attack' : 'normal';
+    dp > 0.2 ? 'dead' : cfg.hitFlash > 0.32 ? 'hurt' : atk > 0.22 ? 'attack' : 'normal';
 
   ctx.save();
   ctx.scale(s, s);
 
+  // Subtle glowing arcane cast circle beneath boots for Staff casters!
+  if (dp === 0 && style === 'staff' && atk > 0.18) {
+    const surge = Math.sin(atk * Math.PI);
+    ctx.save();
+    ctx.strokeStyle = `rgba(250, 204, 21, ${(surge * 0.85).toFixed(2)})`;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.ellipse(2, -1, 14 + surge * 5, 4.2 + surge * 1.4, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  }
+
   if (dp > 0) {
     const fall = Math.min(1, dp * 1.45);
-    ctx.translate(-fall * 8, -fall * 4);
-    ctx.rotate(-fall * 1.48);
+    ctx.translate(-fall * 9, -fall * 4);
+    ctx.rotate(-fall * 1.52);
   } else if (cfg.hitFlash > 0.35) {
     const k = (cfg.hitFlash - 0.35) / 0.65;
-    ctx.rotate(-0.16 * k);
+    ctx.rotate(-0.22 * k);
   }
 
   const hipY = -legLen - bob;
   const torsoTopY = hipY - torsoH;
   const shoulderY = torsoTopY + 5;
 
-  // 1. Back fluttering 2-tone cape
+  // 1. Back fluttering 2-tone cape with bold dynamic wave during attack!
   if (cfg.capeColor) {
     drawCartoonCape(
       ctx,
-      -torsoW * 0.36,
+      -torsoW * 0.38,
       shoulderY - 1,
-      torsoH + legLen * 0.54,
-      torsoW * 0.98,
+      torsoH + legLen * 0.56,
+      torsoW * 1.04 + (atk > 0.2 ? 3.5 : 0),
       cfg.capeColor,
       cfg.capeDark ?? INK_SOFT,
-      cfg.walkPhase + atk * 4,
+      cfg.walkPhase + atk * 5.2,
     );
   }
 
-  // 2. Back leg + boot
-  const backFootX = -2 - stride * 7.8;
+  // 2. Back leg + knee cap + cuffed boot
+  const backFootX = -2.5 - stride * 8.4 - Math.max(0, attackStanceShift * 0.35);
   const backFootY = -2 - liftB;
-  const backKneeX = (-2 + backFootX) * 0.5 + 2.5;
+  const backKneeX = (-2.5 + backFootX) * 0.5 + 2.8;
   const backKneeY = (hipY + backFootY) * 0.5;
-  drawInkLimb(ctx, -2, hipY + 1, backKneeX, backKneeY, 4.5, cfg.pantsColor);
-  drawInkLimb(ctx, backKneeX, backKneeY, backFootX, backFootY, 4.2, cfg.bootColor);
-  drawCelEllipse(ctx, backFootX + 2.2, backFootY, 4.5, 2.7, cfg.bootColor, {
+  drawInkLimb(ctx, -2.5, hipY + 1, backKneeX, backKneeY, 4.7, cfg.pantsColor);
+  drawInkLimb(ctx, backKneeX, backKneeY, backFootX, backFootY, 4.3, cfg.bootColor);
+  drawCelEllipse(ctx, backKneeX + 0.6, backKneeY, 2.3, 2.1, cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.22)',
+    lineWidth: 1.3,
+  });
+  drawCelEllipse(ctx, backFootX + 2.4, backFootY, 4.8, 2.8, cfg.bootColor, {
     shadow: '#0f172a',
     lineWidth: 1.8,
   });
 
-  // 3. Back arm
-  const backArmX = torsoW * 0.34 + Math.max(0, stride * 2.5);
-  const backArmY = shoulderY + 6 + (atk > 0.2 ? -2 : 0);
-  drawInkLimb(ctx, 2, shoulderY + 1, backArmX, backArmY, 4.2, cfg.armColor ?? cfg.skin);
+  // 3. Expressive back arm (swings opposite to legs / lunges on dual attacks)
+  const backArmSwing = cfg.isWalking ? -stride * 4.2 : Math.sin(cfg.walkPhase * 1.1) * 0.8;
+  const dualCounterX = style === 'dual' && atk > 0.1 ? Math.sin(atk * Math.PI) * 9 : 0;
+  const backArmX = torsoW * 0.36 + backArmSwing + dualCounterX;
+  const backArmY = shoulderY + 6.5 + (atk > 0.2 ? -3 : 0);
+  drawInkLimb(ctx, 2, shoulderY + 1, backArmX, backArmY, 4.4, cfg.armColor ?? cfg.skin);
+  drawCelEllipse(ctx, backArmX, backArmY, 2.8, 2.5, cfg.skin, { lineWidth: 1.5 });
 
-  // 4. Front leg + highlighted boot
-  const frontFootX = 2.5 + stride * 7.8;
+  // 4. Front leg + armored knee guard + highlighted cuffed boot (plants forward during melee lunge!)
+  const frontFootX = 2.8 + stride * 8.4 + Math.max(0, attackStanceShift * 0.65);
   const frontFootY = -2 - liftA;
-  const frontKneeX = (2.5 + frontFootX) * 0.5 + 3.2;
+  const frontKneeX = (2.8 + frontFootX) * 0.5 + 3.5;
   const frontKneeY = (hipY + frontFootY) * 0.5;
-  drawInkLimb(ctx, 2.5, hipY + 1, frontKneeX, frontKneeY, 4.7, cfg.pantsColor);
-  drawInkLimb(ctx, frontKneeX, frontKneeY, frontFootX, frontFootY, 4.3, cfg.bootColor);
-  drawCelEllipse(ctx, frontFootX + 2.4, frontFootY, 4.7, 2.8, cfg.bootColor, {
-    highlight: 'rgba(255,255,255,0.28)',
+  drawInkLimb(ctx, 2.8, hipY + 1, frontKneeX, frontKneeY, 5.0, cfg.pantsColor);
+  drawInkLimb(ctx, frontKneeX, frontKneeY, frontFootX, frontFootY, 4.5, cfg.bootColor);
+  // Boot top cuff & knee guard highlight
+  drawCelEllipse(ctx, frontKneeX + 0.8, frontKneeY, 2.6, 2.3, cfg.pauldronColor ?? cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.34)',
+    lineWidth: 1.4,
+  });
+  drawCelEllipse(ctx, frontFootX + 2.6, frontFootY, 5.0, 2.9, cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.32)',
     shadow: '#0f172a',
     lineWidth: 1.8,
   });
 
-  // 5. Upper body (leans smoothly during walk/attack)
+  // 5. Upper body (heroic V-tapered torso leaning dynamically during walk/attack)
   ctx.save();
-  ctx.translate(0, hipY);
+  ctx.translate(attackStanceShift * 0.35, hipY);
   ctx.rotate(torsoLean);
   ctx.translate(0, -hipY);
 
@@ -1003,12 +1050,26 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     cfg.drawBackAccessory(ctx, torsoTopY);
   }
 
-  // Heroic shaded torso
-  drawCelRoundRect(ctx, -torsoW / 2, torsoTopY, torsoW, torsoH + 2, 5.5, cfg.torsoFill, {
-    highlight: cfg.torsoHighlight ?? 'rgba(255,255,255,0.25)',
-    shadow: cfg.torsoShadow ?? 'rgba(0,0,0,0.28)',
-    lineWidth: 2.2,
-  });
+  // Heroic V-tapered athletic silhouette torso (wider armored shoulders tapering to waist!)
+  const topHalfW = torsoW * 0.56;
+  const botHalfW = torsoW * 0.44;
+  drawCelPoly(
+    ctx,
+    [
+      [-topHalfW, torsoTopY + 2],
+      [-topHalfW + 3, torsoTopY - 0.5],
+      [topHalfW - 2.5, torsoTopY - 0.5],
+      [topHalfW + 0.8, torsoTopY + 3],
+      [botHalfW + 0.4, hipY + 1.5],
+      [-botHalfW - 0.4, hipY + 1.5],
+    ],
+    cfg.torsoFill,
+    {
+      highlight: cfg.torsoHighlight ?? 'rgba(255,255,255,0.28)',
+      shadow: cfg.torsoShadow ?? 'rgba(0,0,0,0.30)',
+      lineWidth: 2.25,
+    },
+  );
 
   if (cfg.drawTorsoDetail) {
     cfg.drawTorsoDetail(ctx, -torsoW / 2, torsoTopY, torsoW, torsoH + 2);
@@ -1016,24 +1077,35 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
 
   // Waist belt + gleaming golden buckle
   if (cfg.beltColor) {
-    drawCelRoundRect(ctx, -torsoW / 2 - 0.8, hipY - 3.6, torsoW + 1.6, 4.2, 1.6, cfg.beltColor, {
+    drawCelRoundRect(ctx, -botHalfW - 1.4, hipY - 3.8, botHalfW * 2 + 2.8, 4.4, 1.6, cfg.beltColor, {
       shadow: '#0f172a',
       lineWidth: 1.6,
     });
-    drawCelRoundRect(ctx, 0.5, hipY - 3.8, 4.4, 4.5, 1, '#facc15', {
+    drawCelRoundRect(ctx, 0.5, hipY - 4.0, 4.6, 4.7, 1, '#facc15', {
       highlight: '#fef08a',
       shadow: '#b45309',
-      lineWidth: 1.3,
+      lineWidth: 1.35,
     });
   }
 
-  // Head + expressive face
-  const headX = 1.2;
+  // Head + expressive face with slight secondary spring tilt!
+  const headX = 1.4;
   const headY = torsoTopY - headR * 0.78;
-  drawCelEllipse(ctx, headX, headY, headR * 1.04, headR, cfg.skin, {
-    highlight: 'rgba(255,255,255,0.32)',
+  ctx.save();
+  ctx.translate(headX, headY + headR * 0.45);
+  ctx.rotate(headLag);
+  ctx.translate(-headX, -(headY + headR * 0.45));
+
+  // Subtle neck shadow collar
+  ctx.fillStyle = INK;
+  ctx.beginPath();
+  ctx.ellipse(headX, torsoTopY + 0.5, 4.2, 2.0, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  drawCelEllipse(ctx, headX, headY, headR * 1.05, headR, cfg.skin, {
+    highlight: 'rgba(255,255,255,0.34)',
     shadow: cfg.skinShadow ?? 'rgba(120,53,15,0.22)',
-    lineWidth: 2.1,
+    lineWidth: 2.15,
   });
 
   drawCartoonFace(ctx, headX, headY + 0.5, {
@@ -1048,31 +1120,100 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   if (cfg.drawHelmet) {
     cfg.drawHelmet(ctx, headX, headY, headR);
   }
+  ctx.restore();
 
-  // Front arm & main weapon + anime motion-blur smear during melee swing peak!
-  const shoulderX = -1.5;
+  // Front arm & main weapon + multi-layer anime motion-blur smears across ALL attack styles!
+  const shoulderX = -1.6;
   ctx.save();
-  ctx.translate(shoulderX + weaponPushX * 0.45, shoulderY + weaponPushY * 0.45);
+  ctx.translate(shoulderX + weaponPushX * 0.42, shoulderY + weaponPushY * 0.42);
 
-  if ((style === 'overhead' || style === 'dual') && atk > 0.34 && atk < 0.74) {
-    const smearAlpha = Math.sin(((atk - 0.34) / 0.4) * Math.PI) * 0.48;
+  if ((style === 'overhead' || style === 'dual') && atk > 0.28 && atk < 0.74) {
+    const smearAlpha = Math.sin(((atk - 0.28) / 0.46) * Math.PI);
+    const smearStart = -1.92;
+    const smearEnd = Math.max(smearStart + 0.35, weaponAngle + 0.16);
     ctx.save();
-    ctx.globalAlpha = smearAlpha;
-    ctx.strokeStyle = '#fef9c3';
-    ctx.lineWidth = 7.5;
+    // Wide golden-amber outer glow arc
+    ctx.globalAlpha = smearAlpha * 0.48;
+    ctx.strokeStyle = style === 'dual' ? '#67e8f9' : '#fbbf24';
+    ctx.lineWidth = 11.5;
     ctx.lineCap = 'round';
     ctx.beginPath();
-    ctx.arc(2, 0, 26, -1.65, weaponAngle - 0.12);
+    ctx.arc(3, 0, 27, smearStart, smearEnd);
     ctx.stroke();
+
+    // Crisp white razor inner motion edge
+    ctx.globalAlpha = smearAlpha * 0.85;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 4.2;
+    ctx.beginPath();
+    ctx.arc(3, 0, 30, smearStart + 0.25, smearEnd);
+    ctx.stroke();
+
+    // Secondary trailing X-arc for dual blade strikers
+    if (style === 'dual') {
+      ctx.globalAlpha = smearAlpha * 0.62;
+      ctx.strokeStyle = '#fef08a';
+      ctx.lineWidth = 5.5;
+      ctx.beginPath();
+      ctx.arc(5, 2, 22, -smearEnd * 0.6, smearEnd * 0.8);
+      ctx.stroke();
+    }
+    ctx.restore();
+  } else if (style === 'thrust' && atk > 0.26 && atk < 0.68) {
+    // Piercing sonic thrust speed lines & cone!
+    const thrustAlpha = Math.sin(((atk - 0.26) / 0.42) * Math.PI);
+    ctx.save();
+    ctx.globalAlpha = thrustAlpha * 0.78;
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2.6;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.moveTo(8, -5);
+    ctx.lineTo(36, -2);
+    ctx.moveTo(10, 6);
+    ctx.lineTo(38, 3);
+    ctx.stroke();
+    ctx.strokeStyle = '#bae6fd';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.ellipse(24, 1, 3.5, 9.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.restore();
+  } else if (style === 'throw' && atk > 0.25 && atk < 0.62) {
+    // Curved air-whoosh release arc
+    const whooshAlpha = Math.sin(((atk - 0.25) / 0.37) * Math.PI) * 0.65;
+    ctx.save();
+    ctx.globalAlpha = whooshAlpha;
+    ctx.strokeStyle = '#f8fafc';
+    ctx.lineWidth = 4.0;
+    ctx.lineCap = 'round';
+    ctx.beginPath();
+    ctx.arc(2, -2, 22, -1.9, -0.2);
+    ctx.stroke();
+    ctx.restore();
+  } else if (style === 'aim' && atk > 0.46 && atk < 0.86) {
+    // Ejected spinning brass shell glint + tiny recoil smoke puff on firearm shot!
+    const t = (0.86 - atk) / 0.40;
+    ctx.save();
+    ctx.globalAlpha = Math.max(0, 1 - t) * 0.9;
+    ctx.fillStyle = '#fde047';
+    ctx.translate(10 - t * 9, -6 - Math.sin(t * Math.PI) * 11);
+    ctx.rotate(t * 9);
+    ctx.fillRect(-2.2, -1.0, 4.4, 2.0);
     ctx.restore();
   }
 
   ctx.rotate(weaponAngle);
 
-  const handX = 8.5 + weaponPushX * 0.55;
-  const handY = 4.5 + weaponPushY * 0.55;
-  drawInkLimb(ctx, 0, 0, handX, handY, 4.6, cfg.armColor ?? cfg.skin);
-  drawCelEllipse(ctx, handX, handY, 3.2, 2.9, cfg.skin, { highlight: '#ffffff', lineWidth: 1.7 });
+  const handX = 8.8 + weaponPushX * 0.58;
+  const handY = 4.4 + weaponPushY * 0.58;
+  drawInkLimb(ctx, 0, 0, handX, handY, 4.8, cfg.armColor ?? cfg.skin);
+  // Gauntlet / wrist bracer band
+  drawCelEllipse(ctx, handX * 0.72, handY * 0.72, 2.6, 2.5, cfg.beltColor ?? '#475569', {
+    highlight: 'rgba(255,255,255,0.35)',
+    lineWidth: 1.3,
+  });
+  drawCelEllipse(ctx, handX, handY, 3.3, 3.0, cfg.skin, { highlight: '#ffffff', lineWidth: 1.7 });
 
   ctx.save();
   ctx.translate(handX, handY);
@@ -1080,23 +1221,23 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   ctx.restore();
 
   if (cfg.pauldronColor) {
-    drawCelEllipse(ctx, 0, -1, 5.6, 4.8, cfg.pauldronColor, {
-      highlight: 'rgba(255,255,255,0.42)',
-      shadow: 'rgba(0,0,0,0.28)',
-      lineWidth: 1.9,
+    drawCelEllipse(ctx, 0, -1.2, 6.0, 5.1, cfg.pauldronColor, {
+      highlight: 'rgba(255,255,255,0.48)',
+      shadow: 'rgba(0,0,0,0.3)',
+      lineWidth: 1.95,
     });
     if (cfg.pauldronTrim) {
       ctx.strokeStyle = cfg.pauldronTrim;
-      ctx.lineWidth = 1.5;
+      ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(0, -1, 3.6, 0.2, Math.PI * 0.85);
+      ctx.arc(0, -1.2, 3.8, 0.18, Math.PI * 0.88);
       ctx.stroke();
     }
   }
   ctx.restore();
 
   if (cfg.drawOffhand) {
-    const shieldX = torsoW * 0.46 + (atk > 0.25 ? 2.5 : 0);
+    const shieldX = torsoW * 0.48 + (atk > 0.25 ? 3.2 : 0);
     const shieldY = shoulderY + 6.5;
     cfg.drawOffhand(ctx, shieldX, shieldY);
   }

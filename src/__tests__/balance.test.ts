@@ -83,13 +83,14 @@ describe('10-Era Balance & Catalog Integrity', () => {
     expect(ERAS[9].ultimate.name).toBe('블랙홀 붕괴');
   });
 
-  it('defines 16 gold spec upgrades (4 categories x 4) with strictly increasing gold costs up to Lv.10', () => {
-    expect(UPGRADES).toHaveLength(16);
+  it('defines 20 gold spec upgrades (5 categories x 4) with strictly increasing gold costs up to Lv.10', () => {
+    expect(UPGRADES).toHaveLength(20);
     expect(MAX_UPGRADE_LEVEL).toBe(10);
     expect(getUpgradesByCategory('offense')).toHaveLength(4);
     expect(getUpgradesByCategory('defense')).toHaveLength(4);
     expect(getUpgradesByCategory('tactics')).toHaveLength(4);
     expect(getUpgradesByCategory('empire')).toHaveLength(4);
+    expect(getUpgradesByCategory('special')).toHaveLength(4);
     for (const upg of UPGRADES) {
       expect(upg.maxLevel).toBe(MAX_UPGRADE_LEVEL);
       expect(upg.costs).toHaveLength(MAX_UPGRADE_LEVEL);
@@ -99,10 +100,16 @@ describe('10-Era Balance & Catalog Integrity', () => {
     }
   });
 
-  it('uses an extended civilization XP progression curve so each era lasts meaningfully longer', () => {
+  it('uses an extended civilization XP progression curve and positive scaling ultimate XP costs', () => {
     expect(ERAS[0].evolveXp).toBeGreaterThanOrEqual(1500);
     expect(ERAS[3].evolveXp).toBeGreaterThanOrEqual(9000);
     expect(ERAS[8].evolveXp).toBeGreaterThanOrEqual(120000);
     expect(ERAS[9].evolveXp).toBe(0);
+    for (let i = 0; i < ERAS.length; i++) {
+      expect(ERAS[i].ultimate.xpCost).toBeGreaterThan(0);
+      if (i > 0) {
+        expect(ERAS[i].ultimate.xpCost).toBeGreaterThan(ERAS[i - 1].ultimate.xpCost);
+      }
+    }
   });
 });

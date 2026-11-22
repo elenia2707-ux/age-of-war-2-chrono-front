@@ -39,7 +39,7 @@ describe('Enemy AI, Camera & Local Records', () => {
     expect(totalEnemyUpgrades).toBeGreaterThan(0);
   });
 
-  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3 across all 16 upgrades)', () => {
+  it('caps EnemyAI gold upgrade levels by difficulty (easy <= Lv.3 across all 20 upgrades)', () => {
     const engine = new GameEngine();
     engine.startNewGame('easy', 1337);
     engine.enemy.gold = 200000;

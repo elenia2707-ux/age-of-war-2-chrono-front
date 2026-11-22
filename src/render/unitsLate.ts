@@ -947,6 +947,12 @@ function drawEarlyTank(
   ctx.translate(0, bob);
   drawTankTreads(ctx, -37, -21, 74, 21, p.walkPhase, 5, '#292524', '#57534e');
 
+  // Subtle upward turret/hull recoil rock on cannon fire!
+  ctx.save();
+  ctx.translate(0, -20);
+  ctx.rotate(-recoil * 0.065);
+  ctx.translate(0, 20);
+
   drawCelPoly(
     ctx,
     [
@@ -972,7 +978,7 @@ function drawEarlyTank(
   });
   drawCelRoundRect(ctx, -10, -56, 11, 6, 2, '#3d4a2c', { highlight: '#798c5c', lineWidth: 1.8 });
 
-  const rx = -recoil * 7;
+  const rx = -recoil * 10;
   drawCelRoundRect(ctx, 11 + rx, -46, 29, 7, 2.2, '#334155', {
     highlight: '#94a3b8',
     shadow: '#0f172a',
@@ -981,8 +987,14 @@ function drawEarlyTank(
   drawCelRoundRect(ctx, 35 + rx, -47.5, 6, 10, 1.5, '#1e293b', { highlight: '#64748b', lineWidth: 1.8 });
 
   if (firing) {
-    drawCartoonMuzzleFlash(ctx, 45 + rx, -42.5, 17, '#f97316', '#fef08a');
+    drawCartoonMuzzleFlash(ctx, 46 + rx, -42.5, 20, '#f97316', '#fef08a');
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.85)';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.ellipse(44 + rx, -42.5, 4, 13, 0, 0, Math.PI * 2);
+    ctx.stroke();
   }
+  ctx.restore();
   ctx.restore();
 }
 
@@ -1005,6 +1017,12 @@ function drawModernMBT(
 
   ctx.translate(0, bob);
   drawTankTreads(ctx, -41, -19, 82, 19, p.walkPhase, 6, '#1e293b', '#475569');
+
+  // Heavy cannon suspension rock-back on main gun discharge!
+  ctx.save();
+  ctx.translate(0, -18);
+  ctx.rotate(-recoil * 0.055);
+  ctx.translate(0, 18);
 
   drawCelPoly(
     ctx,
@@ -1055,7 +1073,7 @@ function drawModernMBT(
   ctx.fillStyle = pal.glow;
   ctx.fillRect(10.5, -52.5, 3.5, 3);
 
-  const rx = -recoil * 8;
+  const rx = -recoil * 11;
   drawCelRoundRect(ctx, 18 + rx, -44.5, 38, 6.2, 1.8, '#334155', {
     highlight: '#cbd5e1',
     shadow: '#0f172a',
@@ -1068,8 +1086,14 @@ function drawModernMBT(
   });
 
   if (firing) {
-    drawCartoonMuzzleFlash(ctx, 60 + rx, -41.5, 19, '#f97316', '#fef08a');
+    drawCartoonMuzzleFlash(ctx, 61 + rx, -41.5, 22, '#f97316', '#fef08a');
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.88)';
+    ctx.lineWidth = 2.6;
+    ctx.beginPath();
+    ctx.ellipse(58 + rx, -41.5, 4.5, 15, 0, 0, Math.PI * 2);
+    ctx.stroke();
   }
+  ctx.restore();
   ctx.restore();
 }
 
@@ -1215,11 +1239,11 @@ function drawColossusMech(
     pal.glow,
     { highlight: '#ffffff', lineWidth: 1.8 },
   );
-  // Reactor core
-  drawEnergyOrb(ctx, -4, hipY - 12, 5.2, pal.glow, '#ffffff');
+  // Reactor core (surges bright while firing!)
+  drawEnergyOrb(ctx, -4, hipY - 12, firing ? 7.6 : 5.2, pal.glow, '#ffffff');
 
   // Massive right-arm twin plasma cannon!
-  const rx = -recoil * 8;
+  const rx = -recoil * 10;
   drawCelRoundRect(ctx, 4 + rx, hipY - 19, 38, 13, 3.5, '#334155', {
     highlight: '#94a3b8',
     shadow: '#0f172a',
@@ -1229,7 +1253,12 @@ function drawColossusMech(
   ctx.fillRect(10 + rx, hipY - 14.5, 28, 3.8);
 
   if (firing) {
-    drawEnergyOrb(ctx, 46 + rx, hipY - 12.5, 12.5, pal.glow, '#ffffff');
+    drawEnergyOrb(ctx, 47 + rx, hipY - 12.5, 14.5, pal.glow, '#ffffff');
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.ellipse(45 + rx, hipY - 12.5, 4.5, 15, 0, 0, Math.PI * 2);
+    ctx.stroke();
   }
   ctx.restore();
 }
@@ -1440,7 +1469,7 @@ function drawOmegaTitan(
   );
 
   // Colossal Twin Cosmic Obliterator Cannon Arm!
-  const rx = -recoil * 9;
+  const rx = -recoil * 11;
   drawCelRoundRect(ctx, 6 + rx, hipY - 22, 42, 15, 4, '#1e1b4b', {
     highlight: '#6366f1',
     shadow: '#09071a',
@@ -1448,7 +1477,14 @@ function drawOmegaTitan(
   });
   drawCelRoundRect(ctx, 12 + rx, hipY - 24, 16, 4, 1.5, '#facc15', { lineWidth: 1.5 });
   drawCelRoundRect(ctx, 12 + rx, hipY - 9, 16, 4, 1.5, '#facc15', { lineWidth: 1.5 });
-  drawEnergyOrb(ctx, 50 + rx, hipY - 14.5, firing ? 14 : 6.8, '#e879f9', '#fef08a');
+  drawEnergyOrb(ctx, 51 + rx, hipY - 14.5, firing ? 16.5 : 7.2, '#e879f9', '#fef08a');
+  if (firing) {
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.9)';
+    ctx.lineWidth = 2.8;
+    ctx.beginPath();
+    ctx.ellipse(49 + rx, hipY - 14.5, 5.5, 19, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
 
   ctx.restore();
 }

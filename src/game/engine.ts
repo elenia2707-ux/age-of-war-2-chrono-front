@@ -12,6 +12,7 @@ import {
   getCostDiscountMult,
   getCritChanceBonus,
   getCritDamageBonus,
+  getExecutionerDamageMult,
   getGoldIncomeMult,
   getKillGoldMult,
   getKillXpMult,
@@ -26,10 +27,14 @@ import {
   getSplashRadiusMult,
   getThornsReflectRatio,
   getTrainSpeedMult,
+  getTurretAttackSpeedMult,
   getTurretDamageMult,
+  getTurretRapidRangeMult,
   getUltimateCooldownMult,
   getUltimateDamageMult,
+  getUltimateXpCostMult,
   getWeaponDamageMult,
+  getXpMasteryMult,
 } from '../data/upgrades';
 import type {
   ActiveUltimate,
@@ -312,7 +317,12 @@ export class GameEngine {
     } else if (id === 'ultimate_power') {
       syncUltCooldown();
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#f472b6', 1.22, 'crit');
-    } else if (def.category === 'offense' || def.category === 'defense' || def.category === 'tactics') {
+    } else if (
+      def.category === 'offense' ||
+      def.category === 'defense' ||
+      def.category === 'tactics' ||
+      def.category === 'special'
+    ) {
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           u.upgradeFlash = 1;
@@ -323,7 +333,9 @@ export class GameEngine {
           ? '#fb923c'
           : def.category === 'defense'
             ? '#4ade80'
-            : '#c084fc';
+            : def.category === 'special'
+              ? '#22d3ee'
+              : '#c084fc';
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, col, 1.18, 'crit');
     } else {
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.18, 'gold');
@@ -499,9 +511,19 @@ export class GameEngine {
     return true;
   }
 
+  public getUltimateXpCost(team: Team): number {
+    const faction = this.getFaction(team);
+    const era = getEra(faction.eraIndex);
+    return Math.max(50, Math.round(era.ultimate.xpCost * getUltimateXpCostMult(faction.upgrades)));
+  }
+
   public canUseUltimate(team: Team): boolean {
     const faction = this.getFaction(team);
-    return this.status === 'playing' && faction.ultimateCooldown <= 0;
+    return (
+      this.status === 'playing' &&
+      faction.ultimateCooldown <= 0 &&
+      faction.xp >= this.getUltimateXpCost(team)
+    );
   }
 
   public triggerUltimate(team: Team): boolean {
@@ -509,6 +531,12 @@ export class GameEngine {
     const faction = this.getFaction(team);
     const era = getEra(faction.eraIndex);
     const def = era.ultimate;
+
+    // Deduct ultimate XP cost (risk-reward trade-off vs saving XP for era evolution!)
+    const xpCost = this.getUltimateXpCost(team);
+    faction.xp = Math.max(0, faction.xp - xpCost);
+    const baseX = team === 'player' ? PLAYER_BASE_X + 36 : ENEMY_BASE_X - 36;
+    this.addPopup(baseX, GROUND_Y - 148, `-${xpCost.toLocaleString()} XP`, '#c084fc', 1.14, 'elemental');
 
     const scaledCd = Math.max(
       10,
@@ -1124,7 +1152,8 @@ export class GameEngine {
   private updateTurrets(faction: FactionState, dt: number): void {
     const enemyTeam: Team = faction.team === 'player' ? 'enemy' : 'player';
     const dir = faction.team === 'player' ? 1 : -1;
-    const rangeMult = getRangeMult(faction.upgrades);
+    const rangeMult = getRangeMult(faction.upgrades) * getTurretRapidRangeMult(faction.upgrades);
+    const turretRateMult = getTurretAttackSpeedMult(faction.upgrades);
     const projSpeedMult = getProjectileSpeedMult(faction.upgrades);
     const splashMult = getSplashRadiusMult(faction.upgrades);
 
@@ -1159,7 +1188,7 @@ export class GameEngine {
 
       if (turret.cooldown > 0) continue;
 
-      turret.cooldown = 1 / def.attackRate;
+      turret.cooldown = 1 / (def.attackRate * turretRateMult);
       turret.recoil = 1;
       this.callbacks.onSound?.(def.fireSound);
 
@@ -1595,20 +1624,38 @@ export class GameEngine {
         ? getSiegeDamageMult(attackerFaction.upgrades)
         : 1;
 
-    const finalDamage = Math.max(1, Math.round(rawDamage * heavyBonus * (1 - effectiveArmor)));
+    // Executioner Instinct deals massive bonus finisher damage to enemies at or below 40% HP!
+    const isExecute =
+      !isThornsReflect && attackerFaction.upgrades.executioner > 0 && victim.hp / victim.maxHp <= 0.4;
+    const executeBonus = isExecute ? getExecutionerDamageMult(attackerFaction.upgrades) : 1;
+
+    const finalDamage = Math.max(1, Math.round(rawDamage * heavyBonus * executeBonus * (1 - effectiveArmor)));
     victim.hp -= finalDamage;
     victim.hitFlash = 1;
-    victim.lastHitCrit = isCrit;
-    victim.displayHpHold = Math.max(victim.displayHpHold, isCrit ? 0.24 : 0.16);
+    victim.lastHitCrit = isCrit || isExecute;
+    victim.displayHpHold = Math.max(victim.displayHpHold, isCrit || isExecute ? 0.28 : 0.16);
     victim.knockbackVel +=
       knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88) * getKnockbackResistMult(victimFaction.upgrades);
 
-    // Lifesteal heals the living attacker unit on damage dealt!
+    // Lifesteal heals the living attacker unit on damage dealt + spawns crimson heal glint!
     if (!isThornsReflect && attackerUnit && attackerUnit.state !== 'dead') {
       const lsRatio = getLifestealRatio(attackerFaction.upgrades);
       if (lsRatio > 0 && attackerUnit.hp < attackerUnit.maxHp) {
         const healAmt = Math.max(1, finalDamage * lsRatio);
         attackerUnit.hp = Math.min(attackerUnit.maxHp, attackerUnit.hp + healAmt);
+        this.particles.push({
+          x: attackerUnit.x + (this.random() - 0.5) * 14,
+          y: GROUND_Y - attackerUnit.def.height * 0.65 - (attackerUnit.def.hoverHeight ?? 0),
+          vx: (this.random() - 0.5) * 18,
+          vy: -42 - this.random() * 18,
+          size: 4.2,
+          color: '#fb7185',
+          alpha: 0.92,
+          life: 0.32,
+          maxLife: 0.32,
+          gravity: -16,
+          shape: 'circle',
+        });
       }
     }
 
@@ -1625,33 +1672,47 @@ export class GameEngine {
     const impactX = victim.x - hitDir * Math.min(14, victim.def.width * 0.3);
     const impactY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
 
-    // Instant arcade hit-impact starburst & directional sparks on EVERY hit!
-    const sparkColor = isCrit
-      ? '#fde047'
-      : isThornsReflect
-        ? '#f43f5e'
-        : victim.def.isMechanical
-          ? '#fef08a'
-          : armorPierce
-            ? '#67e8f9'
-            : '#ffedd5';
-    this.spawnFlashStar(impactX, impactY, sparkColor, isCrit ? 24 : 14);
-    this.spawnDirectionalSparks(impactX, impactY, hitDir, sparkColor, isCrit ? 9 : 4, isCrit ? 220 : 145);
+    // Supercharged arcade hit-impact starburst, directional sparks & recoil ground dust wave!
+    const sparkColor = isExecute
+      ? '#fb7185'
+      : isCrit
+        ? '#fde047'
+        : isThornsReflect
+          ? '#fb923c'
+          : victim.def.isMechanical
+            ? '#fef08a'
+            : armorPierce
+              ? '#67e8f9'
+              : '#ffedd5';
+    this.spawnFlashStar(impactX, impactY, sparkColor, isCrit || isExecute ? 28 : 16);
+    this.spawnDirectionalSparks(
+      impactX,
+      impactY,
+      hitDir,
+      sparkColor,
+      isCrit || isExecute ? 11 : 6,
+      isCrit || isExecute ? 245 : 165,
+    );
 
-    if (isCrit) {
-      this.spawnRing(impactX, impactY, '#fde047', 28);
+    if (isCrit || isExecute) {
+      this.spawnRing(impactX, impactY, isExecute ? '#fb7185' : '#fde047', 34);
+      this.spawnDustWave(victim.x, GROUND_Y, hitDir * 72, 16, '#a8a29e');
+    } else if (knockbackImpulse !== 0 && Math.abs(knockbackImpulse) >= 18) {
+      this.spawnDustWave(victim.x, GROUND_Y, hitDir * 44, 10, '#78716c');
     }
 
     // Distinct readable color-coded popup styling by hit type & victim team
-    const popupKind: DamagePopup['kind'] = isCrit
-      ? 'crit'
-      : victim.team === 'player'
-        ? 'player_hit'
-        : armorPierce
-          ? 'elemental'
-          : 'normal';
-    const popupColor =
-      popupKind === 'crit'
+    const popupKind: DamagePopup['kind'] =
+      isCrit || isExecute
+        ? 'crit'
+        : victim.team === 'player'
+          ? 'player_hit'
+          : armorPierce
+            ? 'elemental'
+            : 'normal';
+    const popupColor = isExecute
+      ? '#fb7185'
+      : popupKind === 'crit'
         ? '#fde047'
         : popupKind === 'player_hit'
           ? '#fca5a5'
@@ -1662,9 +1723,9 @@ export class GameEngine {
     this.addPopup(
       victim.x + (this.random() - 0.5) * 16,
       GROUND_Y - victim.def.height * 1.48 - 10 - (victim.def.hoverHeight ?? 0),
-      isCrit ? `${finalDamage}!` : `${finalDamage}`,
+      isCrit || isExecute ? `${finalDamage}!` : `${finalDamage}`,
       popupColor,
-      isCrit ? 1.32 : 1.0,
+      isCrit || isExecute ? 1.36 : 1.0,
       popupKind,
     );
 
@@ -1678,7 +1739,10 @@ export class GameEngine {
       const diff = DIFFICULTIES[this.difficulty];
 
       const goldMult = (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades);
-      const xpMult = (attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1) * getKillXpMult(killer.upgrades);
+      const xpMult =
+        (attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1) *
+        getKillXpMult(killer.upgrades) *
+        getXpMasteryMult(killer.upgrades);
 
       const rewardGold = Math.round(victim.def.killGold * goldMult);
       const rewardXp = Math.round(victim.def.killXp * xpMult);
@@ -1688,8 +1752,13 @@ export class GameEngine {
       killer.totalXp += rewardXp;
       killer.kills += 1;
 
-      // Small consolation XP for loser so battles never stall
-      const consolationXp = Math.round(victim.def.killXp * LOSS_XP_RATIO * (victim.team === 'enemy' ? diff.aiXpMultiplier : 1));
+      // Small consolation XP for loser so battles never stall (also boosted by xp_mastery)
+      const consolationXp = Math.round(
+        victim.def.killXp *
+          LOSS_XP_RATIO *
+          (victim.team === 'enemy' ? diff.aiXpMultiplier : 1) *
+          getXpMasteryMult(loser.upgrades),
+      );
       loser.xp += consolationXp;
       loser.totalXp += consolationXp;
 
@@ -1698,13 +1767,13 @@ export class GameEngine {
       }
 
       if (victim.def.isMechanical) {
-        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 58, '#f97316');
+        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 64, '#f97316');
         this.callbacks.onSound?.('explosion');
       } else {
-        this.spawnFlashStar(victim.x, impactY, victim.team === 'player' ? '#93c5fd' : '#fca5a5', 18);
-        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 12, 165);
-        this.spawnDebris(victim.x, GROUND_Y - victim.def.height * 0.45, '#52525b', 5, 145);
-        this.spawnDustWave(victim.x, GROUND_Y, hitDir * 55, 14, '#78716c');
+        this.spawnFlashStar(victim.x, impactY, victim.team === 'player' ? '#93c5fd' : '#fca5a5', 22);
+        this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 14, 180);
+        this.spawnDebris(victim.x, GROUND_Y - victim.def.height * 0.45, '#52525b', 6, 160);
+        this.spawnDustWave(victim.x, GROUND_Y, hitDir * 64, 16, '#78716c');
       }
     }
   }
@@ -1716,7 +1785,10 @@ export class GameEngine {
     defender.baseHp = Math.max(0, defender.baseHp - dmg);
     defender.baseHitFlash = 1;
 
-    const xpGain = Math.max(1, Math.round((dmg / 100) * BASE_HIT_XP_PER_100_DMG));
+    const xpGain = Math.max(
+      1,
+      Math.round((dmg / 100) * BASE_HIT_XP_PER_100_DMG * getXpMasteryMult(attacker.upgrades)),
+    );
     attacker.xp += xpGain;
     attacker.totalXp += xpGain;
 
@@ -1902,18 +1974,35 @@ export class GameEngine {
       radius = 52;
     }
 
+    const baseAngle = (this.random() - 0.5) * 0.28;
     this.slashes.push({
       x,
       y,
       dir,
-      radius: isCrit ? radius * 1.32 : radius * 1.12,
+      radius: isCrit ? radius * 1.38 : radius * 1.15,
       color: isCrit ? '#facc15' : color,
       coreColor,
-      life: 0.28,
-      maxLife: 0.28,
-      angleOffset: (this.random() - 0.5) * 0.28,
+      life: isCrit ? 0.32 : 0.28,
+      maxLife: isCrit ? 0.32 : 0.28,
+      angleOffset: baseAngle,
       style,
     });
+
+    // Dramatic anime cross-slash twin crescent on melee crits!
+    if (isCrit && style !== 'thrust') {
+      this.slashes.push({
+        x: x + dir * 4,
+        y: y - 3,
+        dir,
+        radius: radius * 1.16,
+        color: '#fb923c',
+        coreColor: '#ffffff',
+        life: 0.26,
+        maxLife: 0.26,
+        angleOffset: baseAngle - 0.52,
+        style: 'blade',
+      });
+    }
   }
 
   private spawnFlashStar(x: number, y: number, color: string, size: number): void {

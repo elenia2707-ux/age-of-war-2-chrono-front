@@ -115,47 +115,80 @@ export function renderSlashes(ctx: CanvasRenderingContext2D, slashes: SlashEffec
       ctx.ellipse(len * 0.42, 0, 4 + prog * 4, 10 + prog * 13, 0, 0, Math.PI * 2);
       ctx.stroke();
     } else {
-      // Smooth sweeping tapered cartoon crescent!
-      const rOuter = sl.radius * (0.92 + prog * 0.28);
-      const thickness = (sl.style === 'heavy' ? 14 : sl.style === 'plasma' ? 12 : 9.5) * (0.55 + frac * 0.5);
-      const rInner = Math.max(4, rOuter - thickness);
-      const startA = -1.42 + prog * 0.45 + sl.angleOffset;
-      const endA = 1.28 + sl.angleOffset;
+      // Razor-tapered anime/Flash crescent blade with glowing outer aura & trailing sparks!
+      const rOuter = sl.radius * (0.94 + prog * 0.32);
+      const maxThick = (sl.style === 'heavy' ? 16 : sl.style === 'plasma' ? 14 : 11) * (0.52 + frac * 0.56);
+      const startA = -1.52 + prog * 0.46 + sl.angleOffset;
+      const endA = 1.36 + sl.angleOffset;
+      const segs = 12;
 
-      ctx.beginPath();
-      ctx.arc(0, 0, rOuter, startA, endA);
-      ctx.arc(0, 0, rInner, endA, startA, true);
-      ctx.closePath();
+      const buildTaperedCrescent = (rOut: number, thick: number, a0: number, a1: number) => {
+        ctx.beginPath();
+        for (let i = 0; i <= segs; i++) {
+          const t = i / segs;
+          const a = a0 + (a1 - a0) * t;
+          const x = Math.cos(a) * rOut;
+          const y = Math.sin(a) * rOut;
+          if (i === 0) ctx.moveTo(x, y);
+          else ctx.lineTo(x, y);
+        }
+        for (let i = segs; i >= 0; i--) {
+          const t = i / segs;
+          const a = a0 + (a1 - a0) * t;
+          // Pinches smoothly to needle-sharp tips at both ends (t=0 and t=1), thickest near leading edge!
+          const taper = Math.sin(t * Math.PI) * (0.65 + t * 0.5);
+          const rIn = Math.max(3, rOut - thick * taper);
+          ctx.lineTo(Math.cos(a) * rIn, Math.sin(a) * rIn);
+        }
+        ctx.closePath();
+      };
+
+      // Soft wide glowing outer energy aura
+      ctx.save();
+      ctx.globalAlpha *= 0.42;
+      buildTaperedCrescent(rOuter + 3.5, maxThick * 1.45, startA - 0.08, endA + 0.06);
+      ctx.fillStyle = sl.color;
+      ctx.fill();
+      ctx.restore();
+
+      // Main vibrant cel-colored crescent
+      buildTaperedCrescent(rOuter, maxThick, startA, endA);
       ctx.fillStyle = sl.color;
       ctx.fill();
 
-      // Inner white-hot blade highlight crescent
-      const rCore = rOuter - thickness * 0.42;
-      ctx.beginPath();
-      ctx.arc(0, 0, rOuter - 1.2, startA + 0.14, endA - 0.04);
-      ctx.arc(0, 0, rCore, endA - 0.04, startA + 0.14, true);
-      ctx.closePath();
+      // Razor-bright white-hot cutting edge core
+      buildTaperedCrescent(rOuter - 0.8, maxThick * 0.5, startA + 0.14, endA - 0.02);
       ctx.fillStyle = sl.coreColor;
       ctx.fill();
 
-      // Crisp 4-point star glint at leading edge
-      if (frac > 0.35) {
-        const tx = Math.cos(endA) * (rOuter - 2);
-        const ty = Math.sin(endA) * (rOuter - 2);
-        const g = 9 * frac;
+      // Trailing spark flecks spinning off outer arc
+      for (let k = 0; k < 3; k++) {
+        const ka = startA + (endA - startA) * (0.28 + k * 0.25);
+        const kr = rOuter + 4 + k * 2.5 + prog * 7;
+        ctx.fillStyle = k === 2 ? '#ffffff' : sl.coreColor;
+        ctx.beginPath();
+        ctx.arc(Math.cos(ka) * kr, Math.sin(ka) * kr, Math.max(1.2, 2.6 * frac), 0, Math.PI * 2);
+        ctx.fill();
+      }
+
+      // Crisp 4-point star glint at leading blade tip
+      if (frac > 0.28) {
+        const tx = Math.cos(endA - 0.06) * (rOuter - 1.5);
+        const ty = Math.sin(endA - 0.06) * (rOuter - 1.5);
+        const g = 11.5 * frac;
         ctx.fillStyle = '#ffffff';
         ctx.beginPath();
         ctx.moveTo(tx - g, ty);
-        ctx.lineTo(tx, ty - g * 0.28);
+        ctx.lineTo(tx, ty - g * 0.26);
         ctx.lineTo(tx + g, ty);
-        ctx.lineTo(tx, ty + g * 0.28);
+        ctx.lineTo(tx, ty + g * 0.26);
         ctx.closePath();
         ctx.fill();
         ctx.beginPath();
         ctx.moveTo(tx, ty - g);
-        ctx.lineTo(tx + g * 0.28, ty);
+        ctx.lineTo(tx + g * 0.26, ty);
         ctx.lineTo(tx, ty + g);
-        ctx.lineTo(tx - g * 0.28, ty);
+        ctx.lineTo(tx - g * 0.26, ty);
         ctx.closePath();
         ctx.fill();
       }
@@ -695,10 +728,15 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
         ctx.fill();
       }
     } else if (p.shape === 'dust_wave') {
-      const rx = Math.max(8, p.size * (0.9 + prog * 1.15));
+      const rx = Math.max(9, p.size * (0.95 + prog * 1.25));
       const ry = Math.max(4, p.size * 0.36 * frac + 2);
-      ctx.globalAlpha *= 0.62;
-      drawCelEllipse(ctx, p.x, p.y - ry * 0.5, rx, ry, p.color, { lineWidth: 1.2, ink: 'rgba(20,24,36,0.32)' });
+      ctx.globalAlpha *= 0.66;
+      drawCelEllipse(ctx, p.x, p.y - ry * 0.5, rx, ry, p.color, { lineWidth: 1.3, ink: 'rgba(20,24,36,0.34)' });
+      ctx.strokeStyle = 'rgba(255, 255, 255, 0.38)';
+      ctx.lineWidth = 1.6;
+      ctx.beginPath();
+      ctx.ellipse(p.x, p.y - ry * 0.4, rx * 1.15, ry * 0.9, 0, Math.PI, Math.PI * 2);
+      ctx.stroke();
     } else if (p.shape === 'ring') {
       ctx.strokeStyle = p.color;
       ctx.lineWidth = Math.max(2, 5.2 * frac);
@@ -732,18 +770,24 @@ export function renderParticles(ctx: CanvasRenderingContext2D, particles: Partic
         lineWidth: 1.5,
       });
     } else if (p.shape === 'spark') {
-      const tx = p.x - p.vx * 0.032;
-      const ty = p.y - p.vy * 0.032;
+      const tx = p.x - p.vx * 0.044;
+      const ty = p.y - p.vy * 0.044;
       ctx.strokeStyle = p.color;
-      ctx.lineWidth = Math.max(2, p.size * frac + 1.5);
+      ctx.lineWidth = Math.max(2.2, p.size * frac + 1.8);
       ctx.lineCap = 'round';
       ctx.beginPath();
       ctx.moveTo(tx, ty);
       ctx.lineTo(p.x, p.y);
       ctx.stroke();
+      ctx.strokeStyle = '#ffffff';
+      ctx.lineWidth = Math.max(1.1, (p.size * frac + 1.2) * 0.45);
+      ctx.beginPath();
+      ctx.moveTo((tx + p.x) * 0.5, (ty + p.y) * 0.5);
+      ctx.lineTo(p.x, p.y);
+      ctx.stroke();
       ctx.fillStyle = '#ffffff';
       ctx.beginPath();
-      ctx.arc(p.x, p.y, Math.max(1.5, p.size * 0.42), 0, Math.PI * 2);
+      ctx.arc(p.x, p.y, Math.max(1.8, p.size * 0.48), 0, Math.PI * 2);
       ctx.fill();
     } else {
       ctx.fillStyle = p.color;

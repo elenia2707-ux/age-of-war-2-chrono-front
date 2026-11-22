@@ -71,6 +71,7 @@ export class HudController {
 
   private ultBtn = document.getElementById('btn-ultimate') as HTMLButtonElement;
   private ultFill = document.getElementById('ult-fill')!;
+  private ultKicker = document.getElementById('ult-kicker')!;
   private ultLabel = document.getElementById('ult-label')!;
   private ultSub = document.getElementById('ult-sub')!;
 
@@ -150,12 +151,12 @@ export class HudController {
     const e = snapshot.enemy;
     const era = getEra(p.eraIndex);
 
-    // Top stats
+    // Top stats (in Era 10 show spendable XP so players can budget Black Hole casts!)
     this.goldEl.textContent = Math.floor(p.gold).toLocaleString();
     this.xpEl.textContent =
       era.evolveXp > 0
         ? `${Math.floor(p.xp).toLocaleString()}/${era.evolveXp.toLocaleString()}`
-        : `${Math.floor(p.totalXp).toLocaleString()} MAX`;
+        : `${Math.floor(p.xp).toLocaleString()} XP`;
     this.eraBadgeEl.textContent = `${era.roman} ${era.shortName}`;
 
     this.playerHpEl.textContent = Math.ceil(p.baseHp).toLocaleString();
@@ -168,7 +169,7 @@ export class HudController {
     this.speedBtn.textContent = `${snapshot.speed}x`;
     this.speedBtn.classList.toggle('active', snapshot.speed === 2);
 
-    // Turret slot count badge & total upgrade level badge (across all 8 upgrades!)
+    // Turret slot count badge & total upgrade level badge (across all 20 upgrades!)
     const installedCount = p.turrets.filter((t) => t !== null).length;
     this.turretSlotCountEl.textContent = `${installedCount}/${p.turretSlots}`;
     this.upgradeLevelTotalEl.textContent = `Lv${getTotalUpgradeLevel(p.upgrades)}`;
@@ -211,13 +212,27 @@ export class HudController {
       this.evolveBtn.disabled = true;
     }
 
-    // Update Ultimate power button
-    const ultReady = p.ultimateCooldown <= 0;
-    const ultFrac = ultReady ? 1 : Math.max(0, 1 - p.ultimateCooldown / Math.max(1, p.ultimateMaxCooldown));
+    // Update Ultimate power button (requires BOTH cooldown == 0 AND spendable XP >= ultXpCost!)
+    const ultXpCost = this.engine.getUltimateXpCost('player');
+    const fmtXpShort = (n: number) =>
+      n >= 10000
+        ? `${Math.round(n / 1000)}kXP`
+        : n >= 1000
+          ? `${(n / 1000).toFixed(1).replace(/\.0$/, '')}kXP`
+          : `${n}XP`;
+    const cdReady = p.ultimateCooldown <= 0;
+    const xpReady = p.xp >= ultXpCost;
+    const ultReady = cdReady && xpReady;
+    const ultFrac = !cdReady
+      ? Math.max(0, 1 - p.ultimateCooldown / Math.max(1, p.ultimateMaxCooldown))
+      : Math.min(1, p.xp / Math.max(1, ultXpCost));
+
+    this.ultKicker.textContent = `필살·${fmtXpShort(ultXpCost)}`;
     this.ultLabel.textContent = era.ultimate.shortName;
-    this.ultSub.textContent = ultReady ? 'READY' : `${Math.ceil(p.ultimateCooldown)}s`;
+    this.ultSub.textContent = !cdReady ? `${Math.ceil(p.ultimateCooldown)}s` : xpReady ? 'READY!' : 'XP 부족';
     this.ultFill.style.height = `${(ultFrac * 100).toFixed(1)}%`;
     this.ultBtn.classList.toggle('ready', ultReady);
+    this.ultBtn.classList.toggle('xp-short', cdReady && !xpReady);
     this.ultBtn.disabled = !ultReady;
 
     // Render live minimap
@@ -251,7 +266,7 @@ export class HudController {
       this.switchTab('turrets');
     });
 
-    const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire'];
+    const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire', 'special'];
 
     this.tabUpgradesBtn.addEventListener('click', () => {
       this.onUnlockAudio();

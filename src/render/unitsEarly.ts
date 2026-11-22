@@ -1220,20 +1220,28 @@ function drawDinoRider(
   ctx.translate(15, bodyY - 6);
   ctx.rotate(-0.18 + bite * 0.35);
   drawCelRoundRect(ctx, -4, -14, 12, 16, 5, '#22c55e', { highlight: '#86efac', shadow: '#15803d', lineWidth: 2.1 });
-  // Upper snout with nostril & ridge brow
+  // Upper snout with nostril, ridge brow & menacing upper fangs
   drawCelRoundRect(ctx, 2, -22, 22, 11.5, 5, '#22c55e', {
     highlight: '#86efac',
     shadow: '#15803d',
     lineWidth: 2.2,
   });
+  ctx.fillStyle = '#ffffff';
+  for (let i = 0; i < 3; i++) {
+    ctx.beginPath();
+    ctx.moveTo(9 + i * 4.4, -11);
+    ctx.lineTo(11 + i * 4.4, -7.2);
+    ctx.lineTo(13 + i * 4.4, -11);
+    ctx.fill();
+  }
   ctx.fillStyle = '#14532d';
   ctx.beginPath();
   ctx.arc(20, -18, 1.4, 0, Math.PI * 2);
   ctx.fill();
-  // Lower jaw snaps open on attack!
+  // Lower jaw snaps open wide on attack!
   ctx.save();
   ctx.translate(6, -11);
-  ctx.rotate(0.08 + bite * 0.45);
+  ctx.rotate(0.08 + bite * 0.58);
   drawCelRoundRect(ctx, 0, -2, 17, 6.5, 3, '#16a34a', { lineWidth: 2.0 });
   // Sharp cartoon teeth
   ctx.fillStyle = '#ffffff';
@@ -1245,10 +1253,19 @@ function drawDinoRider(
     ctx.fill();
   }
   ctx.restore();
-  // Fierce amber dino eye
+  // Fierce amber dino eye + sonic roar rings on bite peak!
   drawCelEllipse(ctx, 10, -18, 3.2, 3.2, '#fde047', { lineWidth: 1.5 });
   ctx.fillStyle = INK;
   ctx.fillRect(10.5, -19.5, 1.8, 3.2);
+  if (bite > 0.35) {
+    ctx.save();
+    ctx.strokeStyle = `rgba(254, 240, 138, ${(bite * 0.78).toFixed(2)})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.arc(26, -12, 6 + bite * 8, -0.75, 0.75);
+    ctx.stroke();
+    ctx.restore();
+  }
   ctx.restore();
 
   // Front dino leg

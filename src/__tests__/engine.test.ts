@@ -82,12 +82,21 @@ describe('GameEngine Core Simulation', () => {
     expect(engine.evolve('player')).toBe(false);
   });
 
-  it('executes every era ultimate cleanly and damages enemy troops across all 10 eras', () => {
+  it('requires & deducts XP to execute every era ultimate cleanly across all 10 eras', () => {
     for (let eraIdx = 0; eraIdx < ERAS.length; eraIdx++) {
       const engine = new GameEngine();
       engine.startNewGame('normal', 500 + eraIdx);
       engine.player.eraIndex = eraIdx;
       engine.player.ultimateCooldown = 0;
+
+      // Without enough XP, ultimate MUST be blocked (no free spamming!)
+      engine.player.xp = ERAS[eraIdx].ultimate.xpCost - 1;
+      expect(engine.canUseUltimate('player')).toBe(false);
+      expect(engine.triggerUltimate('player')).toBe(false);
+
+      // Grant sufficient XP -> ultimate casts and deducts exact XP cost
+      const cost = engine.getUltimateXpCost('player');
+      engine.player.xp = cost + 50;
 
       // Spawn a cluster of enemy units in midfield
       const sampleUnit = ERAS[eraIdx].units[0];
@@ -99,6 +108,7 @@ describe('GameEngine Core Simulation', () => {
       const totalBefore = targets.reduce((sum, u) => sum + u.hp, 0);
 
       expect(engine.triggerUltimate('player')).toBe(true);
+      expect(engine.player.xp).toBe(50);
       expect(engine.ultimates).toHaveLength(1);
 
       for (let t = 0; t < 110; t++) engine.step(0.05);
@@ -351,6 +361,75 @@ describe('GameEngine Core Simulation', () => {
     const ultCdBefore = engUlt.player.ultimateMaxCooldown;
     for (let i = 0; i < 4; i++) expect(engUlt.buyUpgrade('player', 'ultimate_power')).toBe(true);
     expect(engUlt.player.ultimateMaxCooldown).toBeLessThan(ultCdBefore);
+  });
+
+  it('applies all 4 Special mastery upgrades (xp_mastery, ult_efficiency, executioner, turret_rapid)', () => {
+    // 1. XP Mastery increases kill XP & base-hit XP
+    const engXp = new GameEngine();
+    engXp.startNewGame('normal', 701);
+    engXp.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engXp.buyUpgrade('player', 'xp_mastery')).toBe(true);
+    const victim = engXp.spawnUnit('enemy', UNIT_BY_ID.clubman);
+    victim.x = 1230;
+    victim.hp = 1;
+    victim.attackCooldown = 10;
+    const slayer = engXp.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    slayer.x = 1200;
+    slayer.attackCooldown = 0;
+    engXp.step(0.05);
+    expect(engXp.player.xp).toBeGreaterThan(UNIT_BY_ID.clubman.killXp);
+
+    // 2. Ultimate Efficiency cuts ultimate XP cost
+    const engEff = new GameEngine();
+    engEff.startNewGame('normal', 702);
+    engEff.player.gold = 100000;
+    const baseCost = engEff.getUltimateXpCost('player');
+    for (let i = 0; i < 6; i++) expect(engEff.buyUpgrade('player', 'ult_efficiency')).toBe(true);
+    expect(engEff.getUltimateXpCost('player')).toBeLessThan(baseCost);
+
+    // 3. Executioner deals bonus finisher damage to targets at <= 40% HP
+    const engBaseExec = new GameEngine();
+    engBaseExec.startNewGame('normal', 703);
+    const lowTargetA = engBaseExec.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    lowTargetA.x = 1030;
+    lowTargetA.hp = lowTargetA.maxHp * 0.35;
+    lowTargetA.attackCooldown = 10;
+    const hitA = engBaseExec.spawnUnit('player', UNIT_BY_ID.clubman);
+    hitA.x = 1000;
+    hitA.attackCooldown = 0;
+    const hpBeforeA = lowTargetA.hp;
+    engBaseExec.step(0.05);
+    const dmgBase = hpBeforeA - lowTargetA.hp;
+
+    const engExec = new GameEngine();
+    engExec.startNewGame('normal', 703);
+    engExec.player.gold = 100000;
+    for (let i = 0; i < 6; i++) expect(engExec.buyUpgrade('player', 'executioner')).toBe(true);
+    const lowTargetB = engExec.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    lowTargetB.x = 1030;
+    lowTargetB.hp = lowTargetB.maxHp * 0.35;
+    lowTargetB.attackCooldown = 10;
+    const hitB = engExec.spawnUnit('player', UNIT_BY_ID.clubman);
+    hitB.x = 1000;
+    hitB.attackCooldown = 0;
+    const hpBeforeB = lowTargetB.hp;
+    engExec.step(0.05);
+    const dmgExec = hpBeforeB - lowTargetB.hp;
+    expect(dmgExec).toBeGreaterThan(dmgBase);
+
+    // 4. Turret Rapid boosts turret fire rate (shorter cooldown) and range
+    const engTurret = new GameEngine();
+    engTurret.startNewGame('normal', 704);
+    engTurret.player.gold = 100000;
+    for (let i = 0; i < 5; i++) expect(engTurret.buyUpgrade('player', 'turret_rapid')).toBe(true);
+    expect(engTurret.installTurret('player', 'bone_catapult', 0)).toBe(true);
+    const farTarget = engTurret.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    // bone_catapult base range is 350 from turret mount (~155); place beyond base range at 540
+    farTarget.x = 540;
+    farTarget.attackCooldown = 10;
+    for (let t = 0; t < 10; t++) engTurret.step(0.05);
+    expect(engTurret.projectiles.length).toBeGreaterThan(0);
+    expect(engTurret.player.turrets[0]!.cooldown).toBeLessThan(1 / ERAS[0].turrets[1].attackRate);
   });
 
   it('supports tesla_arc chain lightning, railgun/gravity piercing, hover units, 2x speed, pause, and victory resolution', () => {
