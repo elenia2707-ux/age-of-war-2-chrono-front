@@ -441,7 +441,6 @@ export interface ActiveUltimate {
 
 export interface EngineCallbacks {
   onSound?: (cue: SoundCue) => void;
-  onShake?: (trauma: number) => void;
   onBanner?: (title: string, subtitle: string, accent: string) => void;
 }
 

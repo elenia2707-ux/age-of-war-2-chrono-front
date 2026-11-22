@@ -38,13 +38,13 @@ export class GameRenderer {
   }
 
   public resize(width: number, height: number, camera: BattleCamera): void {
-    const dpr = Math.min(2.5, window.devicePixelRatio || 1);
+    const dpr = Math.min(3, window.devicePixelRatio || 1);
     this.cssWidth = Math.max(1, Math.floor(width));
     this.cssHeight = Math.max(1, Math.floor(height));
     this.canvas.width = Math.floor(this.cssWidth * dpr);
     this.canvas.height = Math.floor(this.cssHeight * dpr);
     this.ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
-    this.ctx.imageSmoothingEnabled = false;
+    this.ctx.imageSmoothingEnabled = true;
     camera.setViewport(this.cssWidth, this.cssHeight);
   }
 
@@ -63,11 +63,10 @@ export class GameRenderer {
     const viewportW = this.cssWidth / Math.max(0.01, scale);
 
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
+    ctx.imageSmoothingEnabled = true;
     ctx.scale(scale, scale);
-    ctx.translate(Math.round(camera.shakeX), Math.round(camera.shakeY));
 
-    // 1. Parallax Pixel Background & Pixel Tile Battlefield Floor
+    // 1. Multi-layer Painterly Cartoon Parallax Background & Road
     renderBackground(
       ctx,
       snapshot.player.eraIndex,
@@ -80,26 +79,25 @@ export class GameRenderer {
     // 2. Ultimate Sky Atmosphere
     renderUltimateAtmosphere(ctx, snapshot.ultimates, viewportW);
 
-    // 3. World Space Entities
+    // 3. World Space Entities (smooth steady camera — zero screen shake)
     ctx.save();
-    ctx.imageSmoothingEnabled = false;
-    ctx.translate(-Math.round(camera.x), 0);
+    ctx.translate(-camera.x, 0);
 
-    // Persistent ground blast craters / scorch marks on the road
+    // Persistent crater scorch marks on the road
     renderScorchMarks(ctx, snapshot.scorchMarks);
 
-    // Monumental Pixel Fortresses & Turrets (each displays its own era independently)
+    // Monumental Cartoon Fortresses & Rotating Turrets (each displays its own era independently)
     renderBase(ctx, snapshot.player, wallTime, highlightSellMode);
     renderBase(ctx, snapshot.enemy, wallTime, false);
 
-    // Units (sort so dead corpses draw slightly behind living units)
+    // Units (sort so dead corpses draw gently behind living units)
     const sortedUnits = [...snapshot.units].sort((a, b) => {
       if (a.state === 'dead' && b.state !== 'dead') return -1;
       if (a.state !== 'dead' && b.state === 'dead') return 1;
       return a.uid - b.uid;
     });
     for (const unit of sortedUnits) {
-      if (unit.x + 150 < camera.x || unit.x - 150 > camera.x + viewportW) continue;
+      if (unit.x + 160 < camera.x || unit.x - 160 > camera.x + viewportW) continue;
       renderUnitEntity(ctx, unit);
     }
 
@@ -113,7 +111,7 @@ export class GameRenderer {
 
     ctx.restore();
 
-    // 4. Foreground Parallax Pixel Props along bottom ground lip
+    // 4. Foreground Cartoon Props along bottom ground lip
     renderForegroundParallax(ctx, snapshot.player.eraIndex, camera.x, viewportW, wallTime);
 
     ctx.restore();
@@ -127,15 +125,18 @@ export function renderMinimap(
 ): void {
   const ctx = canvas.getContext('2d');
   if (!ctx) return;
-  ctx.imageSmoothingEnabled = false;
+  ctx.imageSmoothingEnabled = true;
   const w = canvas.width;
   const h = canvas.height;
   const era = getEra(snapshot.player.eraIndex);
 
   ctx.clearRect(0, 0, w, h);
 
-  // Sky + Ground backdrop
-  ctx.fillStyle = era.palette.skyTop;
+  // Smooth gradient sky + ground backdrop
+  const skyGrad = ctx.createLinearGradient(0, 0, 0, h * 0.72);
+  skyGrad.addColorStop(0, era.palette.skyTop);
+  skyGrad.addColorStop(1, era.palette.skyBottom);
+  ctx.fillStyle = skyGrad;
   ctx.fillRect(0, 0, w, h * 0.72);
   ctx.fillStyle = era.palette.groundMid;
   ctx.fillRect(0, h * 0.72, w, h * 0.28);
@@ -143,21 +144,27 @@ export function renderMinimap(
   const toX = (worldX: number) => (worldX / WORLD_WIDTH) * w;
   const groundLine = h * 0.72;
 
-  // Player & Enemy Bases
+  // Player & Enemy Fortress blocks
   const pX = toX(PLAYER_BASE_X);
   const eX = toX(ENEMY_BASE_X);
   ctx.fillStyle = '#3b82f6';
-  ctx.fillRect(Math.max(2, pX - 5), groundLine - 11, 10, 11);
+  ctx.beginPath();
+  ctx.roundRect(Math.max(2, pX - 5), groundLine - 11, 10, 11, 2);
+  ctx.fill();
   ctx.fillStyle = '#ef4444';
-  ctx.fillRect(Math.min(w - 12, eX - 5), groundLine - 11, 10, 11);
+  ctx.beginPath();
+  ctx.roundRect(Math.min(w - 12, eX - 5), groundLine - 11, 10, 11, 2);
+  ctx.fill();
 
-  // Live Units as crisp team blips
+  // Live Units as clean team dots
   for (const u of snapshot.units) {
     if (u.state === 'dead') continue;
     const ux = toX(u.x);
     ctx.fillStyle = u.team === 'player' ? '#60a5fa' : '#f87171';
-    const size = u.def.role === 'heavy' || u.def.role === 'siege' ? 4.5 : 3;
-    ctx.fillRect(ux - size / 2, groundLine - size - 1, size, size);
+    const r = u.def.role === 'heavy' || u.def.role === 'siege' ? 2.6 : 1.8;
+    ctx.beginPath();
+    ctx.arc(ux, groundLine - r - 1, r, 0, Math.PI * 2);
+    ctx.fill();
   }
 
   // Active Ultimate markers
@@ -165,7 +172,9 @@ export function renderMinimap(
     ctx.fillStyle = ult.def.accentColor;
     for (const ord of ult.fallingOrdinance) {
       if (ord.impacted) continue;
-      ctx.fillRect(toX(ord.x) - 1.5, (ord.y / GROUND_Y) * groundLine, 3, 3);
+      ctx.beginPath();
+      ctx.arc(toX(ord.x), (ord.y / GROUND_Y) * groundLine, 2, 0, Math.PI * 2);
+      ctx.fill();
     }
   }
 
@@ -174,5 +183,7 @@ export function renderMinimap(
   const viewW = Math.max(16, (camera.getViewportWorldWidth() / WORLD_WIDTH) * w);
   ctx.strokeStyle = '#facc15';
   ctx.lineWidth = 2;
-  ctx.strokeRect(viewX + 1, 1, Math.min(w - viewX - 2, viewW - 2), h - 2);
+  ctx.beginPath();
+  ctx.roundRect(viewX + 1, 1, Math.min(w - viewX - 2, viewW - 2), h - 2, 3);
+  ctx.stroke();
 }

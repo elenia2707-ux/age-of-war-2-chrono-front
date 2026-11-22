@@ -4,12 +4,10 @@ export class BattleCamera {
   /** Left edge of the visible world viewport in logical world coordinates */
   public x = 0;
   public velocity = 0;
-  public trauma = 0;
-  public shakeX = 0;
-  public shakeY = 0;
+  public readonly shakeX = 0;
+  public readonly shakeY = 0;
 
   private viewportWorldWidth = 800;
-  private shakeTime = 0;
   private isDragging = false;
 
   public setViewport(canvasCssWidth: number, canvasCssHeight: number): void {
@@ -30,9 +28,6 @@ export class BattleCamera {
   public reset(): void {
     this.x = 0;
     this.velocity = 0;
-    this.trauma = 0;
-    this.shakeX = 0;
-    this.shakeY = 0;
     this.isDragging = false;
   }
 
@@ -64,8 +59,9 @@ export class BattleCamera {
     this.clamp();
   }
 
-  public addShake(amount: number): void {
-    this.trauma = Math.min(1, this.trauma + amount);
+  /** Screen shake intentionally disabled per user preference */
+  public addShake(_amount: number): void {
+    // No-op: camera remains steady during all attacks and ultimates
   }
 
   public update(dt: number): void {
@@ -77,18 +73,6 @@ export class BattleCamera {
         this.velocity = 0;
       }
       this.clamp();
-    }
-
-    if (this.trauma > 0) {
-      this.shakeTime += dt * 42;
-      const power = this.trauma * this.trauma;
-      const maxOffset = 14 * power;
-      this.shakeX = Math.sin(this.shakeTime * 1.37) * maxOffset;
-      this.shakeY = Math.cos(this.shakeTime * 1.91) * maxOffset * 0.72;
-      this.trauma = Math.max(0, this.trauma - dt * 1.45);
-    } else {
-      this.shakeX = 0;
-      this.shakeY = 0;
     }
   }
 

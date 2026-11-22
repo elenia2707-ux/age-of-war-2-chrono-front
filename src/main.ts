@@ -5,14 +5,11 @@ import type { DifficultyId } from './data/types';
 import { BattleCamera } from './game/camera';
 import { WORLD_HEIGHT } from './game/constants';
 import { GameEngine } from './game/engine';
-import { clearIconCache } from './render/iconRenderer';
 import { GameRenderer } from './render/renderer';
-import { loadSpriteAtlas, onSpriteAtlasReady } from './render/spriteAtlas';
 import { loadRecords, recordMatchResult, saveRecords } from './storage/records';
 import { HudController } from './ui/hudController';
 import { OverlayController } from './ui/overlayController';
 
-const spritesReady = loadSpriteAtlas('./sprites/');
 const canvas = document.getElementById('game-canvas') as HTMLCanvasElement;
 const initialRecords = loadRecords();
 const sound = new SoundEngine(initialRecords.muted);
@@ -72,7 +69,6 @@ const overlays = new OverlayController({
 
 engine.setCallbacks({
   onSound: (cue) => sound.play(cue),
-  onShake: (trauma) => camera.addShake(trauma),
   onBanner: (title, sub, accent) => hud.showBanner(title, sub, accent),
 });
 
@@ -241,12 +237,6 @@ function frame(now: number): void {
 
 requestAnimationFrame(frame);
 
-// Rebuild HUD card & queue sprites immediately once pixel sprite sheet finishes decoding
-onSpriteAtlasReady(() => {
-  clearIconCache();
-  hud.forceRebuildCards();
-});
-
 // Expose clean debug hook on window for automated E2E visual verification
 (
   window as unknown as {
@@ -261,10 +251,10 @@ onSpriteAtlasReady(() => {
   engine,
   camera,
   hud,
-  spritesReady,
+  spritesReady: Promise.resolve(),
 };
 
-// Clean up any legacy PWA Service Workers & stale caches so iOS Safari always loads fresh content-hashed assets
+// Clean up any legacy PWA Service Workers & stale caches so iOS Safari always loads fresh assets
 if (typeof window !== 'undefined') {
   window.addEventListener('load', () => {
     if ('caches' in window) {

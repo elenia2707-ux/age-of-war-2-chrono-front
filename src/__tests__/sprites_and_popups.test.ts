@@ -1,142 +1,127 @@
 import { describe, expect, it } from 'vitest';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID } from '../data/eras';
-import { SPRITE_ATLAS_JSON, SPRITE_ATLAS_VERSION, SPRITE_SHEET_URLS } from '../data/spriteManifest';
+import type { TurretVisualKind, UnitVisualKind } from '../data/types';
 import { UPGRADES } from '../data/upgrades';
+import { BattleCamera } from '../game/camera';
 import { GameEngine } from '../game/engine';
-import type { SpriteAtlasData } from '../render/spriteAtlas';
-import { selectUnitAnimFrame } from '../render/unitRenderer';
+import { renderBackground, renderForegroundParallax } from '../render/backgroundRenderer';
+import { drawTurretArt, renderBase } from '../render/baseRenderer';
+import { drawCartoonUpgradeIcon } from '../render/iconRenderer';
+import { renderUnitPose, selectUnitAnimFrame } from '../render/unitRenderer';
 
-const atlas = SPRITE_ATLAS_JSON as SpriteAtlasData;
-
-const HEAVY_UNITS = new Set([
-  'dino_rider',
-  'sphinx_chariot',
-  'chariot',
-  'heavy_cavalry',
-  'catapult',
-  'field_cannon',
-  'steam_walker',
-  'early_tank',
-  'mbt',
-  'colossus_mech',
-  'omega_titan',
-]);
-
-describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
-  it('contains valid iOS-safe multi-page sprite atlas covering all 10 eras, 40 units, 20 turrets, bases, projectiles, tiles, and 8 upgrade icons', () => {
-    expect(atlas.meta.pages).toBeDefined();
-    const pages = atlas.meta.pages!;
-    expect(pages.length).toBeGreaterThanOrEqual(2);
-    expect(SPRITE_SHEET_URLS).toHaveLength(pages.length);
-    expect(atlas.meta.frameCount).toBe(Object.keys(atlas.frames).length);
-    expect(atlas.meta.hash).toBe(SPRITE_ATLAS_VERSION);
-
-    // Every sheet page MUST stay <= 1536x1536 (< 2.5 MP) for guaranteed iOS SFSafariViewController decoding!
-    for (const page of pages) {
-      expect(page.width).toBeGreaterThan(0);
-      expect(page.height).toBeGreaterThan(0);
-      expect(page.width).toBeLessThanOrEqual(1536);
-      expect(page.height).toBeLessThanOrEqual(1536);
-      expect(page.width * page.height).toBeLessThanOrEqual(2_500_000);
-    }
-
-    const anims = ['walk_0', 'walk_1', 'walk_2', 'walk_3', 'attack_0', 'attack_1', 'attack_2', 'hurt_0', 'death_0'];
-    const teams = ['player', 'enemy'];
-
-    // 1. All 40 HD units x 2 teams x 9 frames + HD 1:1 resolution criteria & page bounds
-    expect(atlas.meta.unitScale).toBe(1);
-    expect(Object.keys(UNIT_BY_ID)).toHaveLength(40);
-
-    for (const unitId of Object.keys(UNIT_BY_ID)) {
-      for (const team of teams) {
-        for (const anim of anims) {
-          const key = `unit/${unitId}/${team}/${anim}`;
-          const f = atlas.frames[key];
-          expect(f, `Missing unit frame ${key}`).toBeDefined();
-          const page = pages[f.page ?? 0];
-          expect(page, `Invalid page ${f.page} for ${key}`).toBeDefined();
-          expect(f.x).toBeGreaterThanOrEqual(0);
-          expect(f.y).toBeGreaterThanOrEqual(0);
-          expect(f.x + f.w).toBeLessThanOrEqual(page.width);
-          expect(f.y + f.h).toBeLessThanOrEqual(page.height);
-
-          if (HEAVY_UNITS.has(unitId)) {
-            expect(f.w).toBeGreaterThanOrEqual(112);
-            expect(f.w).toBeLessThanOrEqual(160);
-            expect(f.h).toBeGreaterThanOrEqual(88);
-            expect(f.h).toBeLessThanOrEqual(148);
-          } else {
-            expect(f.w).toBeGreaterThanOrEqual(68);
-            expect(f.w).toBeLessThanOrEqual(88);
-            expect(f.h).toBeGreaterThanOrEqual(60);
-            expect(f.h).toBeLessThanOrEqual(84);
-          }
+/** Lightweight CanvasRenderingContext2D recorder for headless Node/Vitest vector rendering verification */
+function createMockCanvasContext(): { ctx: CanvasRenderingContext2D; drawCalls: number } {
+  const state = { drawCalls: 0 };
+  const dummyGradient = { addColorStop: () => undefined };
+  const handler: ProxyHandler<Record<string, unknown>> = {
+    get(target, prop) {
+      if (prop === 'createLinearGradient' || prop === 'createRadialGradient') {
+        return () => dummyGradient;
+      }
+      if (prop in target) return target[prop as string];
+      return (..._args: unknown[]) => {
+        if (
+          prop === 'fill' ||
+          prop === 'stroke' ||
+          prop === 'fillRect' ||
+          prop === 'strokeRect' ||
+          prop === 'fillText' ||
+          prop === 'strokeText'
+        ) {
+          state.drawCalls++;
         }
+      };
+    },
+    set(target, prop, value) {
+      target[prop as string] = value;
+      return true;
+    },
+  };
+  const ctx = new Proxy({} as Record<string, unknown>, handler) as unknown as CanvasRenderingContext2D;
+  return {
+    ctx,
+    get drawCalls() {
+      return state.drawCalls;
+    },
+  };
+}
+
+describe('Flash-Cartoon Vector Renderer, Zero Camera Shake & Combat Popups', () => {
+  it('renders all 40 cartoon units, 20 rotating turrets, 10 era fortresses, 10 backgrounds, and 8 upgrade icons cleanly', () => {
+    const unitIds = Object.keys(UNIT_BY_ID) as UnitVisualKind[];
+    const turretIds = Object.keys(TURRET_BY_ID) as TurretVisualKind[];
+    expect(unitIds).toHaveLength(40);
+    expect(turretIds).toHaveLength(20);
+    expect(ERAS).toHaveLength(10);
+    expect(UPGRADES).toHaveLength(8);
+
+    // 1. Every single one of the 40 units renders across walk, attack, hurt, and death states for both teams
+    for (const kind of unitIds) {
+      for (const team of ['player', 'enemy'] as const) {
+        const mock = createMockCanvasContext();
+        renderUnitPose(mock.ctx, {
+          kind,
+          team,
+          walkPhase: 1.2,
+          attackAnim: 0.6,
+          hitFlash: 0,
+          deathProgress: 0,
+          isWalking: true,
+        });
+        renderUnitPose(mock.ctx, {
+          kind,
+          team,
+          walkPhase: 0,
+          attackAnim: 0,
+          hitFlash: 0.7,
+          deathProgress: 0.45,
+          isWalking: false,
+        });
+        expect(mock.drawCalls, `Unit ${kind}/${team} emitted no cartoon vector draw calls`).toBeGreaterThan(8);
       }
     }
 
-    // 2. All 10 era bases x 2 teams x 3 damage states (>= 96x128px)
-    for (let era = 0; era < ERAS.length; era++) {
-      for (const team of teams) {
-        for (const dmg of ['intact', 'damaged_50', 'damaged_25']) {
-          const key = `base/era_${era}/${team}/${dmg}`;
-          const f = atlas.frames[key];
-          expect(f, `Missing base frame ${key}`).toBeDefined();
-          const page = pages[f.page ?? 0];
-          expect(page).toBeDefined();
-          expect(f.w).toBeGreaterThanOrEqual(96);
-          expect(f.h).toBeGreaterThanOrEqual(128);
-          expect(f.x + f.w).toBeLessThanOrEqual(page.width);
-          expect(f.y + f.h).toBeLessThanOrEqual(page.height);
-        }
-      }
+    // 2. Every single one of the 20 turrets renders cleanly in idle and firing recoil states
+    for (const turretId of turretIds) {
+      const mock = createMockCanvasContext();
+      drawTurretArt(mock.ctx, turretId, 'player', -0.15, 0);
+      drawTurretArt(mock.ctx, turretId, 'enemy', Math.PI + 0.15, 0.8);
+      expect(mock.drawCalls, `Turret ${turretId} emitted too few draw calls`).toBeGreaterThan(6);
     }
 
-    // 3. All 20 turrets x 2 teams x 2 states + platforms
-    for (const team of teams) {
-      expect(atlas.frames[`turret/platform/${team}`]).toBeDefined();
-    }
-    for (const turretId of Object.keys(TURRET_BY_ID)) {
-      for (const team of teams) {
-        expect(atlas.frames[`turret/${turretId}/${team}/idle`]).toBeDefined();
-        expect(atlas.frames[`turret/${turretId}/${team}/fire`]).toBeDefined();
-      }
+    // 3. All 10 era fortresses (intact & damaged) and all 10 parallax backgrounds render cleanly
+    const engine = new GameEngine();
+    engine.startNewGame('normal', 2026);
+    for (let eraIdx = 0; eraIdx < ERAS.length; eraIdx++) {
+      engine.player.eraIndex = eraIdx;
+      engine.player.baseHp = engine.player.baseMaxHp * 0.2; // verify damaged_25 smoke/cracks too
+      const mock = createMockCanvasContext();
+      renderBackground(mock.ctx, eraIdx, 320, 852, 4.5);
+      renderBase(mock.ctx, engine.player, 4.5, true);
+      renderForegroundParallax(mock.ctx, eraIdx, 320, 852, 4.5);
+      expect(mock.drawCalls, `Era ${eraIdx} scene emitted too few draw calls`).toBeGreaterThan(20);
     }
 
-    // 4. All projectile, ultimate, ground tile, prop & all 8 upgrade icon sprites
-    const requiredMisc = [
-      'proj/stone',
-      'proj/totem_fire',
-      'proj/boulder',
-      'proj/solar_orb',
-      'proj/arrow',
-      'proj/fire_arrow',
-      'proj/bolt',
-      'proj/bullet',
-      'proj/grenade',
-      'proj/cannonball',
-      'proj/mortar_shell',
-      'proj/shell',
-      'proj/rocket',
-      'proj/plasma/player',
-      'proj/plasma/enemy',
-      'proj/antimatter/player',
-      'proj/antimatter/enemy',
-      'proj/meteor',
-      'proj/bomb',
-      'proj/cruise_missile',
-      'ult/bomber/player',
-      'ult/bomber/enemy',
-      'ult/zeppelin/player',
-      'ult/zeppelin/enemy',
-      ...UPGRADES.map((u) => u.spriteKey),
-      ...Array.from({ length: 10 }, (_, i) => `tile/ground_era_${i}`),
-      ...Array.from({ length: 10 }, (_, i) => `prop/mid_${i}`),
-      ...Array.from({ length: 10 }, (_, i) => `prop/fore_${i}`),
-    ];
-    for (const key of requiredMisc) {
-      expect(atlas.frames[key], `Missing sprite ${key}`).toBeDefined();
+    // 4. All 8 Gold Upgrade cartoon icons render cleanly
+    for (const upg of UPGRADES) {
+      const mock = createMockCanvasContext();
+      drawCartoonUpgradeIcon(mock.ctx, upg.id);
+      expect(mock.drawCalls, `Upgrade icon ${upg.id} emitted too few draw calls`).toBeGreaterThan(2);
     }
+  });
+
+  it('keeps camera shake strictly disabled (0, 0) even after impacts and ultimates', () => {
+    const camera = new BattleCamera();
+    camera.setViewport(852, 315);
+    camera.addShake(1.0);
+    camera.update(0.05);
+    expect(camera.shakeX).toBe(0);
+    expect(camera.shakeY).toBe(0);
+
+    camera.addShake(0.8);
+    camera.update(0.1);
+    expect(camera.shakeX).toBe(0);
+    expect(camera.shakeY).toBe(0);
   });
 
   it('maps unit state cleanly across walk(4), attack(3), hurt(1), and death(1) frames', () => {
@@ -188,10 +173,8 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
     expect(engine.popups.length).toBeGreaterThanOrEqual(4);
     expect(engine.particles.some((p) => p.shape === 'flash_star')).toBe(true);
     expect(engine.particles.some((p) => p.shape === 'spark')).toBe(true);
-    // Struck knights should hold a fighting-game delayed displayHp trail above current hp
     expect(victims.some((v) => v.hp < v.maxHp && v.displayHp > v.hp)).toBe(true);
 
-    // Verify no two popups sit stacked on top of the exact same spot
     let overlappingPairs = 0;
     for (let i = 0; i < engine.popups.length; i++) {
       for (let j = i + 1; j < engine.popups.length; j++) {
@@ -204,7 +187,6 @@ describe('Pixel-Art Sprite Sheet Atlas & Animation Integrity', () => {
     }
     expect(overlappingPairs).toBe(0);
 
-    // Verify popups also have varied upward rise speeds and horizontal spread
     const xs = engine.popups.map((p) => p.x);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(20);
   });

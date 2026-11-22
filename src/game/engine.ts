@@ -464,7 +464,6 @@ export class GameEngine {
         progress: 0,
       };
       this.callbacks.onSound?.('evolve');
-      this.callbacks.onShake?.(0.45);
       this.callbacks.onBanner?.(
         `시대 ${nextEra.eraNumber}: ${nextEra.name}`,
         `신규 병력 · 포탑 · 필살기 [${nextEra.ultimate.name}] 해금`,
@@ -522,7 +521,6 @@ export class GameEngine {
 
     this.ultimates.push(active);
     this.callbacks.onSound?.('ultimate');
-    this.callbacks.onShake?.(0.55);
     if (team === 'player') {
       this.callbacks.onBanner?.(def.name, def.description, def.accentColor);
     }
@@ -636,13 +634,11 @@ export class GameEngine {
       this.status = 'victory';
       this.spawnBaseDestruction(ENEMY_BASE_X);
       this.callbacks.onSound?.('victory');
-      this.callbacks.onShake?.(0.95);
     } else if (this.player.baseHp <= 0) {
       this.player.baseHp = 0;
       this.status = 'defeat';
       this.spawnBaseDestruction(PLAYER_BASE_X);
       this.callbacks.onSound?.('defeat');
-      this.callbacks.onShake?.(0.95);
     }
   }
 
@@ -927,7 +923,6 @@ export class GameEngine {
           attacker.team,
         );
       }
-      if (isCrit) this.callbacks.onShake?.(0.2);
       return;
     }
 
@@ -1029,9 +1024,6 @@ export class GameEngine {
         this.spawnBurst(originX, originY, '#fde68a', 5, 80);
         this.spawnSmoke(originX, originY, 3);
       }
-      if (def.projectile === 'cannonball' || def.projectile === 'shell' || def.projectile === 'mortar_shell') {
-        this.callbacks.onShake?.(0.14);
-      }
       return;
     }
 
@@ -1064,7 +1056,6 @@ export class GameEngine {
       );
       if (isCrit) {
         this.spawnRing(target.x - dir * 8, impactY, '#fde047', 26);
-        this.callbacks.onShake?.(0.18);
       }
     } else {
       this.applyDamageToBase(
@@ -1147,7 +1138,6 @@ export class GameEngine {
           dir * (isGrav ? 95 : 75),
         );
         this.spawnRing(tx, ty, isGrav ? '#c084fc' : '#38bdf8', def.splashRadius * 0.6);
-        this.callbacks.onShake?.(0.2);
       } else {
         const flightTime = Math.max(0.14, Math.hypot(aimDx, aimDy) / def.projectileSpeed);
         const vx = aimDx / flightTime;
@@ -1243,7 +1233,6 @@ export class GameEngine {
             this.applySplashDamage(p.x, p.team, p.damage, p.splashRadius, p.armorPierce, p.isCrit, dir * p.knockback);
             this.spawnExplosion(p.x, Math.min(p.y, GROUND_Y - 6), p.splashRadius, blastColor);
             this.callbacks.onSound?.('explosion');
-            if (p.splashRadius >= 60) this.callbacks.onShake?.(0.22);
           } else {
             this.applyDamageToUnit(u, p.damage, p.armorPierce, p.isCrit, dir * p.knockback, p.team);
             this.spawnBurst(p.x, p.y, blastColor === '#f97316' ? '#fef08a' : blastColor, 5, 100);
@@ -1344,7 +1333,6 @@ export class GameEngine {
           );
           this.spawnExplosion(ord.targetX, GROUND_Y - 4, ult.def.radius, ult.def.accentColor);
           this.callbacks.onSound?.('explosion');
-          this.callbacks.onShake?.(0.28);
         }
       }
 
@@ -1390,7 +1378,6 @@ export class GameEngine {
       this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 80);
       this.spawnExplosion(targetX, GROUND_Y - 6, ult.def.radius * 0.9, '#38bdf8');
       this.callbacks.onSound?.('railgun');
-      this.callbacks.onShake?.(0.35);
       return;
     }
 
@@ -1412,7 +1399,6 @@ export class GameEngine {
       this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 75);
       this.spawnExplosion(targetX, GROUND_Y - 6, ult.def.radius * 0.95, '#fbbf24');
       this.callbacks.onSound?.('laser');
-      this.callbacks.onShake?.(0.32);
       return;
     }
 
@@ -1434,7 +1420,6 @@ export class GameEngine {
       this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, dir * 110);
       this.spawnExplosion(targetX, GROUND_Y - 8, ult.def.radius * 1.15, '#22d3ee');
       this.callbacks.onSound?.('explosion');
-      this.callbacks.onShake?.(0.45);
       return;
     }
 
@@ -1456,7 +1441,6 @@ export class GameEngine {
       this.applySplashDamage(targetX, ult.team, ult.def.damagePerStrike, ult.def.radius, true, true, -dir * 40);
       this.spawnExplosion(targetX, GROUND_Y - 12, ult.def.radius * 1.2, '#c084fc');
       this.callbacks.onSound?.('explosion');
-      this.callbacks.onShake?.(0.5);
       return;
     }
 
@@ -1551,9 +1535,6 @@ export class GameEngine {
 
     if (isCrit) {
       this.spawnRing(impactX, impactY, '#fde047', 28);
-      if (finalDamage >= victim.maxHp * 0.22 || victim.def.role === 'heavy' || victim.def.role === 'siege') {
-        this.callbacks.onShake?.(0.14);
-      }
     }
 
     // Distinct readable color-coded popup styling by hit type & victim team
@@ -1614,7 +1595,6 @@ export class GameEngine {
       if (victim.def.isMechanical) {
         this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 58, '#f97316');
         this.callbacks.onSound?.('explosion');
-        this.callbacks.onShake?.(0.24);
       } else {
         this.spawnFlashStar(victim.x, impactY, victim.team === 'player' ? '#93c5fd' : '#fca5a5', 18);
         this.spawnBurst(victim.x, GROUND_Y - victim.def.height * 0.6, victim.team === 'player' ? '#60a5fa' : '#f87171', 12, 165);
@@ -1650,7 +1630,6 @@ export class GameEngine {
     this.spawnDebris(baseX, GROUND_Y - 64, '#78716c', isCrit ? 8 : 5, 170);
     this.spawnDustWave(baseX, GROUND_Y, bounceDir * 60, 18, '#a8a29e');
     this.callbacks.onSound?.('hit_base');
-    this.callbacks.onShake?.(isCrit ? 0.28 : 0.14);
   }
 
   private updateEffects(dt: number): void {
