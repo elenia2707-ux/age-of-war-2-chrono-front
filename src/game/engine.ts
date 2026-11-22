@@ -300,11 +300,12 @@ export class GameEngine {
     if (id === 'armor') {
       // Scale existing live allied units immediately so upgrading mid-battle feels punchy
       const newArmorMult = getArmorHpMult(faction.upgrades);
+      const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
       const ratio = newArmorMult / prevArmorMult;
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           const oldMax = u.maxHp;
-          u.maxHp = Math.round(u.def.maxHp * newArmorMult);
+          u.maxHp = Math.round(u.def.maxHp * newArmorMult * statMult);
           u.hp = Math.min(u.maxHp, Math.round(u.hp * ratio + Math.max(0, u.maxHp - oldMax) * 0.5));
           u.displayHp = Math.max(u.displayHp, u.hp);
           u.upgradeFlash = 1;
@@ -733,10 +734,11 @@ export class GameEngine {
 
   private createFaction(team: Team): FactionState {
     const era = ERAS[0];
+    const startBonus = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiStartingGoldBonus : 0;
     return {
       team,
       eraIndex: 0,
-      gold: STARTING_GOLD,
+      gold: STARTING_GOLD + startBonus,
       xp: 0,
       totalXp: 0,
       baseHp: era.baseMaxHp,
@@ -856,7 +858,8 @@ export class GameEngine {
     const faction = this.getFaction(team);
     const spawnX = team === 'player' ? PLAYER_SPAWN_X : ENEMY_SPAWN_X;
     const jitter = (this.random() - 0.5) * 6;
-    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades));
+    const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
+    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades) * statMult);
     const unit: UnitEntity = {
       uid: this.nextUid++,
       team,
@@ -1072,8 +1075,13 @@ export class GameEngine {
     const isCrit = this.random() < critChance;
     const vetDamageMult =
       attacker.vetRank === 3 ? 1.5 : attacker.vetRank === 2 ? 1.3 : attacker.vetRank === 1 ? 1.15 : 1;
+    const aiDmgMult = attacker.team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
     const rawDamage =
-      def.damage * getWeaponDamageMult(attackerFaction.upgrades) * vetDamageMult * (isCrit ? critMult : 1);
+      def.damage *
+      getWeaponDamageMult(attackerFaction.upgrades) *
+      vetDamageMult *
+      aiDmgMult *
+      (isCrit ? critMult : 1);
     const rangeMult = getRangeMult(attackerFaction.upgrades);
     const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
     const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
@@ -1093,27 +1101,41 @@ export class GameEngine {
       ? GROUND_Y - target.def.height * 0.72 - (target.def.hoverHeight ?? 0)
       : GROUND_Y - 70;
 
-    // Instant Railgun, Interstellar Graviton, or Industrial Tesla Arc piercing beam
-    if (def.projectile === 'railgun' || def.projectile === 'gravity_beam' || def.projectile === 'tesla_arc') {
+    // Instant Railgun, Interstellar Graviton, Transcendent Chrono-Prism, or Industrial Tesla Arc piercing beam
+    if (
+      def.projectile === 'railgun' ||
+      def.projectile === 'gravity_beam' ||
+      def.projectile === 'chrono_beam' ||
+      def.projectile === 'tesla_arc'
+    ) {
       const isGrav = def.projectile === 'gravity_beam';
+      const isChrono = def.projectile === 'chrono_beam';
       const isTesla = def.projectile === 'tesla_arc';
       const endX = target && isTesla ? target.x : originX + dir * (effRange + 45);
       const endY = target && isTesla ? targetY : originY;
       this.beams.push({
         uid: this.nextUid++,
         team: attacker.team,
-        style: isGrav ? 'gravity_beam' : isTesla ? 'tesla_arc' : 'railgun',
+        style: isChrono ? 'chrono_beam' : isGrav ? 'gravity_beam' : isTesla ? 'tesla_arc' : 'railgun',
         x1: originX,
         y1: originY,
         x2: endX,
         y2: endY,
-        width: isGrav ? 7 : isTesla ? 6 : 5,
-        color: isGrav ? '#c084fc' : isTesla ? '#38bdf8' : attacker.team === 'player' ? '#38bdf8' : '#fb7185',
-        life: isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
-        maxLife: isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
+        width: isChrono ? 9 : isGrav ? 7 : isTesla ? 6 : 5,
+        color: isChrono
+          ? '#2dd4bf'
+          : isGrav
+            ? '#c084fc'
+            : isTesla
+              ? '#38bdf8'
+              : attacker.team === 'player'
+                ? '#38bdf8'
+                : '#fb7185',
+        life: isChrono ? 0.32 : isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
+        maxLife: isChrono ? 0.32 : isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
         seed: this.random() * 100,
       });
-      this.spawnBurst(originX, originY, isGrav ? '#e879f9' : '#7dd3fc', 6, 110);
+      this.spawnBurst(originX, originY, isChrono ? '#5eead4' : isGrav ? '#e879f9' : '#7dd3fc', 6, 110);
 
       // Pierce up to def.pierceCount enemies along beam
       const hitCandidates = this.units
@@ -1148,7 +1170,21 @@ export class GameEngine {
         }
         prevArcX = victim.x;
         prevArcY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
-        this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
+        if (isChrono && def.splashRadius > 0 && hits === 0) {
+          this.applySplashDamage(
+            victim.x,
+            attacker.team,
+            rawDamage,
+            def.splashRadius * splashMult,
+            def.armorPierce,
+            isCrit,
+            dir * def.knockback,
+            attacker,
+          );
+          this.spawnExplosion(victim.x, prevArcY, def.splashRadius * 0.85, '#2dd4bf');
+        } else {
+          this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
+        }
         hits++;
         if (hits >= def.pierceCount) break;
       }
@@ -1354,22 +1390,27 @@ export class GameEngine {
       const muzzleY = pos.y + Math.sin(turret.aimAngle) * 18;
       const scaledTurretDamage = def.damage * getTurretDamageMult(faction.upgrades);
 
-      if (def.projectile === 'ion_beam' || def.projectile === 'gravity_beam') {
+      if (
+        def.projectile === 'ion_beam' ||
+        def.projectile === 'gravity_beam' ||
+        def.projectile === 'chrono_beam'
+      ) {
         const isGrav = def.projectile === 'gravity_beam';
+        const isChrono = def.projectile === 'chrono_beam';
         const tx = bestTarget.x;
         const ty = GROUND_Y - bestTarget.def.height * 0.5;
         this.beams.push({
           uid: this.nextUid++,
           team: faction.team,
-          style: isGrav ? 'gravity_beam' : 'ion_beam',
+          style: isChrono ? 'chrono_beam' : isGrav ? 'gravity_beam' : 'ion_beam',
           x1: muzzleX,
           y1: muzzleY,
           x2: tx,
           y2: ty,
-          width: isGrav ? 9 : 7,
-          color: isGrav ? '#c084fc' : '#22d3ee',
-          life: 0.3,
-          maxLife: 0.3,
+          width: isChrono ? 11 : isGrav ? 9 : 7,
+          color: isChrono ? '#2dd4bf' : isGrav ? '#c084fc' : '#22d3ee',
+          life: isChrono ? 0.34 : 0.3,
+          maxLife: isChrono ? 0.34 : 0.3,
           seed: this.random(),
         });
         this.applySplashDamage(
@@ -1379,9 +1420,9 @@ export class GameEngine {
           def.splashRadius * splashMult,
           def.armorPierce,
           false,
-          dir * (isGrav ? 95 : 75),
+          dir * (isChrono ? 115 : isGrav ? 95 : 75),
         );
-        this.spawnRing(tx, ty, isGrav ? '#c084fc' : '#38bdf8', def.splashRadius * 0.6);
+        this.spawnRing(tx, ty, isChrono ? '#2dd4bf' : isGrav ? '#c084fc' : '#38bdf8', def.splashRadius * 0.65);
       } else {
         const flightTime = Math.max(0.12, Math.hypot(aimDx, aimDy) / (def.projectileSpeed * projSpeedMult));
         const vx = aimDx / flightTime;
@@ -1424,9 +1465,10 @@ export class GameEngine {
       p.y += p.vy * dt;
       p.life += dt;
 
-      // Smoke & fire trail for rockets / cannonballs / shells / mortars / grenades / totem fire
+      // Smoke & fire trail for rockets / dragon rockets / cannonballs / shells / mortars / grenades / totem fire
       if (
         (p.style === 'rocket' ||
+          p.style === 'dragon_rocket' ||
           p.style === 'cannonball' ||
           p.style === 'shell' ||
           p.style === 'mortar_shell' ||
@@ -1434,14 +1476,21 @@ export class GameEngine {
           p.style === 'totem_fire') &&
         this.random() < 0.68
       ) {
-        const isFiery = p.style === 'totem_fire' || p.style === 'grenade';
+        const isFiery = p.style === 'totem_fire' || p.style === 'grenade' || p.style === 'dragon_rocket';
         this.particles.push({
           x: p.x,
           y: p.y,
           vx: -p.vx * 0.08 + (this.random() - 0.5) * 16,
           vy: -10 - this.random() * 14,
           size: p.style === 'rocket' || p.style === 'mortar_shell' ? 4.5 : 3.5,
-          color: isFiery ? '#fb923c' : p.style === 'rocket' ? '#e2e8f0' : '#94a3b8',
+          color:
+            p.style === 'dragon_rocket'
+              ? '#f43f5e'
+              : isFiery
+                ? '#fb923c'
+                : p.style === 'rocket'
+                  ? '#e2e8f0'
+                  : '#94a3b8',
           alpha: isFiery ? 0.78 : 0.6,
           life: 0.28,
           maxLife: 0.28,
@@ -1454,15 +1503,17 @@ export class GameEngine {
       const dir = p.team === 'player' ? 1 : -1;
       let impacted = false;
       const blastColor =
-        p.style === 'plasma'
-          ? '#22d3ee'
-          : p.style === 'antimatter'
-            ? '#c084fc'
-            : p.style === 'solar_orb'
-              ? '#fbbf24'
-              : p.style === 'mortar_shell'
-                ? '#ef4444'
-                : '#f97316';
+        p.style === 'quantum_orb'
+          ? '#2dd4bf'
+          : p.style === 'plasma'
+            ? '#22d3ee'
+            : p.style === 'antimatter'
+              ? '#c084fc'
+              : p.style === 'solar_orb'
+                ? '#fbbf24'
+                : p.style === 'dragon_rocket' || p.style === 'mortar_shell'
+                  ? '#ef4444'
+                  : '#f97316';
 
       // Check collision with enemy units
       const sourceUnit =
@@ -1582,6 +1633,7 @@ export class GameEngine {
         ord.y += ord.vy * dt;
         if (
           ord.kind === 'fire_arrows' ||
+          ord.kind === 'dragon_barrage' ||
           ord.kind === 'carpet_bomb' ||
           ord.kind === 'zeppelin_raid' ||
           ord.kind === 'naval_barrage'
@@ -1720,23 +1772,54 @@ export class GameEngine {
       return;
     }
 
-    // Falling sky ordinance (meteor, fire_arrows, naval_barrage, zeppelin_raid, carpet_bomb, tactical_missiles)
+    if (kind === 'chrono_nova') {
+      this.beams.push({
+        uid: this.nextUid++,
+        team: ult.team,
+        style: 'chrono_nova_pillar',
+        x1: targetX,
+        y1: -36,
+        x2: targetX,
+        y2: GROUND_Y + 6,
+        width: 60,
+        color: '#2dd4bf',
+        life: 0.96,
+        maxLife: 0.96,
+        seed: this.random() * 1000,
+      });
+      this.applySplashDamage(targetX, ult.team, ultDmg, ultRad, true, true, dir * 135);
+      this.spawnExplosion(targetX, GROUND_Y - 10, ult.def.radius * 1.25, '#2dd4bf');
+      this.spawnRing(targetX, GROUND_Y - 12, '#facc15', ult.def.radius * 1.05);
+      this.callbacks.onSound?.('explosion');
+      return;
+    }
+
+    // Falling sky ordinance (meteor, dragon_barrage, fire_arrows, naval_barrage, zeppelin_raid, carpet_bomb, tactical_missiles)
     const startY = kind === 'carpet_bomb' || kind === 'zeppelin_raid' ? 92 : -40;
     const slant =
       kind === 'meteor'
         ? -dir * 220
-        : kind === 'fire_arrows'
-          ? -dir * 260
+        : kind === 'fire_arrows' || kind === 'dragon_barrage'
+          ? -dir * 270
           : kind === 'naval_barrage'
             ? -dir * 160
             : kind === 'tactical_missiles'
               ? -dir * 90
               : -dir * 55;
-    const fallTime = kind === 'fire_arrows' ? 0.52 : kind === 'tactical_missiles' ? 0.45 : 0.6;
+    const fallTime =
+      kind === 'fire_arrows' || kind === 'dragon_barrage'
+        ? 0.5
+        : kind === 'tactical_missiles'
+          ? 0.45
+          : 0.6;
     const startX = targetX + slant;
     const vx = (targetX - startX) / fallTime;
     const gravity =
-      kind === 'fire_arrows' || kind === 'carpet_bomb' || kind === 'zeppelin_raid' || kind === 'naval_barrage'
+      kind === 'fire_arrows' ||
+      kind === 'dragon_barrage' ||
+      kind === 'carpet_bomb' ||
+      kind === 'zeppelin_raid' ||
+      kind === 'naval_barrage'
         ? 320
         : 0;
     const vy = (GROUND_Y - startY - 0.5 * gravity * fallTime * fallTime) / fallTime;
@@ -2200,6 +2283,16 @@ export class GameEngine {
       color = attacker.team === 'player' ? '#60a5fa' : '#f87171';
       coreColor = '#f8fafc';
       radius = id === 'pikeman' || id === 'heavy_cavalry' ? 48 : 38;
+    } else if (id === 'dynasty_swordsman') {
+      style = 'blade';
+      color = '#10b981';
+      coreColor = '#fef08a';
+      radius = 42;
+    } else if (id === 'dragon_general') {
+      style = 'heavy';
+      color = '#ef4444';
+      coreColor = '#fef08a';
+      radius = 54;
     } else if (id === 'cyborg') {
       style = 'plasma';
       color = attacker.team === 'player' ? '#22d3ee' : '#fb7185';
@@ -2210,6 +2303,11 @@ export class GameEngine {
       color = '#c084fc';
       coreColor = '#fae8ff';
       radius = 52;
+    } else if (id === 'chrono_blade') {
+      style = 'plasma';
+      color = '#2dd4bf';
+      coreColor = '#fef9c3';
+      radius = 56;
     }
 
     const baseAngle = (this.random() - 0.5) * 0.28;

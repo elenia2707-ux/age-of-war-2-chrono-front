@@ -20,7 +20,7 @@ export class EnemyAI {
     const enemy = engine.enemy;
     const era = getEra(enemy.eraIndex);
 
-    // 1. Era evolution check
+    // 1. Era evolution check (faster on Brutal / instant on Nightmare & Mythic)
     if (era.evolveXp > 0 && enemy.xp >= era.evolveXp) {
       this.evolveReadyTimer += dt;
       if (this.evolveReadyTimer >= diff.aiEvolveDelay) {
@@ -43,20 +43,33 @@ export class EnemyAI {
     const criticalThreat = closestPlayerX > WORLD_WIDTH * 0.72 && enemyUnits.length < 3;
     const underThreat = closestPlayerX > WORLD_WIDTH * 0.56 || enemy.baseHp < enemy.baseMaxHp * 0.72;
 
-    // 2. Ultimate usage (Normal / Hard) respects XP cost & avoids delaying imminent evolution unless critical
+    const playerHeavyCount = playerUnits.filter(
+      (u) => u.def.role === 'heavy' || u.def.role === 'siege',
+    ).length;
+    const playerRangedCount = playerUnits.filter((u) => u.def.role === 'ranged').length;
+
+    // 2. Ultimate usage respects XP cost & avoids delaying imminent evolution unless critical
     const nearEvolution = era.evolveXp > 0 && enemy.xp >= era.evolveXp * 0.78;
+    const minUltTargets =
+      diff.aiCounterSmartness >= 0.9
+        ? playerHeavyCount >= 2
+          ? 2
+          : 3
+        : diff.aiCounterSmartness >= 0.65
+          ? 3
+          : 4;
     if (
       diff.aiUsesUltimate &&
       engine.canUseUltimate('enemy') &&
       (!nearEvolution || criticalThreat) &&
-      playerUnits.length >= (engine.difficulty === 'hard' ? 3 : 4) &&
-      closestPlayerX > WORLD_WIDTH * 0.45
+      playerUnits.length >= minUltTargets &&
+      closestPlayerX > WORLD_WIDTH * (diff.aiCounterSmartness >= 0.85 ? 0.38 : 0.45)
     ) {
       engine.triggerUltimate('enemy');
       return;
     }
 
-    // 3. Difficulty-scaled Gold Spec Upgrades (weapons, armor, economy, fortress)
+    // 3. Difficulty-scaled Gold Spec Upgrades (all 20 upgrades)
     if (!criticalThreat && this.tryPurchaseUpgrade(engine, underThreat, enemyUnits.length)) {
       return;
     }
@@ -65,14 +78,17 @@ export class EnemyAI {
     const installedTurrets = enemy.turrets.filter((t) => t !== null);
     const targetTurrets = Math.min(
       diff.aiMaxTurrets,
-      Math.max(1, Math.floor((enemy.eraIndex + 2) / 2)),
+      Math.max(1, Math.floor((enemy.eraIndex + (diff.aiCounterSmartness >= 0.8 ? 3 : 2)) / 2)),
     );
 
-    // Replace very old turret (2+ eras behind) when affordable
-    if (installedTurrets.length > 0 && enemy.eraIndex >= 2) {
-      const outdated = installedTurrets.find((t) => t && enemy.eraIndex - t.eraIndex >= 2);
+    // Replace outdated turrets (1+ era behind on Brutal+, 2+ eras behind on Normal/Hard)
+    const minOutdatedGap = diff.aiCounterSmartness >= 0.8 ? 1 : 2;
+    if (installedTurrets.length > 0 && enemy.eraIndex >= minOutdatedGap) {
+      const outdated = installedTurrets.find(
+        (t) => t && enemy.eraIndex - t.eraIndex >= minOutdatedGap,
+      );
       const cheapestTurret = era.turrets[0];
-      if (outdated && enemy.gold >= cheapestTurret.cost * 0.85) {
+      if (outdated && enemy.gold >= cheapestTurret.cost * (minOutdatedGap === 1 ? 1.1 : 0.85)) {
         engine.sellTurret('enemy', outdated.slotIndex);
       }
     }
@@ -91,10 +107,15 @@ export class EnemyAI {
 
     // Install a turret if an unlocked slot is empty and base is threatened or mid-match
     const hasEmptySlot = enemy.turrets.slice(0, enemy.turretSlots).some((t) => t === null);
-    if (hasEmptySlot && (underThreat || engine.elapsed > 28)) {
+    const earlyTurretTime = diff.aiCounterSmartness >= 0.8 ? 16 : 28;
+    if (hasEmptySlot && (underThreat || engine.elapsed > earlyTurretTime)) {
       const heavyTurret = era.turrets[1];
       const lightTurret = era.turrets[0];
-      if (heavyTurret && enemy.gold >= heavyTurret.cost && (engine.random() < 0.55 || enemy.eraIndex >= 2)) {
+      if (
+        heavyTurret &&
+        enemy.gold >= heavyTurret.cost &&
+        (engine.random() < 0.55 + diff.aiCounterSmartness * 0.25 || enemy.eraIndex >= 2)
+      ) {
         engine.installTurret('enemy', heavyTurret.id);
         return;
       }
@@ -104,13 +125,15 @@ export class EnemyAI {
       }
     }
 
-    // 5. Tactical unit composition training
-    if (enemy.queue.length >= 3) return;
+    // 5. Tactical unit composition & counter-picking training
+    if (enemy.queue.length >= diff.aiMaxQueue) return;
 
     const units = era.units;
     const meleeUnits = units.filter((u) => u.role === 'melee');
     const rangedUnits = units.filter((u) => u.role === 'ranged');
     const heavyUnits = units.filter((u) => u.role === 'heavy' || u.role === 'siege');
+    const armorPiercers = units.filter((u) => u.armorPierce && enemy.gold >= u.cost);
+    const splashUnits = units.filter((u) => u.splashRadius > 0 && enemy.gold >= u.cost);
 
     const enemyFrontlineCount = enemyUnits.filter(
       (u) => u.def.role === 'melee' || u.def.role === 'heavy',
@@ -133,19 +156,35 @@ export class EnemyAI {
     if (
       topUnit &&
       enemy.gold < topUnit.cost &&
-      enemy.gold >= topUnit.cost * 0.62 &&
+      enemy.gold >= topUnit.cost * (diff.aiCounterSmartness >= 0.8 ? 0.52 : 0.62) &&
       enemyUnits.length >= 2 &&
       !underThreat &&
-      engine.random() < 0.45
+      engine.random() < 0.45 + diff.aiCounterSmartness * 0.15
     ) {
       return;
+    }
+
+    // Active Counter-Picking on higher difficulties!
+    const counterRoll = engine.random();
+    if (counterRoll < diff.aiCounterSmartness * 0.55) {
+      // Counter player heavy/armored units with armor-piercing specialists
+      if (playerHeavyCount >= 2 && armorPiercers.length > 0 && enemyFrontlineCount >= 1) {
+        const pick = armorPiercers[armorPiercers.length - 1];
+        if (engine.enqueueUnit('enemy', pick.id)) return;
+      }
+      // Counter clustered player ranged stacks with splash siege/heavy breakers
+      if (playerRangedCount >= 3 && splashUnits.length > 0) {
+        const pick = splashUnits[splashUnits.length - 1];
+        if (engine.enqueueUnit('enemy', pick.id)) return;
+      }
     }
 
     // Choose unit based on squad composition balance across all 4 units per era
     const roll = engine.random();
     let candidate = units[0];
+    const heavyRollThreshold = 0.34 + diff.aiCounterSmartness * 0.24;
 
-    if (topUnit && enemy.gold >= topUnit.cost && roll < (engine.difficulty === 'hard' ? 0.48 : 0.36)) {
+    if (topUnit && enemy.gold >= topUnit.cost && roll < heavyRollThreshold) {
       const affordableHeavy = heavyUnits.filter((u) => enemy.gold >= u.cost);
       candidate =
         affordableHeavy[Math.floor(engine.random() * affordableHeavy.length)] ?? topUnit;
@@ -153,7 +192,7 @@ export class EnemyAI {
       rangedUnits.length > 0 &&
       enemyFrontlineCount >= enemyRangedCount &&
       rangedUnits.some((u) => enemy.gold >= u.cost) &&
-      roll < 0.78
+      roll < 0.8
     ) {
       const affordableRanged = rangedUnits.filter((u) => enemy.gold >= u.cost);
       candidate = affordableRanged[Math.floor(engine.random() * affordableRanged.length)];
@@ -181,12 +220,12 @@ export class EnemyAI {
     if (engine.random() > diff.aiUpgradeChance) return false;
 
     // Cap target upgrade level gracefully by both difficulty ceiling and era progression
-    const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + 1));
+    const eraBonus = diff.aiCounterSmartness >= 0.9 ? 3 : diff.aiCounterSmartness >= 0.75 ? 2 : 1;
+    const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + eraBonus));
 
     // Tactical priority order across all 20 upgrades based on live battlefield pressure
     let priority: UpgradeId[];
     if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
-      // Base damaged -> prioritize fortress (instant 15% heal + stronger turrets), turret_rapid, regen, thorns, armor
       priority = [
         'fortress',
         'turret_rapid',
@@ -210,7 +249,6 @@ export class EnemyAI {
         'bounty',
       ];
     } else if (enemy.upgrades.economy < Math.min(eraCap, 3) && !underThreat) {
-      // Early/mid economic, XP mastery, discount & bounty snowballing
       priority = [
         'economy',
         'xp_mastery',
@@ -234,7 +272,6 @@ export class EnemyAI {
         'fortress',
       ];
     } else if (activeAllies >= 3) {
-      // Active push -> scale DPS, executioner, pierce, siege, lifesteal & march momentum
       priority = [
         'weapons',
         'attack_speed',

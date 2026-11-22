@@ -1105,7 +1105,246 @@ export function drawEarlyCartoonUnit(ctx: CanvasRenderingContext2D, p: CartoonUn
     }
 
     // ========================================================================
-    // ERA 4: 중세 시대 (MEDIEVAL AGE)
+    // ERA 4: 동방 제국 (ANCIENT EASTERN DYNASTY — NEW ANCIENT ERA!)
+    // ========================================================================
+    case 'dynasty_swordsman': {
+      drawCartoonHumanoid(ctx, {
+        walkPhase: p.walkPhase,
+        isWalking: p.isWalking,
+        attackAnim: p.attackAnim,
+        hitFlash: p.hitFlash,
+        deathProgress: p.deathProgress,
+        scale: 1.12,
+        torsoW: 17.5,
+        torsoH: 19,
+        skin: '#f3c59f',
+        torsoFill: '#047857',
+        torsoHighlight: '#34d399',
+        torsoShadow: '#064e3b',
+        pantsColor: '#1e293b',
+        bootColor: '#292524',
+        bootCuffColor: '#f59e0b',
+        beltColor: '#b91c1c',
+        armColor: '#065f46',
+        sleeveCuffColor: '#f59e0b',
+        gloveColor: '#78350f',
+        skirtColor: '#065f46',
+        skirtTrim: '#facc15',
+        skirtStyle: 'tassets',
+        pauldronColor: '#f59e0b',
+        pauldronTrim: '#047857',
+        capeColor: pal.main,
+        capeDark: pal.dark,
+        swingStyle: 'overhead',
+        drawTorsoDetail: (c, tx, ty, tw) => {
+          // Layered lamellar plate scales + golden dragon chest mirror medallion
+          setInkStyle(c, 1.15, '#064e3b');
+          for (let r = 0; r < 3; r++) {
+            c.beginPath();
+            c.moveTo(tx + 2, ty + 4.5 + r * 4.5);
+            c.lineTo(tx + tw - 2, ty + 4.5 + r * 4.5);
+            c.stroke();
+          }
+          drawCelEllipse(c, tx + tw / 2, ty + 8.5, 4.4, 4.4, '#f59e0b', {
+            highlight: '#fef9c3',
+            shadow: '#92400e',
+            lineWidth: 1.35,
+          });
+          drawCelEllipse(c, tx + tw / 2, ty + 8.5, 2.0, 2.0, '#10b981', { lineWidth: 0.9 });
+        },
+        drawHelmet: (c, hx, hy) => {
+          // Gilded winged Eastern war-helm with twin fluttering crimson horsehair plumes
+          const wave = Math.sin(p.walkPhase * 1.4) * 2.4;
+          drawCelPoly(
+            c,
+            [
+              [hx - 2, hy - 10],
+              [hx - 14, hy - 14 + wave],
+              [hx - 11, hy - 7 + wave * 0.6],
+              [hx, hy - 6],
+            ],
+            pal.main,
+            { highlight: pal.light, shadow: pal.dark, lineWidth: 1.5 },
+          );
+          drawCelPoly(
+            c,
+            [
+              [hx - 9.5, hy - 2],
+              [hx - 8, hy - 10.5],
+              [hx + 1, hy - 13.5],
+              [hx + 9.5, hy - 8.5],
+              [hx + 10.5, hy - 2],
+            ],
+            '#047857',
+            { highlight: '#34d399', shadow: '#064e3b', lineWidth: 1.9 },
+          );
+          // Golden winged brow crest + cheek neck-guard plates
+          drawCelPoly(
+            c,
+            [
+              [hx + 1, hy - 9],
+              [hx + 7, hy - 14],
+              [hx + 9.5, hy - 7],
+            ],
+            '#facc15',
+            { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.4 },
+          );
+          drawCelRoundRect(c, hx - 9.5, hy - 3.5, 19.5, 3.2, 1.2, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.3 });
+          drawCelPoly(
+            c,
+            [
+              [hx - 9.5, hy - 0.5],
+              [hx - 11.5, hy + 5.5],
+              [hx - 5.5, hy + 5.5],
+              [hx - 5, hy - 0.5],
+            ],
+            '#065f46',
+            { highlight: '#10b981', lineWidth: 1.35 },
+          );
+        },
+        drawOffhand: (c, sx, sy) => {
+          // Circular Jade-Gold Dragon Buckler shield
+          drawCelEllipse(c, sx, sy, 7.2, 8.8, '#047857', { highlight: '#34d399', shadow: '#064e3b', lineWidth: 1.9 });
+          drawCelEllipse(c, sx, sy, 4.8, 6.0, '#f59e0b', { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.35 });
+          drawCelEllipse(c, sx, sy, 2.2, 2.8, pal.main, { highlight: pal.light, lineWidth: 1.1 });
+        },
+        drawWeapon: (c) => {
+          // Curved gleaming Blue-Dragon Dao Saber (청룡도) + gold S-guard + crimson silk tassel
+          drawCelPoly(
+            c,
+            [
+              [-2, -2],
+              [-11, 2],
+              [-8, 5.5],
+              [-1, 1],
+            ],
+            '#ef4444',
+            { highlight: '#fca5a5', lineWidth: 1.1 },
+          );
+          drawCelRoundRect(c, -2.5, -2.2, 5.5, 4.4, 1.2, '#78350f', { lineWidth: 1.3 });
+          drawCelRoundRect(c, 2, -5.8, 3.2, 11.6, 1.2, '#facc15', { highlight: '#fef9c3', lineWidth: 1.35 });
+          drawCelPoly(
+            c,
+            [
+              [4.5, -2.5],
+              [19, -4.5],
+              [28.5, -8.5],
+              [26, 0.5],
+              [16, 2.8],
+              [4.5, 2.0],
+            ],
+            '#e2e8f0',
+            { highlight: '#ffffff', shadow: '#64748b', lineWidth: 1.85 },
+          );
+          // Jade dragon fuller gleam along blade spine
+          c.strokeStyle = '#34d399';
+          c.lineWidth = 1.4;
+          c.beginPath();
+          c.moveTo(7, -0.5);
+          c.quadraticCurveTo(17, -1.5, 24.5, -4.5);
+          c.stroke();
+        },
+      });
+      return true;
+    }
+
+    case 'repeating_crossbow': {
+      drawCartoonHumanoid(ctx, {
+        walkPhase: p.walkPhase,
+        isWalking: p.isWalking,
+        attackAnim: p.attackAnim,
+        hitFlash: p.hitFlash,
+        deathProgress: p.deathProgress,
+        scale: 1.07,
+        torsoW: 16,
+        torsoH: 18.5,
+        skin: '#f3c59f',
+        torsoFill: '#991b1b',
+        torsoHighlight: '#ef4444',
+        torsoShadow: '#450a0a',
+        pantsColor: '#334155',
+        bootColor: '#1e293b',
+        bootCuffColor: '#d97706',
+        beltColor: '#f59e0b',
+        armColor: '#7f1d1d',
+        sleeveCuffColor: '#f59e0b',
+        skirtColor: '#7f1d1d',
+        skirtTrim: '#facc15',
+        skirtStyle: 'tunic',
+        pauldronColor: '#475569',
+        pauldronTrim: '#facc15',
+        swingStyle: 'aim',
+        drawBackAccessory: (c, topY) => {
+          // Bamboo bolt quiver strapped on back with red-fletched bolts
+          drawCelRoundRect(c, -12.5, topY + 1, 5.5, 14, 2, '#92400e', { highlight: '#d97706', lineWidth: 1.5 });
+          for (let i = 0; i < 3; i++) {
+            c.fillStyle = '#facc15';
+            c.fillRect(-11.5 + i * 1.4, topY - 4, 1.3, 5.5);
+          }
+        },
+        drawTorsoDetail: (c, tx, ty, tw) => {
+          // Brigandine gold rivets & crossed sash
+          drawRivetStrip(c, tx + 3, ty + 5, tx + tw - 3, ty + 5, 4, 0.9);
+          drawRivetStrip(c, tx + 3, ty + 11, tx + tw - 3, ty + 11, 4, 0.9);
+          drawCelRoundRect(c, tx + tw * 0.38, ty + 1, 3.6, 16, 1, pal.main, { highlight: pal.light, lineWidth: 1.1 });
+        },
+        drawHelmet: (c, hx, hy) => {
+          // Iconic Eastern conical lacquered war-hat (전립/삿갓) + gold spire & fluttering tassel
+          drawCelPoly(
+            c,
+            [
+              [hx - 14.5, hy - 3],
+              [hx, hy - 14.5],
+              [hx + 15.5, hy - 3],
+              [hx, hy - 0.5],
+            ],
+            '#1e293b',
+            { highlight: '#64748b', shadow: '#090d16', lineWidth: 1.95 },
+          );
+          drawCelRoundRect(c, hx - 12.5, hy - 4.2, 25.5, 2.4, 1, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.1 });
+          // Golden top bead & fluttering crimson-team tassel
+          drawCelEllipse(c, hx, hy - 15.2, 2.4, 2.4, '#facc15', { highlight: '#ffffff', lineWidth: 1.2 });
+          const wave = Math.sin(p.walkPhase * 1.6) * 2.2;
+          setInkStyle(c, 2.4, pal.main);
+          c.beginPath();
+          c.moveTo(hx - 1, hy - 14.5);
+          c.quadraticCurveTo(hx - 9, hy - 14 + wave, hx - 14, hy - 8 + wave);
+          c.stroke();
+        },
+        drawWeapon: (c) => {
+          // Chu-Ko-Nu Repeating Crossbow (연노) with top box-magazine & curved bronze prod!
+          drawCelRoundRect(c, -5, -2.2, 23, 4.8, 1.5, '#78350f', { highlight: '#b45309', shadow: '#451a03', lineWidth: 1.6 });
+          // Box bolt magazine mounted on top of stock
+          drawCelRoundRect(c, 1, -9.5, 11, 7.8, 1.5, '#92400e', { highlight: '#d97706', shadow: '#451a03', lineWidth: 1.5 });
+          drawCelRoundRect(c, 2.5, -8, 8, 2.2, 0.8, '#facc15', { lineWidth: 1.0 });
+          // Curved bronze bow prod
+          setInkStyle(c, 3.2, '#f59e0b');
+          c.beginPath();
+          c.moveTo(16, -9.5);
+          c.quadraticCurveTo(21, 0, 16, 9.5);
+          c.stroke();
+          // Loaded steel repeating bolt
+          drawCelRoundRect(c, 12, -1.2, 11, 2.4, 0.8, '#f8fafc', { lineWidth: 1.2 });
+          if (p.attackAnim > 0.52) {
+            drawCartoonMuzzleFlash(c, 24, 0, 6.5, '#fde047', '#ffffff');
+          }
+        },
+      });
+      return true;
+    }
+
+    case 'hwacha_cart': {
+      drawHwachaCart(ctx, p, pal);
+      return true;
+    }
+
+    case 'dragon_general': {
+      drawDragonGeneral(ctx, p, pal);
+      return true;
+    }
+
+    // ========================================================================
+    // ERA 5: 중세 시대 (MEDIEVAL AGE)
     // ========================================================================
     case 'knight': {
       drawCartoonHumanoid(ctx, {
@@ -2664,3 +2903,350 @@ function drawFieldCannon(
 function c_safe(ctx: CanvasRenderingContext2D): CanvasRenderingContext2D {
   return ctx;
 }
+
+function drawHwachaCart(
+  ctx: CanvasRenderingContext2D,
+  p: CartoonUnitDrawParams,
+  pal: ReturnType<typeof getTeamPalette>,
+): void {
+  const stride = p.isWalking ? Math.sin(p.walkPhase) : 0;
+  const recoil = p.attackAnim > 0.35 ? Math.sin(((p.attackAnim - 0.35) / 0.65) * Math.PI) : 0;
+  const firing = p.attackAnim > 0.56;
+  const dp = p.deathProgress;
+
+  ctx.save();
+  if (dp > 0) {
+    const f = Math.min(1, dp * 1.4);
+    ctx.rotate(-f * 0.95);
+    ctx.translate(-f * 6, f * 6);
+  }
+
+  // 1. Rear Artillery Crewman pushing handles & lighting Hwacha fuse!
+  ctx.save();
+  ctx.translate(-22, 0);
+  drawSculptedLimb(ctx, -2, -14, -6 - stride * 5, -2.5, 5.2, 3.8, '#334155', {
+    cuffColor: '#1e293b',
+    lineWidth: 1.5,
+  });
+  drawSculptedLimb(ctx, 2, -14, 5 + stride * 5, -2.5, 5.2, 3.8, '#475569', {
+    cuffColor: '#1e293b',
+    lineWidth: 1.5,
+  });
+  drawCelRoundRect(ctx, -7, -30, 14, 16, 4, '#991b1b', {
+    highlight: '#ef4444',
+    shadow: '#450a0a',
+    lineWidth: 1.85,
+  });
+  drawCelRoundRect(ctx, -7, -19, 14, 3.4, 1, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.1 });
+  // Crewman head + lacquered conical war-hat
+  drawCelEllipse(ctx, 0.5, -36.5, 6.2, 6.0, '#f3c59f', { lineWidth: 1.75 });
+  drawCartoonFace(ctx, 0.5, -36, { mood: firing ? 'attack' : 'normal', skin: '#f3c59f' });
+  drawCelPoly(
+    ctx,
+    [
+      [-10.5, -38.5],
+      [0.5, -48.5],
+      [11.5, -38.5],
+      [0.5, -36.5],
+    ],
+    '#1e293b',
+    { highlight: '#64748b', shadow: '#090d16', lineWidth: 1.7 },
+  );
+  drawCelEllipse(ctx, 0.5, -49, 2.0, 2.0, '#facc15', { lineWidth: 1.0 });
+  // Arm holding cart handle + glowing ignition torch
+  drawSculptedLimb(ctx, 3, -24, 14, -22, 4.4, 3.4, '#7f1d1d', { cuffColor: '#f59e0b', lineWidth: 1.45 });
+  drawEnergyOrb(ctx, 15.5, -25.5, firing ? 5.2 : 3.2, '#f97316', '#fef9c3');
+  ctx.restore();
+
+  // 2. Back Cart Wheel + Wooden Push Frame & Dragon Pennant Flag
+  const rx = -recoil * 5.5;
+  drawCartoonWheel(ctx, 3 + rx, -13, 12.5, p.walkPhase * 1.4, '#78350f', '#f59e0b', 6);
+
+  // Fluttering Eastern dragon battle banner behind rocket box
+  const wave = Math.sin(p.walkPhase * 1.5) * 3.0;
+  setInkStyle(ctx, 2.2, '#451a03');
+  ctx.beginPath();
+  ctx.moveTo(-7 + rx, -22);
+  ctx.lineTo(-9 + rx, -54);
+  ctx.stroke();
+  drawCelPoly(
+    ctx,
+    [
+      [-9 + rx, -53],
+      [-24 + rx, -51 + wave],
+      [-19 + rx, -45 + wave * 0.6],
+      [-23 + rx, -39 + wave],
+      [-8.5 + rx, -41],
+    ],
+    pal.main,
+    { highlight: pal.light, shadow: pal.dark, lineWidth: 1.55 },
+  );
+
+  // Wooden carriage beam & lacquered armored apron
+  drawCelRoundRect(ctx, -14 + rx, -20, 34, 7.5, 2.5, '#78350f', {
+    highlight: '#b45309',
+    shadow: '#451a03',
+    lineWidth: 1.9,
+  });
+  drawCelRoundRect(ctx, -4 + rx, -24, 20, 9, 2, '#991b1b', {
+    highlight: '#ef4444',
+    shadow: '#450a0a',
+    lineWidth: 1.65,
+  });
+  drawRivetStrip(ctx, -1 + rx, -19.5, 13 + rx, -19.5, 4, 0.9);
+
+  // 3. Angled Honeycomb Singijeon Rocket Launcher Box (신기전 화차 발사대!)
+  ctx.save();
+  ctx.translate(6 + rx, -29);
+  ctx.rotate(-0.34 - recoil * 0.08);
+  // Protruding bundle of fiery Singijeon arrow rockets!
+  for (let row = -1; row <= 1; row++) {
+    for (let col = 0; col < 3; col++) {
+      const ry = row * 5.2 + (col - 1) * 0.8;
+      drawCelRoundRect(ctx, 4, ry - 1.3, 17 + col * 2.2, 2.6, 0.8, '#b45309', { lineWidth: 1.1 });
+      // Red gunpowder rocket cylinder + steel arrowhead tip
+      drawCelRoundRect(ctx, 13 + col * 1.4, ry - 1.9, 6.2, 3.8, 1.0, '#dc2626', {
+        highlight: '#fca5a5',
+        lineWidth: 1.0,
+      });
+      drawCelPoly(
+        ctx,
+        [
+          [19.5 + col * 1.4, ry - 2.1],
+          [24 + col * 1.4, ry],
+          [19.5 + col * 1.4, ry + 2.1],
+        ],
+        '#f8fafc',
+        { lineWidth: 0.95 },
+      );
+    }
+  }
+  // Golden-banded lacquered launcher box
+  drawCelRoundRect(ctx, -13, -11.5, 23, 23, 3, '#78350f', {
+    highlight: '#b45309',
+    shadow: '#451a03',
+    lineWidth: 2.1,
+  });
+  drawCelRoundRect(ctx, -14, -10.5, 4.5, 21, 1.2, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.3 });
+  drawCelRoundRect(ctx, 5.5, -10.5, 4.5, 21, 1.2, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.3 });
+  drawCelRoundRect(ctx, -8.5, -6, 13, 12, 2, pal.main, { highlight: pal.light, shadow: pal.dark, lineWidth: 1.4 });
+  drawCelEllipse(ctx, -2, 0, 3.6, 3.6, '#facc15', { highlight: '#ffffff', lineWidth: 1.1 });
+
+  if (firing) {
+    drawCartoonMuzzleFlash(ctx, 25, 0, 16, '#ef4444', '#fef08a');
+    drawEnergyOrb(ctx, 23, -6, 5.5, '#f97316', '#ffffff');
+    drawEnergyOrb(ctx, 23, 6, 5.5, '#f97316', '#ffffff');
+  }
+  ctx.restore();
+
+  // 4. Front large spoked wooden wheel
+  drawCartoonWheel(ctx, 9 + rx * 0.7, -14, 14, p.walkPhase * 1.4, '#854d0e', '#f59e0b', 8);
+  ctx.restore();
+}
+
+function drawDragonGeneral(
+  ctx: CanvasRenderingContext2D,
+  p: CartoonUnitDrawParams,
+  pal: ReturnType<typeof getTeamPalette>,
+): void {
+  const stride = p.isWalking ? Math.sin(p.walkPhase) : 0;
+  const bob = p.isWalking ? Math.abs(Math.sin(p.walkPhase)) * 3.2 : 0;
+  const cleave = p.attackAnim > 0.15 ? Math.sin(p.attackAnim * Math.PI) : 0;
+  const dp = p.deathProgress;
+
+  ctx.save();
+  if (dp > 0) {
+    const f = Math.min(1, dp * 1.4);
+    ctx.rotate(-f * 1.12);
+    ctx.translate(-f * 6, f * 6);
+  }
+
+  const hy = -28 - bob;
+
+  // 1. Back sculpted crimson warhorse (적토마!) legs with golden fetlocks & dark hooves
+  drawSculptedLimb(ctx, -13, hy + 7, -17 - stride * 11, -2.5, 7.2, 4.4, '#7f1d1d', {
+    highlight: '#b91c1c',
+    shadow: '#450a0a',
+    cuffColor: '#f59e0b',
+    lineWidth: 1.75,
+  });
+  drawSculptedLimb(ctx, 11, hy + 7, 15 + stride * 11, -2.5, 7.2, 4.4, '#7f1d1d', {
+    highlight: '#b91c1c',
+    shadow: '#450a0a',
+    cuffColor: '#f59e0b',
+    lineWidth: 1.75,
+  });
+
+  // Flowing flame-crimson warhorse tail
+  drawCelPoly(
+    ctx,
+    [
+      [-18, hy - 2],
+      [-32, hy + 4 + Math.sin(p.walkPhase * 1.4) * 3.5],
+      [-26, hy + 13],
+      [-16, hy + 4],
+    ],
+    '#b91c1c',
+    { highlight: '#f87171', shadow: '#450a0a', lineWidth: 1.7 },
+  );
+
+  // 2. Muscular Red Hare body + gilded jade-and-crimson lamellar barding!
+  drawCelEllipse(ctx, 0, hy + 2, 21.5, 11.5, '#991b1b', {
+    highlight: '#ef4444',
+    shadow: '#450a0a',
+    lineWidth: 2.15,
+  });
+  drawCelPoly(
+    ctx,
+    [
+      [-19, hy - 5],
+      [18.5, hy - 5],
+      [21, hy + 10.5],
+      [9, hy + 7.5],
+      [0, hy + 12.5],
+      [-10, hy + 7.5],
+      [-20, hy + 10.5],
+    ],
+    '#047857',
+    { highlight: '#34d399', shadow: '#064e3b', lineWidth: 1.9 },
+  );
+  // Gold lamellar border & imperial dragon emblem on saddlecloth
+  setInkStyle(ctx, 2.0, '#facc15');
+  ctx.beginPath();
+  ctx.moveTo(-18, hy + 7.5);
+  ctx.lineTo(-9.5, hy + 5);
+  ctx.lineTo(0, hy + 9.5);
+  ctx.lineTo(9.5, hy + 5);
+  ctx.lineTo(18.5, hy + 7.5);
+  ctx.stroke();
+  drawCelEllipse(ctx, 0, hy + 1.5, 4.8, 4.8, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.3 });
+  drawCelEllipse(ctx, 0, hy + 1.5, 2.2, 2.2, pal.main, { lineWidth: 0.9 });
+
+  // Arched crimson warhorse neck, fiery mane & gilded horned dragon chamfron!
+  drawCelPoly(
+    ctx,
+    [
+      [11, hy - 2],
+      [19.5, hy - 21.5],
+      [33, hy - 12.5],
+      [27.5, hy - 7],
+      [18, hy + 4.5],
+    ],
+    '#b91c1c',
+    { highlight: '#ef4444', shadow: '#450a0a', lineWidth: 2.05 },
+  );
+  // Golden dragon chamfron face armor + fiery mane
+  drawCelPoly(
+    ctx,
+    [
+      [20, hy - 21],
+      [32.5, hy - 13],
+      [29, hy - 10],
+      [19, hy - 16],
+    ],
+    '#f59e0b',
+    { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.5 },
+  );
+  drawCelEllipse(ctx, 24.5, hy - 15.5, 1.8, 1.8, '#fef08a', { lineWidth: 1.0 });
+
+  // Front sculpted crimson legs
+  drawSculptedLimb(ctx, -7, hy + 7, -4 + stride * 12, -2, 7.6, 4.6, '#b91c1c', {
+    highlight: '#ef4444',
+    shadow: '#450a0a',
+    cuffColor: '#f59e0b',
+    lineWidth: 1.85,
+  });
+  drawSculptedLimb(ctx, 13, hy + 7, 17 - stride * 12, -2, 7.6, 4.6, '#b91c1c', {
+    highlight: '#ef4444',
+    shadow: '#450a0a',
+    cuffColor: '#f59e0b',
+    lineWidth: 1.85,
+  });
+
+  // 3. Heroic Dragon Warlord Rider (적토마 장군) + Flowing Cape + Twin Pheasant Plumes!
+  const ry = hy - 9;
+  drawCartoonCape(ctx, -6, ry - 15, 22, 24, pal.main, pal.dark, p.walkPhase);
+
+  // Armored jade-gold torso + crimson war sash
+  drawCelRoundRect(ctx, -9, ry - 17, 16.5, 17, 4.5, '#047857', {
+    highlight: '#34d399',
+    shadow: '#064e3b',
+    lineWidth: 2.0,
+  });
+  drawCelEllipse(ctx, -1, ry - 10, 4.6, 4.6, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.35 });
+  drawCelEllipse(ctx, -7, ry - 14.5, 5.2, 4.2, '#f59e0b', { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.5 });
+  drawCelEllipse(ctx, 6.5, ry - 14.5, 5.2, 4.2, '#f59e0b', { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.5 });
+
+  // Bearded Hero Head + Golden Crown Helm + Twin Sweeping Pheasant Feathers!
+  drawCelEllipse(ctx, 0.5, ry - 23.5, 6.6, 6.4, '#f3c59f', { lineWidth: 1.85 });
+  drawCartoonFace(ctx, 0.5, ry - 23, {
+    mood: cleave > 0.2 ? 'attack' : 'normal',
+    skin: '#f3c59f',
+    beard: '#1e293b',
+  });
+  // Twin iconic Three-Kingdoms pheasant tail plumes sweeping dramatically backward!
+  const plumeWave = Math.sin(p.walkPhase * 1.5) * 2.8;
+  setInkStyle(ctx, 2.2, '#facc15');
+  ctx.beginPath();
+  ctx.moveTo(0, ry - 32);
+  ctx.quadraticCurveTo(-14, ry - 41 + plumeWave, -24, ry - 34 + plumeWave);
+  ctx.moveTo(2, ry - 32);
+  ctx.quadraticCurveTo(-9, ry - 44 + plumeWave * 0.7, -18, ry - 39 + plumeWave);
+  ctx.stroke();
+  drawCelPoly(
+    ctx,
+    [
+      [-7.5, ry - 25],
+      [-5.5, ry - 33.5],
+      [1, ry - 36.5],
+      [7.5, ry - 32.5],
+      [8.5, ry - 25],
+    ],
+    '#f59e0b',
+    { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.8 },
+  );
+  drawCelEllipse(ctx, 1, ry - 30.5, 2.5, 2.5, '#ef4444', { highlight: '#fca5a5', lineWidth: 1.1 });
+
+  // 4. Sweeping Blue-Dragon Crescent Glaive (청룡언월도!)
+  ctx.save();
+  ctx.translate(4, ry - 12);
+  ctx.rotate(-0.35 + cleave * 1.38);
+  // Long lacquered crimson polearm shaft
+  drawSculptedLimb(ctx, -16, 4, 24, -10, 3.4, 3.0, '#78350f', { highlight: '#b45309', lineWidth: 1.45 });
+  // Golden dragon-head collar & crimson silk tassel
+  drawCelEllipse(ctx, 22, -9, 3.6, 3.6, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.35 });
+  drawCelPoly(
+    ctx,
+    [
+      [21, -7],
+      [16, 2],
+      [20, 3],
+      [24, -6],
+    ],
+    '#ef4444',
+    { highlight: '#fca5a5', lineWidth: 1.1 },
+  );
+  // Massive gleaming crescent Guandao blade with emerald-jade spine!
+  drawCelPoly(
+    ctx,
+    [
+      [23, -10],
+      [35, -18.5],
+      [42, -13.5],
+      [38, -4.5],
+      [26, -5.5],
+    ],
+    '#e2e8f0',
+    { highlight: '#ffffff', shadow: '#64748b', lineWidth: 1.9 },
+  );
+  c_safe(ctx).strokeStyle = '#10b981';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.moveTo(25, -9.5);
+  ctx.quadraticCurveTo(33, -14.5, 38.5, -12.5);
+  ctx.stroke();
+  ctx.restore();
+
+  ctx.restore();
+}
+

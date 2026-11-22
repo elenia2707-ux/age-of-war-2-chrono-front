@@ -86,15 +86,41 @@ describe('Enemy AI, Camera & Local Records', () => {
     expect(first.records.highestEraReached).toBe(6);
 
     const slower = recordMatchResult(
-      { won: true, difficulty: 'normal', elapsedSec: 310, eraReached: 10, kills: 60 },
+      { won: true, difficulty: 'normal', elapsedSec: 310, eraReached: 12, kills: 60 },
       storage,
     );
     expect(slower.isNewBestTime).toBe(false);
     expect(slower.records.bestVictoryTimeSec.normal).toBe(245);
-    expect(slower.records.highestEraReached).toBe(10);
+    expect(slower.records.highestEraReached).toBe(12);
     expect(slower.records.totalKills).toBe(102);
+
+    // Supports newly added higher difficulties (brutal, nightmare, mythic) independently
+    const mythicWin = recordMatchResult(
+      { won: true, difficulty: 'mythic', elapsedSec: 412, eraReached: 12, kills: 180 },
+      storage,
+    );
+    expect(mythicWin.isNewBestTime).toBe(true);
+    expect(mythicWin.records.bestVictoryTimeSec.mythic).toBe(412);
+    expect(mythicWin.records.bestVictoryTimeSec.brutal).toBeNull();
 
     expect(formatDuration(245)).toBe('04:05');
     expect(formatDuration(null)).toBe('--:--');
+  });
+
+  it('applies starting gold bonus and elite unit stat scaling on brutal, nightmare, and mythic difficulties', () => {
+    const normalEng = new GameEngine();
+    normalEng.startNewGame('normal', 77);
+    const mythicEng = new GameEngine();
+    mythicEng.startNewGame('mythic', 77);
+
+    expect(mythicEng.enemy.gold).toBeGreaterThan(normalEng.enemy.gold);
+    const normalEnemy = normalEng.spawnUnit('enemy', ERAS[0].units[0]);
+    const mythicEnemy = mythicEng.spawnUnit('enemy', ERAS[0].units[0]);
+    expect(mythicEnemy.maxHp).toBeGreaterThan(normalEnemy.maxHp);
+
+    // Player stats remain fair & unscaled across difficulties
+    const normalPlayer = normalEng.spawnUnit('player', ERAS[0].units[0]);
+    const mythicPlayer = mythicEng.spawnUnit('player', ERAS[0].units[0]);
+    expect(mythicPlayer.maxHp).toBe(normalPlayer.maxHp);
   });
 });

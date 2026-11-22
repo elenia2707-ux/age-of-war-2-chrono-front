@@ -1,6 +1,6 @@
 export type Team = 'player' | 'enemy';
 
-export type DifficultyId = 'easy' | 'normal' | 'hard';
+export type DifficultyId = 'easy' | 'normal' | 'hard' | 'brutal' | 'nightmare' | 'mythic';
 
 export type GameStatus = 'title' | 'playing' | 'paused' | 'victory' | 'defeat';
 
@@ -11,6 +11,7 @@ export type ProjectileStyle =
   | 'solar_orb'
   | 'arrow'
   | 'fire_arrow'
+  | 'dragon_rocket'
   | 'bolt'
   | 'bullet'
   | 'grenade'
@@ -24,19 +25,23 @@ export type ProjectileStyle =
   | 'railgun'
   | 'ion_beam'
   | 'antimatter'
-  | 'gravity_beam';
+  | 'gravity_beam'
+  | 'quantum_orb'
+  | 'chrono_beam';
 
 export type UltimateKind =
   | 'meteor'
   | 'solar_wrath'
   | 'lightning'
+  | 'dragon_barrage'
   | 'fire_arrows'
   | 'naval_barrage'
   | 'zeppelin_raid'
   | 'carpet_bomb'
   | 'tactical_missiles'
   | 'orbital_laser'
-  | 'black_hole';
+  | 'black_hole'
+  | 'chrono_nova';
 
 export type UpgradeId =
   // Offense (공격)
@@ -95,6 +100,10 @@ export type UnitVisualKind =
   | 'archer'
   | 'centurion'
   | 'chariot'
+  | 'dynasty_swordsman'
+  | 'repeating_crossbow'
+  | 'hwacha_cart'
+  | 'dragon_general'
   | 'knight'
   | 'crossbowman'
   | 'heavy_cavalry'
@@ -122,7 +131,11 @@ export type UnitVisualKind =
   | 'void_templar'
   | 'gravity_sniper'
   | 'star_archon'
-  | 'omega_titan';
+  | 'omega_titan'
+  | 'chrono_blade'
+  | 'quantum_weaver'
+  | 'aegis_seraph'
+  | 'chrono_sovereign';
 
 export type TurretVisualKind =
   | 'rock_dropper'
@@ -131,6 +144,8 @@ export type TurretVisualKind =
   | 'scarab_catapult'
   | 'arrow_tower'
   | 'ballista'
+  | 'dragon_repeater'
+  | 'fire_ox_cannon'
   | 'crossbow_bastion'
   | 'keep_trebuchet'
   | 'musket_battery'
@@ -144,7 +159,9 @@ export type TurretVisualKind =
   | 'plasma_repeater'
   | 'ion_cannon'
   | 'prism_spire'
-  | 'singularity_cannon';
+  | 'singularity_cannon'
+  | 'chrono_pylon'
+  | 'eternity_beam';
 
 export type SoundCue =
   | 'melee_wood'
@@ -247,8 +264,8 @@ export interface EraPalette {
 }
 
 export interface EraDef {
-  index: number; // 0..6
-  eraNumber: number; // 1..7
+  index: number; // 0..11
+  eraNumber: number; // 1..12
   name: string;
   shortName: string;
   roman: string;
@@ -264,6 +281,8 @@ export interface EraDef {
 export interface DifficultyConfig {
   id: DifficultyId;
   name: string;
+  shortTag: string;
+  accentColor: string;
   description: string;
   aiGoldMultiplier: number;
   aiXpMultiplier: number;
@@ -273,6 +292,10 @@ export interface DifficultyConfig {
   aiEvolveDelay: number;
   aiMaxUpgradeLevel: number;
   aiUpgradeChance: number;
+  aiStartingGoldBonus: number;
+  aiUnitStatMult: number;
+  aiCounterSmartness: number;
+  aiMaxQueue: number;
 }
 
 export interface QueuedUnit {
@@ -395,7 +418,9 @@ export interface BeamEffect {
     | 'flame_jet'
     | 'solar_beam'
     | 'gravity_beam'
-    | 'black_hole_vortex';
+    | 'black_hole_vortex'
+    | 'chrono_beam'
+    | 'chrono_nova_pillar';
   x1: number;
   y1: number;
   x2: number;

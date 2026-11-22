@@ -1186,6 +1186,283 @@ export function drawLateCartoonUnit(ctx: CanvasRenderingContext2D, p: CartoonUni
       return true;
     }
 
+    // ========================================================================
+    // ERA 12: 초월 문명 (CHRONO-ASCENDANT QUANTUM ERA — NEW FUTURE ENDGAME!)
+    // ========================================================================
+    case 'chrono_blade': {
+      drawCartoonHumanoid(ctx, {
+        walkPhase: p.walkPhase,
+        isWalking: p.isWalking,
+        attackAnim: p.attackAnim,
+        hitFlash: p.hitFlash,
+        deathProgress: p.deathProgress,
+        scale: 1.15,
+        torsoW: 17.5,
+        torsoH: 19.5,
+        skin: '#f8fafc',
+        torsoFill: '#f8fafc',
+        torsoHighlight: '#ffffff',
+        torsoShadow: '#94a3b8',
+        pantsColor: '#0f766e',
+        bootColor: '#f59e0b',
+        bootCuffColor: '#fef9c3',
+        beltColor: '#f59e0b',
+        armColor: '#e2e8f0',
+        sleeveCuffColor: '#facc15',
+        gloveColor: '#f59e0b',
+        skirtColor: '#f8fafc',
+        skirtTrim: '#facc15',
+        skirtStyle: 'tassets',
+        pauldronColor: '#f59e0b',
+        pauldronTrim: '#2dd4bf',
+        trimHighlight: '#2dd4bf',
+        capeColor: pal.main,
+        capeDark: pal.dark,
+        mask: 'visor',
+        visorColor: '#2dd4bf',
+        swingStyle: 'overhead',
+        drawBackAccessory: (c, topY) => {
+          // Twin floating luminous Chrono-Prism Valkyrie Crystal Wings!
+          const flutter = Math.sin(p.walkPhase * 1.8) * 3.2;
+          drawCelPoly(
+            c,
+            [
+              [-6, topY + 3],
+              [-25, topY - 14 + flutter],
+              [-16, topY + 2 + flutter * 0.5],
+              [-22, topY + 11 + flutter * 0.4],
+              [-5, topY + 12],
+            ],
+            '#2dd4bf',
+            { highlight: '#ffffff', shadow: '#0f766e', lineWidth: 1.6 },
+          );
+          // Golden wing-frame spine
+          setInkStyle(c, 1.8, '#facc15');
+          c.beginPath();
+          c.moveTo(-6, topY + 4);
+          c.lineTo(-22, topY - 11 + flutter);
+          c.stroke();
+        },
+        drawTorsoDetail: (c, tx, ty, tw) => {
+          // Golden V-chevron breastplate filigree + glowing cyan chrono heart diamond!
+          drawCelPoly(
+            c,
+            [
+              [tx + 2, ty + 2],
+              [tx + tw / 2, ty + 13],
+              [tx + tw - 2, ty + 2],
+              [tx + tw - 4.5, ty + 2],
+              [tx + tw / 2, ty + 9.5],
+              [tx + 4.5, ty + 2],
+            ],
+            '#f59e0b',
+            { highlight: '#fef9c3', lineWidth: 1.1 },
+          );
+          drawEnergyOrb(c, tx + tw / 2, ty + 6.5, 3.6, '#2dd4bf', '#ffffff');
+        },
+        drawHelmet: (c, hx, hy) => {
+          // Angelic Pearl-White & Gold Winged Valkyrie Crown Helm + mini Chrono-Halo!
+          c.strokeStyle = '#facc15';
+          c.lineWidth = 2.0;
+          c.beginPath();
+          c.ellipse(hx, hy - 15.5, 8.5, 2.8, 0, 0, Math.PI * 2);
+          c.stroke();
+          drawCelPoly(
+            c,
+            [
+              [hx - 9, hy - 1],
+              [hx - 7.5, hy - 11],
+              [hx + 1, hy - 14],
+              [hx + 9.5, hy - 9],
+              [hx + 10, hy - 1],
+            ],
+            '#f8fafc',
+            { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 1.85 },
+          );
+          // Swept golden Valkyrie ear-wings
+          drawCelPoly(
+            c,
+            [
+              [hx - 2, hy - 6],
+              [hx - 15, hy - 14],
+              [hx - 11, hy - 5],
+              [hx - 3, hy - 2],
+            ],
+            '#f59e0b',
+            { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.45 },
+          );
+          drawCelEllipse(c, hx + 4, hy - 10, 2.2, 2.2, '#2dd4bf', { highlight: '#ffffff', lineWidth: 1.0 });
+        },
+        drawWeapon: (c) => {
+          // Blazing Chrono-Prism Energy Greatsword with floating golden clock-ring crossguard!
+          drawCelRoundRect(c, -4, -2, 8, 4, 1.4, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.3 });
+          drawCelEllipse(c, 5, 0, 3.2, 7.2, '#facc15', { highlight: '#ffffff', lineWidth: 1.4 });
+          drawEnergyOrb(c, 5, 0, 2.8, '#2dd4bf', '#ffffff');
+          // Twin-edged luminous cyan-gold crystalline blade
+          drawCelPoly(
+            c,
+            [
+              [7, -4.4],
+              [27, -3.2],
+              [34, 0],
+              [27, 3.2],
+              [7, 4.4],
+            ],
+            '#2dd4bf',
+            { highlight: '#ffffff', shadow: '#0f766e', lineWidth: 1.75 },
+          );
+          c.fillStyle = '#fef9c3';
+          c.beginPath();
+          c.moveTo(9, -1.6);
+          c.lineTo(31, 0);
+          c.lineTo(9, 1.6);
+          c.closePath();
+          c.fill();
+        },
+      });
+      return true;
+    }
+
+    case 'quantum_weaver': {
+      drawCartoonHumanoid(ctx, {
+        walkPhase: p.walkPhase,
+        isWalking: p.isWalking,
+        attackAnim: p.attackAnim,
+        hitFlash: p.hitFlash,
+        deathProgress: p.deathProgress,
+        scale: 1.13,
+        torsoW: 16.5,
+        torsoH: 19,
+        skin: '#0f766e',
+        torsoFill: '#0f766e',
+        torsoHighlight: '#2dd4bf',
+        torsoShadow: '#083344',
+        pantsColor: '#134e4a',
+        bootColor: '#f59e0b',
+        bootCuffColor: '#fef9c3',
+        beltColor: '#facc15',
+        armColor: '#f8fafc',
+        sleeveCuffColor: '#f59e0b',
+        gloveColor: '#f59e0b',
+        skirtColor: '#f8fafc',
+        skirtTrim: '#f59e0b',
+        skirtStyle: 'coat',
+        pauldronColor: '#f8fafc',
+        pauldronTrim: '#facc15',
+        trimHighlight: '#fef08a',
+        capeColor: '#f8fafc',
+        capeDark: '#94a3b8',
+        mask: 'visor',
+        visorColor: '#fef08a',
+        swingStyle: 'aim',
+        drawBackAccessory: (c, topY) => {
+          // Floating spinning golden Chrono-Halo behind shoulders!
+          const spin = p.walkPhase * 0.9;
+          c.save();
+          c.translate(-8, topY + 3);
+          c.rotate(spin);
+          c.strokeStyle = '#facc15';
+          c.lineWidth = 2.0;
+          c.beginPath();
+          c.arc(0, 0, 10.5, 0, Math.PI * 2);
+          c.stroke();
+          for (let i = 0; i < 4; i++) {
+            const a = (i * Math.PI) / 2;
+            c.fillStyle = '#2dd4bf';
+            c.beginPath();
+            c.arc(Math.cos(a) * 10.5, Math.sin(a) * 10.5, 2.0, 0, Math.PI * 2);
+            c.fill();
+          }
+          c.restore();
+        },
+        drawTorsoDetail: (c, tx, ty, tw) => {
+          // Pearl-gold diamond collar & glowing quantum core
+          drawCelPoly(
+            c,
+            [
+              [tx + tw / 2, ty + 2],
+              [tx + tw - 2.5, ty + 9],
+              [tx + tw / 2, ty + 16],
+              [tx + 2.5, ty + 9],
+            ],
+            '#f59e0b',
+            { highlight: '#fef9c3', lineWidth: 1.3 },
+          );
+          drawEnergyOrb(c, tx + tw / 2, ty + 9, 3.2, '#2dd4bf', '#ffffff');
+        },
+        drawHelmet: (c, hx, hy) => {
+          // Angular Pearl-White & Gold Quantum Oracle Cowl with floating diamond diadem!
+          drawCelPoly(
+            c,
+            [
+              [hx - 10, hy + 1],
+              [hx - 9, hy - 12.5],
+              [hx + 2, hy - 15.5],
+              [hx + 10.5, hy - 9.5],
+              [hx + 9.5, hy + 1],
+            ],
+            '#f8fafc',
+            { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 1.9 },
+          );
+          // Gold crown ridge & recessed teal visor face
+          drawCelPoly(
+            c,
+            [
+              [hx - 2, hy - 15.5],
+              [hx + 2, hy - 20],
+              [hx + 6, hy - 14.5],
+            ],
+            '#facc15',
+            { highlight: '#ffffff', lineWidth: 1.3 },
+          );
+          drawCelPoly(
+            c,
+            [
+              [hx - 2, hy - 8],
+              [hx + 9.5, hy - 8],
+              [hx + 9, hy + 0.5],
+              [hx - 2, hy + 0.5],
+            ],
+            '#083344',
+            { lineWidth: 1.4 },
+          );
+          drawEnergyOrb(c, hx + 4.5, hy - 3.8, 3.2, '#2dd4bf', '#fef9c3');
+        },
+        drawWeapon: (c) => {
+          // Levitating Quantum Prism Beam Rifle with twin counter-tilted golden Chrono-Rings!
+          drawCelRoundRect(c, -4, -3.2, 24, 6.4, 2.2, '#f8fafc', {
+            highlight: '#ffffff',
+            shadow: '#64748b',
+            lineWidth: 1.75,
+          });
+          drawCelRoundRect(c, 1, -1.6, 18, 3.2, 1, '#0f766e', { lineWidth: 1.0 });
+          // Twin golden focusing gyroscope rings
+          drawCelEllipse(c, 15, 0, 2.6, 8.2, '#facc15', { highlight: '#ffffff', lineWidth: 1.35 });
+          drawCelEllipse(c, 22, 0, 2.2, 6.4, '#2dd4bf', { highlight: '#ffffff', lineWidth: 1.25 });
+          drawEnergyOrb(c, 27, 0, p.attackAnim > 0.45 ? 7.8 : 4.4, '#2dd4bf', '#fef9c3');
+          if (p.attackAnim > 0.45) {
+            c.strokeStyle = 'rgba(45, 212, 191, 0.9)';
+            c.lineWidth = 2.0;
+            c.beginPath();
+            c.moveTo(29, 0);
+            c.lineTo(44, 0);
+            c.stroke();
+          }
+        },
+      });
+      return true;
+    }
+
+    case 'aegis_seraph': {
+      drawAegisSeraph(ctx, p, pal);
+      return true;
+    }
+
+    case 'chrono_sovereign': {
+      drawChronoSovereign(ctx, p, pal);
+      return true;
+    }
+
     default:
       return false;
   }
@@ -2188,3 +2465,379 @@ function drawOmegaTitan(
 
   ctx.restore();
 }
+
+function drawAegisSeraph(
+  ctx: CanvasRenderingContext2D,
+  p: CartoonUnitDrawParams,
+  pal: ReturnType<typeof getTeamPalette>,
+): void {
+  const bob = Math.sin(p.walkPhase * 1.5) * 3.5;
+  const recoil = p.attackAnim > 0.35 ? Math.sin(((p.attackAnim - 0.35) / 0.65) * Math.PI) : 0;
+  const firing = p.attackAnim > 0.54;
+  const dp = p.deathProgress;
+
+  ctx.save();
+  if (dp > 0) {
+    const f = Math.min(1, dp * 1.4);
+    ctx.translate(0, f * 20);
+    ctx.rotate(-f * 0.8);
+  }
+
+  const cy = -34 + bob;
+  const rx = -recoil * 6;
+
+  // 1. Underside Anti-Gravity Golden Ring & Cyan Lift Plume
+  ctx.save();
+  ctx.fillStyle = 'rgba(45, 212, 191, 0.42)';
+  ctx.beginPath();
+  ctx.moveTo(-10 + rx, cy + 12);
+  ctx.lineTo(0 + rx, cy + 28);
+  ctx.lineTo(10 + rx, cy + 12);
+  ctx.closePath();
+  ctx.fill();
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2.4;
+  ctx.beginPath();
+  ctx.ellipse(0 + rx, cy + 14, 16, 4.2, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+
+  // 2. Twin Rear & Upper Floating Crystalline Seraph Wing-Blades!
+  const flap = Math.sin(p.walkPhase * 1.9) * 3.0;
+  // Upper sweeping seraph wing
+  drawCelPoly(
+    ctx,
+    [
+      [-6 + rx, cy - 8],
+      [-28 + rx, cy - 26 + flap],
+      [-12 + rx, cy - 15 + flap * 0.4],
+      [-23 + rx, cy - 11 + flap * 0.6],
+      [-4 + rx, cy - 2],
+    ],
+    '#f8fafc',
+    { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 1.9 },
+  );
+  drawCelPoly(
+    ctx,
+    [
+      [-8 + rx, cy - 9],
+      [-23 + rx, cy - 22 + flap],
+      [-10 + rx, cy - 12 + flap * 0.4],
+    ],
+    '#2dd4bf',
+    { highlight: '#ffffff', lineWidth: 1.1 },
+  );
+  // Lower swept seraph stabilizer wing
+  drawCelPoly(
+    ctx,
+    [
+      [-4 + rx, cy + 6],
+      [-24 + rx, cy + 18 - flap * 0.7],
+      [-10 + rx, cy + 10],
+      [6 + rx, cy + 10],
+    ],
+    '#f59e0b',
+    { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.7 },
+  );
+
+  // 3. Sleek Angelic Pearl-White & Gold Seraphim Hull!
+  drawCelPoly(
+    ctx,
+    [
+      [-20 + rx, cy - 2],
+      [-10 + rx, cy - 13],
+      [14 + rx, cy - 11],
+      [26 + rx, cy],
+      [14 + rx, cy + 11],
+      [-12 + rx, cy + 11],
+    ],
+    '#f8fafc',
+    { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 2.3 },
+  );
+  // Recessed astral-teal hull panel + team emblem stripe
+  drawCelPoly(
+    ctx,
+    [
+      [-13 + rx, cy - 5],
+      [12 + rx, cy - 6],
+      [16 + rx, cy],
+      [12 + rx, cy + 6],
+      [-13 + rx, cy + 5],
+    ],
+    '#0f766e',
+    { highlight: '#2dd4bf', shadow: '#083344', lineWidth: 1.55 },
+  );
+  drawCelRoundRect(ctx, -10 + rx, cy - 3.5, 16, 7, 2.5, pal.main, {
+    highlight: pal.light,
+    shadow: pal.dark,
+    lineWidth: 1.4,
+  });
+  // Golden dorsal crown fin
+  drawCelPoly(
+    ctx,
+    [
+      [-4 + rx, cy - 12],
+      [5 + rx, cy - 20],
+      [12 + rx, cy - 11],
+    ],
+    '#f59e0b',
+    { highlight: '#fef9c3', shadow: '#b45309', lineWidth: 1.6 },
+  );
+
+  // 4. Forward Quantum Prism Halo & Radiant Emitter Core!
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 2.2;
+  ctx.beginPath();
+  ctx.ellipse(24 + rx, cy, 4.2, 11.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  drawEnergyOrb(ctx, 27 + rx, cy, firing ? 11.5 : 6.2, '#2dd4bf', '#fef9c3');
+
+  ctx.restore();
+}
+
+function drawChronoSovereign(
+  ctx: CanvasRenderingContext2D,
+  p: CartoonUnitDrawParams,
+  pal: ReturnType<typeof getTeamPalette>,
+): void {
+  const stride = p.isWalking ? Math.sin(p.walkPhase) : 0;
+  const bob = Math.sin(p.walkPhase * 1.3) * 3.5;
+  const recoil = p.attackAnim > 0.35 ? Math.sin(((p.attackAnim - 0.35) / 0.65) * Math.PI) : 0;
+  const firing = p.attackAnim > 0.56;
+  const dp = p.deathProgress;
+
+  ctx.save();
+  if (dp > 0) {
+    const f = Math.min(1, dp * 1.4);
+    ctx.rotate(-f * 0.95);
+    ctx.translate(-f * 10, f * 12);
+  }
+
+  const hipY = -56 - bob;
+  const clockSpin = p.walkPhase * 0.55;
+
+  // 1. COLOSSAL SPINNING GOLDEN ASTRAL CLOCK HALO (12 glowing Chrono runes!) behind Sovereign!
+  ctx.save();
+  ctx.translate(0, hipY - 40);
+  // Outer golden clock ring + inner cyan chrono ring
+  setInkStyle(ctx, 5.2, INK);
+  ctx.beginPath();
+  ctx.arc(0, 0, 38, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#facc15';
+  ctx.lineWidth = 3.2;
+  ctx.stroke();
+
+  ctx.strokeStyle = '#2dd4bf';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.arc(0, 0, 31, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 12 Radiant Roman-Clock Marker Spikes orbiting the halo!
+  for (let i = 0; i < 12; i++) {
+    const a = clockSpin + (i / 12) * Math.PI * 2;
+    const isCardinal = i % 3 === 0;
+    const r0 = isCardinal ? 27 : 31;
+    const r1 = isCardinal ? 43 : 38.5;
+    ctx.strokeStyle = isCardinal ? '#fef08a' : '#2dd4bf';
+    ctx.lineWidth = isCardinal ? 3.0 : 1.8;
+    ctx.beginPath();
+    ctx.moveTo(Math.cos(a) * r0, Math.sin(a) * r0);
+    ctx.lineTo(Math.cos(a) * r1, Math.sin(a) * r1);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // 2. Twin Crystalline Celestial Seraph Wing-Pylons behind back
+  drawCelPoly(
+    ctx,
+    [
+      [-18, hipY - 36],
+      [-52, hipY - 62],
+      [-34, hipY - 30],
+      [-46, hipY - 12],
+      [-16, hipY - 14],
+    ],
+    '#2dd4bf',
+    { highlight: '#ffffff', shadow: '#0f766e', lineWidth: 2.1 },
+  );
+  drawCelPoly(
+    ctx,
+    [
+      [-18, hipY - 34],
+      [-45, hipY - 54],
+      [-28, hipY - 29],
+    ],
+    '#facc15',
+    { highlight: '#fef9c3', lineWidth: 1.5 },
+  );
+
+  // 3. Sculpted Pearl-White & Gold Hydraulic Piston Legs + Diamond Knee Crests!
+  drawSculptedLimb(ctx, -11, hipY + 4, -18 - stride * 12, -27, 17, 12, '#cbd5e1', {
+    highlight: '#ffffff',
+    shadow: '#64748b',
+    piston: true,
+    lineWidth: 2.2,
+  });
+  drawSculptedLimb(ctx, -18 - stride * 12, -27, -11 - stride * 14, -5, 13.5, 10, '#0f766e', {
+    highlight: '#2dd4bf',
+    shadow: '#083344',
+    cuffColor: '#facc15',
+    lineWidth: 2.1,
+  });
+  drawCelRoundRect(ctx, -22 - stride * 14, -10.5, 25, 10.5, 3, '#f59e0b', {
+    highlight: '#fef9c3',
+    shadow: '#92400e',
+    lineWidth: 2.1,
+  });
+
+  drawSculptedLimb(ctx, 11, hipY + 4, 5 + stride * 12, -27, 17.5, 12.5, '#f8fafc', {
+    highlight: '#ffffff',
+    shadow: '#94a3b8',
+    piston: true,
+    lineWidth: 2.3,
+  });
+  drawSculptedLimb(ctx, 5 + stride * 12, -27, 13 + stride * 14, -5, 14, 10.5, '#0f766e', {
+    highlight: '#2dd4bf',
+    shadow: '#083344',
+    cuffColor: '#facc15',
+    lineWidth: 2.2,
+  });
+  // Gilded diamond knee guard + glowing cyan gem
+  drawCelPoly(
+    ctx,
+    [
+      [5 + stride * 12, -35],
+      [13 + stride * 12, -26],
+      [5 + stride * 12, -17],
+      [-3 + stride * 12, -26],
+    ],
+    '#f59e0b',
+    { highlight: '#fef9c3', shadow: '#92400e', lineWidth: 1.75 },
+  );
+  drawEnergyOrb(ctx, 5 + stride * 12, -26, 2.8, '#2dd4bf', '#ffffff');
+  drawCelRoundRect(ctx, 2 + stride * 14, -10.5, 26, 10.5, 3, '#f59e0b', {
+    highlight: '#fef9c3',
+    shadow: '#92400e',
+    lineWidth: 2.15,
+  });
+
+  // 4. Monumental Pearl-White & Royal Gold Sovereign Torso + Temporal Singularity Heart!
+  drawCelPoly(
+    ctx,
+    [
+      [-26, hipY - 3],
+      [-33, hipY - 46],
+      [29, hipY - 46],
+      [31, hipY - 16],
+      [19, hipY + 3],
+      [-18, hipY + 3],
+    ],
+    '#f8fafc',
+    { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 2.65 },
+  );
+  // Broad golden Seraphim shoulder mantle + team tabard crest
+  drawCelRoundRect(ctx, -29, hipY - 47.5, 58, 13, 4.5, '#f59e0b', {
+    highlight: '#fef9c3',
+    shadow: '#b45309',
+    lineWidth: 2.25,
+  });
+  drawCelRoundRect(ctx, -16, hipY - 31, 34, 19.5, 4.5, '#0f766e', {
+    highlight: '#2dd4bf',
+    shadow: '#083344',
+    lineWidth: 2.0,
+  });
+  drawCelRoundRect(ctx, -12, hipY - 44.5, 24, 6.5, 2, pal.main, { highlight: pal.light, lineWidth: 1.5 });
+
+  // Radiant Prismatic Chrono-Heart Core in Chest!
+  ctx.save();
+  ctx.translate(1, hipY - 21);
+  ctx.rotate(clockSpin * 1.4);
+  ctx.strokeStyle = '#fef08a';
+  ctx.lineWidth = 2.6;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 13.5, 4.6, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.strokeStyle = '#2dd4bf';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.ellipse(0, 0, 4.6, 13.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+  ctx.restore();
+  drawEnergyOrb(ctx, 1, hipY - 21, firing ? 10.5 : 8.2, '#2dd4bf', '#fef9c3');
+
+  // 5. Crowned Celestial Seraph-Sovereign Helm + Twin Golden Diadem Horns!
+  drawCelPoly(
+    ctx,
+    [
+      [-11, hipY - 45],
+      [-13, hipY - 62],
+      [2, hipY - 73],
+      [16, hipY - 60],
+      [14, hipY - 45],
+    ],
+    '#f8fafc',
+    { highlight: '#ffffff', shadow: '#94a3b8', lineWidth: 2.25 },
+  );
+  // Glowing golden-cyan divine visor
+  drawCelPoly(
+    ctx,
+    [
+      [1, hipY - 58],
+      [14.5, hipY - 58],
+      [13.5, hipY - 51],
+      [1, hipY - 51],
+    ],
+    '#083344',
+    { lineWidth: 1.5 },
+  );
+  drawEnergyOrb(ctx, 8.5, hipY - 54.5, 3.8, '#2dd4bf', '#fef9c3');
+  // Twin soaring golden diadem wings on crown
+  drawCelPoly(
+    ctx,
+    [
+      [-9, hipY - 60],
+      [-21, hipY - 77],
+      [-3, hipY - 64],
+    ],
+    '#facc15',
+    { highlight: '#ffffff', lineWidth: 1.7 },
+  );
+  drawCelPoly(
+    ctx,
+    [
+      [9, hipY - 60],
+      [21, hipY - 77],
+      [5, hipY - 64],
+    ],
+    '#facc15',
+    { highlight: '#ffffff', lineWidth: 1.7 },
+  );
+
+  // 6. Colossal Triple-Ring Eternity Prism Cannon Arm!
+  const rx = -recoil * 12;
+  drawCelRoundRect(ctx, 6 + rx, hipY - 23.5, 45, 16, 4.5, '#f8fafc', {
+    highlight: '#ffffff',
+    shadow: '#64748b',
+    lineWidth: 2.35,
+  });
+  drawCelRoundRect(ctx, 11 + rx, hipY - 25.5, 22, 4.5, 1.5, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.45 });
+  drawCelRoundRect(ctx, 11 + rx, hipY - 9.2, 22, 4.5, 1.5, '#f59e0b', { highlight: '#fef9c3', lineWidth: 1.45 });
+  ctx.fillStyle = '#2dd4bf';
+  ctx.fillRect(14 + rx, hipY - 17.5, 35, 4.2);
+  // Twin floating golden prism accelerator rings
+  drawCelEllipse(ctx, 36 + rx, hipY - 15.5, 3.0, 10.5, '#facc15', { highlight: '#ffffff', lineWidth: 1.4 });
+  drawCelEllipse(ctx, 46 + rx, hipY - 15.5, 3.4, 12.2, '#2dd4bf', { highlight: '#ffffff', lineWidth: 1.45 });
+  drawEnergyOrb(ctx, 55 + rx, hipY - 15.5, firing ? 18.5 : 8.5, '#2dd4bf', '#fef9c3');
+  if (firing) {
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.96)';
+    ctx.lineWidth = 3.0;
+    ctx.beginPath();
+    ctx.ellipse(53 + rx, hipY - 15.5, 6.2, 22, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  ctx.restore();
+}
+

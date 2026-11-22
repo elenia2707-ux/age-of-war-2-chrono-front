@@ -33,8 +33,10 @@ export function renderUltimateAtmosphere(
     let tint = 'rgba(20, 12, 8, 0.22)';
     if (ult.def.kind === 'lightning') tint = 'rgba(10, 22, 46, 0.42)';
     else if (ult.def.kind === 'solar_wrath') tint = 'rgba(84, 52, 8, 0.30)';
+    else if (ult.def.kind === 'dragon_barrage') tint = 'rgba(68, 12, 16, 0.30)';
     else if (ult.def.kind === 'orbital_laser') tint = 'rgba(6, 22, 36, 0.36)';
     else if (ult.def.kind === 'black_hole') tint = 'rgba(32, 8, 56, 0.48)';
+    else if (ult.def.kind === 'chrono_nova') tint = 'rgba(6, 48, 54, 0.44)';
     else if (ult.def.kind === 'meteor') tint = 'rgba(58, 18, 6, 0.30)';
     else if (ult.def.kind === 'fire_arrows') tint = 'rgba(46, 14, 8, 0.24)';
 
@@ -213,15 +215,19 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
       const tx = p.x - (p.vx / speed) * tailLen;
       const ty = p.y - (p.vy / speed) * tailLen;
       const trailCol =
-        p.style === 'plasma'
-          ? pal.glowSoft
-          : p.style === 'antimatter'
-            ? 'rgba(192, 132, 252, 0.58)'
-            : p.style === 'solar_orb' || p.style === 'totem_fire' || p.style === 'fire_arrow'
-              ? 'rgba(249, 115, 22, 0.58)'
-              : p.style === 'bullet'
-                ? 'rgba(254, 240, 138, 0.65)'
-                : 'rgba(226, 232, 240, 0.34)';
+        p.style === 'quantum_orb'
+          ? 'rgba(45, 212, 191, 0.65)'
+          : p.style === 'plasma'
+            ? pal.glowSoft
+            : p.style === 'antimatter'
+              ? 'rgba(192, 132, 252, 0.58)'
+              : p.style === 'dragon_rocket'
+                ? 'rgba(239, 68, 68, 0.65)'
+                : p.style === 'solar_orb' || p.style === 'totem_fire' || p.style === 'fire_arrow'
+                  ? 'rgba(249, 115, 22, 0.58)'
+                  : p.style === 'bullet'
+                    ? 'rgba(254, 240, 138, 0.65)'
+                    : 'rgba(226, 232, 240, 0.34)';
       ctx.strokeStyle = trailCol;
       ctx.lineWidth = p.style === 'boulder' || p.style === 'cannonball' ? 6 : 3.4;
       ctx.lineCap = 'round';
@@ -258,7 +264,6 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
         ctx.moveTo(-11, 0);
         ctx.lineTo(8, 0);
         ctx.stroke();
-        // Fletching
         drawCelPoly(
           ctx,
           [
@@ -269,7 +274,6 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
           pal.light,
           { lineWidth: 1.2 },
         );
-        // Arrowhead
         drawCelPoly(
           ctx,
           [
@@ -283,6 +287,28 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
         if (p.style === 'fire_arrow') {
           drawEnergyOrb(ctx, 10, 0, 4.6, '#f97316', '#fef08a');
         }
+        break;
+      }
+      case 'dragon_rocket': {
+        ctx.rotate(angle);
+        drawEnergyOrb(ctx, -12, 0, 5.2, '#f97316', '#fef08a');
+        setInkStyle(ctx, 2.4, '#78350f');
+        ctx.beginPath();
+        ctx.moveTo(-10, 0);
+        ctx.lineTo(10, 0);
+        ctx.stroke();
+        drawCelRoundRect(ctx, -3, -3.2, 10, 6.4, 1.8, '#dc2626', { highlight: '#fca5a5', lineWidth: 1.5 });
+        drawCelRoundRect(ctx, 1, -3.4, 2.6, 6.8, 0.8, '#facc15', { lineWidth: 1.0 });
+        drawCelPoly(
+          ctx,
+          [
+            [7, -3.5],
+            [15, 0],
+            [7, 3.5],
+          ],
+          '#fef9c3',
+          { lineWidth: 1.3 },
+        );
         break;
       }
       case 'bullet': {
@@ -349,6 +375,16 @@ export function renderProjectiles(ctx: CanvasRenderingContext2D, projectiles: Pr
         ctx.fill();
         break;
       }
+      case 'quantum_orb': {
+        ctx.rotate(spin);
+        ctx.strokeStyle = '#facc15';
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        ctx.ellipse(0, 0, 9.5, 4.2, 0.35, 0, Math.PI * 2);
+        ctx.stroke();
+        drawEnergyOrb(ctx, 0, 0, 7.5, '#2dd4bf', '#fef9c3');
+        break;
+      }
       default: {
         drawEnergyOrb(ctx, 0, 0, 5.2, '#fde047', '#ffffff');
       }
@@ -392,29 +428,58 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
       strokePoly(b.width * ratio + 11, `rgba(56, 189, 248, ${(ratio * 0.35).toFixed(2)})`);
       strokePoly(b.width * ratio + 4, `rgba(56, 189, 248, ${(ratio * 0.92).toFixed(2)})`);
       strokePoly(Math.max(2, b.width * 0.45 * ratio), `rgba(255, 255, 255, ${ratio.toFixed(2)})`);
-    } else if (b.style === 'orbital_laser' || b.style === 'solar_beam') {
+    } else if (b.style === 'orbital_laser' || b.style === 'solar_beam' || b.style === 'chrono_nova_pillar') {
       const isSolar = b.style === 'solar_beam';
+      const isChronoNova = b.style === 'chrono_nova_pillar';
       const w = Math.max(10, b.width * (0.5 + ratio * 0.78));
       const h = b.y2 - b.y1;
 
-      // Outer atmospheric glow column
-      const grad = ctx.createLinearGradient(b.x1 - w * 1.4, 0, b.x1 + w * 1.4, 0);
+      const grad = ctx.createLinearGradient(b.x1 - w * 1.5, 0, b.x1 + w * 1.5, 0);
       grad.addColorStop(0, 'rgba(255,255,255,0)');
-      grad.addColorStop(0.25, isSolar ? `rgba(245,158,11,${(ratio * 0.75).toFixed(2)})` : `rgba(6,182,212,${(ratio * 0.75).toFixed(2)})`);
+      grad.addColorStop(
+        0.24,
+        isChronoNova
+          ? `rgba(45,212,191,${(ratio * 0.82).toFixed(2)})`
+          : isSolar
+            ? `rgba(245,158,11,${(ratio * 0.75).toFixed(2)})`
+            : `rgba(6,182,212,${(ratio * 0.75).toFixed(2)})`,
+      );
       grad.addColorStop(0.5, `rgba(255,255,255,${Math.min(1, ratio * 1.15).toFixed(2)})`);
-      grad.addColorStop(0.75, isSolar ? `rgba(245,158,11,${(ratio * 0.75).toFixed(2)})` : `rgba(6,182,212,${(ratio * 0.75).toFixed(2)})`);
+      grad.addColorStop(
+        0.76,
+        isChronoNova
+          ? `rgba(250,204,21,${(ratio * 0.78).toFixed(2)})`
+          : isSolar
+            ? `rgba(245,158,11,${(ratio * 0.75).toFixed(2)})`
+            : `rgba(6,182,212,${(ratio * 0.75).toFixed(2)})`,
+      );
       grad.addColorStop(1, 'rgba(255,255,255,0)');
       ctx.fillStyle = grad;
-      ctx.fillRect(b.x1 - w * 1.4, b.y1, w * 2.8, h);
+      ctx.fillRect(b.x1 - w * 1.5, b.y1, w * 3.0, h);
 
-      // Ground impact radiant dome
-      ctx.fillStyle = isSolar ? `rgba(251, 191, 36, ${(ratio * 0.85).toFixed(2)})` : `rgba(56, 189, 248, ${(ratio * 0.85).toFixed(2)})`;
+      if (isChronoNova) {
+        // Ascending golden Chrono-Clock rings wrapping the supernova column!
+        for (let ri = 0; ri < 3; ri++) {
+          const ry = GROUND_Y - 38 - ri * 95 - (1 - ratio) * 45;
+          ctx.strokeStyle = ri % 2 === 0 ? `rgba(250, 204, 21, ${(ratio * 0.92).toFixed(2)})` : `rgba(94, 234, 212, ${(ratio * 0.88).toFixed(2)})`;
+          ctx.lineWidth = 3.2;
+          ctx.beginPath();
+          ctx.ellipse(b.x1, ry, w * (1.25 - ri * 0.14), w * 0.3, 0, 0, Math.PI * 2);
+          ctx.stroke();
+        }
+      }
+
+      ctx.fillStyle = isChronoNova
+        ? `rgba(45, 212, 191, ${(ratio * 0.9).toFixed(2)})`
+        : isSolar
+          ? `rgba(251, 191, 36, ${(ratio * 0.85).toFixed(2)})`
+          : `rgba(56, 189, 248, ${(ratio * 0.85).toFixed(2)})`;
       ctx.beginPath();
-      ctx.ellipse(b.x1, GROUND_Y, w * 1.75, w * 0.55, 0, Math.PI, Math.PI * 2);
+      ctx.ellipse(b.x1, GROUND_Y, w * 1.85, w * 0.58, 0, Math.PI, Math.PI * 2);
       ctx.fill();
       ctx.fillStyle = `rgba(255, 255, 255, ${(ratio * 0.95).toFixed(2)})`;
       ctx.beginPath();
-      ctx.ellipse(b.x1, GROUND_Y, w * 0.95, w * 0.34, 0, Math.PI, Math.PI * 2);
+      ctx.ellipse(b.x1, GROUND_Y, w * 0.98, w * 0.35, 0, Math.PI, Math.PI * 2);
       ctx.fill();
     } else if (b.style === 'black_hole_vortex') {
       const r = Math.max(18, b.width * (0.55 + Math.sin(ratio * Math.PI) * 0.55));
@@ -478,7 +543,7 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
         });
       }
     } else {
-      // Sleek glowing Railgun, Ion Beam, or Cosmic Gravity Beam
+      // Sleek glowing Railgun, Ion Beam, Cosmic Gravity Beam, or Prismatic Chrono Beam
       ctx.lineCap = 'round';
       ctx.globalAlpha = ratio * 0.45;
       ctx.strokeStyle = b.color;
@@ -493,16 +558,32 @@ export function renderBeams(ctx: CanvasRenderingContext2D, beams: BeamEffect[]):
       ctx.lineWidth = b.width * ratio + 3;
       ctx.stroke();
 
-      ctx.strokeStyle = b.style === 'gravity_beam' ? '#fef08a' : '#ffffff';
-      ctx.lineWidth = Math.max(2, b.width * 0.42 * ratio);
+      ctx.strokeStyle = b.style === 'gravity_beam' || b.style === 'chrono_beam' ? '#fef08a' : '#ffffff';
+      ctx.lineWidth = Math.max(2, b.width * 0.44 * ratio);
       ctx.stroke();
+
+      if (b.style === 'chrono_beam') {
+        // Golden spiraling quantum helix ribbon weaving around the Chrono Beam!
+        ctx.strokeStyle = `rgba(250, 204, 21, ${(ratio * 0.88).toFixed(2)})`;
+        ctx.lineWidth = 2.0;
+        ctx.beginPath();
+        const segs = 12;
+        for (let s = 0; s <= segs; s++) {
+          const t = s / segs;
+          const bx = b.x1 + (b.x2 - b.x1) * t;
+          const by = b.y1 + (b.y2 - b.y1) * t + Math.sin(t * Math.PI * 4 + b.seed) * (7 * ratio);
+          if (s === 0) ctx.moveTo(bx, by);
+          else ctx.lineTo(bx, by);
+        }
+        ctx.stroke();
+      }
     }
 
     ctx.restore();
   }
 }
 
-/** Stylized cartoon Bombers, Steampunk Zeppelins, Flaming Meteors, Fire Arrows & Missiles */
+/** Stylized cartoon Bombers, Steampunk Zeppelins, Flaming Meteors, Dragon Rockets, Fire Arrows & Missiles */
 export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: ActiveUltimate[]): void {
   for (const ult of ultimates) {
     const pal = getTeamPalette(ult.team);
@@ -514,10 +595,8 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
         if (plane.dir === -1) ctx.scale(-1, 1);
 
         if (plane.kind === 'zeppelin') {
-          // Iconic Steampunk Golden Armored Airship Zeppelin!
           drawCelEllipse(ctx, 0, 0, 56, 22, '#d97706', { highlight: '#fef08a', shadow: '#92400e', lineWidth: 2.6 });
           drawCelRoundRect(ctx, -38, -6, 76, 10, 4, pal.main, { highlight: pal.light, lineWidth: 1.8 });
-          // Tail fins
           drawCelPoly(
             ctx,
             [
@@ -538,10 +617,8 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
             pal.main,
             { lineWidth: 2.0 },
           );
-          // Underslung gondola cabin
           drawCelRoundRect(ctx, -18, 21, 34, 10, 4, '#475569', { highlight: '#94a3b8', lineWidth: 2.0 });
         } else {
-          // Sleek Cartoon Twin-Prop World War Bomber!
           drawCelPoly(
             ctx,
             [
@@ -555,7 +632,6 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
           drawCelEllipse(ctx, 0, 0, 46, 11, '#64748b', { highlight: '#cbd5e1', shadow: '#334155', lineWidth: 2.4 });
           drawCelRoundRect(ctx, -12, -8, 28, 8, 3, pal.main, { highlight: pal.light, lineWidth: 1.8 });
           drawCelEllipse(ctx, 26, -3, 10, 5.5, '#38bdf8', { highlight: '#ffffff', lineWidth: 1.8 });
-          // Swept lower wing
           drawCelPoly(
             ctx,
             [
@@ -576,7 +652,6 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
       if (ord.impacted) continue;
 
       if (ord.kind === 'meteor') {
-        // Blazing cartoon comet tail + glowing molten boulder!
         for (let i = 0; i < ord.trail.length; i++) {
           const pt = ord.trail[i];
           const frac = (i + 1) / ord.trail.length;
@@ -594,6 +669,30 @@ export function renderActiveUltimates(ctx: CanvasRenderingContext2D, ultimates: 
         ctx.rotate(ord.y * 0.03);
         drawCelEllipse(ctx, 0, 0, 16, 14, '#7c2d12', { highlight: '#f97316', shadow: '#292524', lineWidth: 2.5 });
         drawEnergyOrb(ctx, 3, 2, 6, '#f97316', '#fef08a');
+        ctx.restore();
+      } else if (ord.kind === 'dragon_barrage') {
+        // Blazing crimson-gold Singijeon Dragon Fire Rockets streaking down from the sky!
+        for (let i = 0; i < ord.trail.length; i++) {
+          const pt = ord.trail[i];
+          const frac = (i + 1) / ord.trail.length;
+          ctx.fillStyle = `rgba(239, 68, 68, ${(frac * 0.62).toFixed(2)})`;
+          ctx.beginPath();
+          ctx.arc(pt.x, pt.y, 2 + frac * 5.5, 0, Math.PI * 2);
+          ctx.fill();
+        }
+        const a = Math.atan2(ord.vy, ord.vx);
+        ctx.save();
+        ctx.translate(ord.x, ord.y);
+        ctx.rotate(a);
+        drawEnergyOrb(ctx, -14, 0, 5.2, '#f97316', '#fef08a');
+        setInkStyle(ctx, 2.4, '#78350f');
+        ctx.beginPath();
+        ctx.moveTo(-12, 0);
+        ctx.lineTo(12, 0);
+        ctx.stroke();
+        drawCelRoundRect(ctx, -2, -3.5, 11, 7, 2, '#dc2626', { highlight: '#fca5a5', lineWidth: 1.5 });
+        drawCelRoundRect(ctx, 2, -3.6, 3, 7.2, 0.8, '#facc15', { lineWidth: 1.0 });
+        drawEnergyOrb(ctx, 13, 0, 5.6, '#ef4444', '#fef9c3');
         ctx.restore();
       } else if (ord.kind === 'fire_arrows') {
         const a = Math.atan2(ord.vy, ord.vx);

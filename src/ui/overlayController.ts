@@ -12,7 +12,9 @@ export class OverlayController {
   private rotateOverlay = document.getElementById('overlay-rotate')!;
 
   private diffSelector = document.getElementById('difficulty-selector')!;
+  private diffDescEl = document.getElementById('difficulty-desc');
   private titleRecordsEl = document.getElementById('title-records')!;
+  private latestRecords: PlayerRecords | null = null;
 
   private resultBadge = document.getElementById('result-badge')!;
   private resultTitle = document.getElementById('result-title')!;
@@ -38,7 +40,9 @@ export class OverlayController {
   }
 
   public showTitle(records: PlayerRecords): void {
+    this.latestRecords = records;
     this.renderTitleRecords(records);
+    this.updateDifficultyDescription();
     this.titleOverlay.classList.remove('hidden');
     this.pauseOverlay.classList.add('hidden');
     this.resultOverlay.classList.add('hidden');
@@ -106,13 +110,12 @@ export class OverlayController {
     for (const diff of DIFFICULTY_LIST) {
       const btn = document.createElement('button');
       btn.type = 'button';
-      btn.className = `diff-btn${diff.id === this.selectedDifficulty ? ' selected' : ''}`;
+      btn.className = `diff-btn diff-${diff.id}${diff.id === this.selectedDifficulty ? ' selected' : ''}`;
       btn.dataset.diff = diff.id;
+      btn.style.setProperty('--diff-accent', diff.accentColor);
       btn.setAttribute('role', 'radio');
       btn.setAttribute('aria-checked', String(diff.id === this.selectedDifficulty));
-      btn.innerHTML = `<strong>${diff.name}</strong><small>${
-        diff.id === 'easy' ? '0.78x AI' : diff.id === 'normal' ? '표준 대전' : '1.24x AI'
-      }</small>`;
+      btn.innerHTML = `<strong>${diff.name}</strong><small>${diff.shortTag}</small>`;
 
       btn.addEventListener('click', () => {
         this.selectedDifficulty = diff.id;
@@ -121,13 +124,27 @@ export class OverlayController {
           el.classList.toggle('selected', active);
           el.setAttribute('aria-checked', String(active));
         }
+        this.updateDifficultyDescription();
+        if (this.latestRecords) {
+          this.renderTitleRecords(this.latestRecords);
+        }
       });
 
       this.diffSelector.appendChild(btn);
     }
+    this.updateDifficultyDescription();
+  }
+
+  private updateDifficultyDescription(): void {
+    if (!this.diffDescEl) return;
+    const diff = DIFFICULTIES[this.selectedDifficulty];
+    this.diffDescEl.textContent = diff.description;
+    this.diffDescEl.style.borderColor = diff.accentColor;
   }
 
   private renderTitleRecords(records: PlayerRecords): void {
+    const diff = DIFFICULTIES[this.selectedDifficulty];
+    const bestForDiff = records.bestVictoryTimeSec[this.selectedDifficulty];
     this.titleRecordsEl.innerHTML = `
       <div class="record-cell">
         <span class="record-label">승리 / 전투</span>
@@ -138,8 +155,8 @@ export class OverlayController {
         <strong class="record-value">${getEra(records.highestEraReached - 1).roman} ${getEra(records.highestEraReached - 1).shortName}</strong>
       </div>
       <div class="record-cell">
-        <span class="record-label">최단 승리 (보통)</span>
-        <strong class="record-value num">${formatDuration(records.bestVictoryTimeSec.normal)}</strong>
+        <span class="record-label">최단 승리 (${diff.name})</span>
+        <strong class="record-value num">${formatDuration(bestForDiff)}</strong>
       </div>
     `;
   }

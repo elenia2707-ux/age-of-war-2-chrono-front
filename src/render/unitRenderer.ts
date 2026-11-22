@@ -311,14 +311,16 @@ export function renderUnitEntity(
 }
 
 function getUnitHpBarOffset(kind: UnitVisualKind, defHeight: number): number {
+  if (kind === 'chrono_sovereign') return 144;
   if (kind === 'omega_titan') return 134;
   if (kind === 'colossus_mech') return 114;
   if (kind === 'star_archon') return 92;
   if (kind === 'steam_walker') return 84;
+  if (kind === 'dragon_general') return 82;
   if (kind === 'dino_rider' || kind === 'heavy_cavalry') return 76;
-  if (kind === 'sphinx_chariot' || kind === 'chariot') return 72;
+  if (kind === 'sphinx_chariot' || kind === 'chariot' || kind === 'aegis_seraph') return 72;
   if (kind === 'early_tank' || kind === 'mbt') return 70;
-  if (kind === 'catapult' || kind === 'field_cannon') return 66;
+  if (kind === 'catapult' || kind === 'field_cannon' || kind === 'hwacha_cart') return 68;
   if (
     kind === 'anubis_warrior' ||
     kind === 'shaman' ||
@@ -326,6 +328,8 @@ function getUnitHpBarOffset(kind: UnitVisualKind, defHeight: number): number {
     kind === 'scorpion_guard' ||
     kind === 'spearman' ||
     kind === 'centurion' ||
+    kind === 'dynasty_swordsman' ||
+    kind === 'repeating_crossbow' ||
     kind === 'knight' ||
     kind === 'pikeman' ||
     kind === 'grenadier' ||
@@ -334,9 +338,11 @@ function getUnitHpBarOffset(kind: UnitVisualKind, defHeight: number): number {
     kind === 'riot_juggernaut' ||
     kind === 'cyborg' ||
     kind === 'void_templar' ||
-    kind === 'gravity_sniper'
+    kind === 'gravity_sniper' ||
+    kind === 'chrono_blade' ||
+    kind === 'quantum_weaver'
   ) {
-    return 74;
+    return 76;
   }
   return Math.max(66, defHeight * 1.32);
 }

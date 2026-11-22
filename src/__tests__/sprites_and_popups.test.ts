@@ -47,12 +47,12 @@ function createMockCanvasContext(): { ctx: CanvasRenderingContext2D; drawCalls: 
 }
 
 describe('Flash-Cartoon Vector Renderer, Zero Camera Shake & Combat Popups', () => {
-  it('renders all 40 cartoon units, 20 rotating turrets, 10 era fortresses, 10 backgrounds, and 20 upgrade icons cleanly', () => {
+  it('renders all 48 cartoon units, 24 rotating turrets, 12 era fortresses, 12 backgrounds, and 20 upgrade icons cleanly', () => {
     const unitIds = Object.keys(UNIT_BY_ID) as UnitVisualKind[];
     const turretIds = Object.keys(TURRET_BY_ID) as TurretVisualKind[];
-    expect(unitIds).toHaveLength(40);
-    expect(turretIds).toHaveLength(20);
-    expect(ERAS).toHaveLength(10);
+    expect(unitIds).toHaveLength(48);
+    expect(turretIds).toHaveLength(24);
+    expect(ERAS).toHaveLength(12);
     expect(UPGRADES).toHaveLength(20);
 
     // 1. Every single one of the 40 units renders across walk, attack, hurt, and death states for both teams
