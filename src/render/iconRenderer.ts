@@ -20,19 +20,39 @@ export function clearIconCache(): void {
 }
 
 function getUnitIconFraming(unitId: UnitVisualKind): { scale: number; x: number; y: number } {
-  if (unitId === 'omega_titan') return { scale: 0.78, x: 64, y: 92 };
-  if (unitId === 'colossus_mech') return { scale: 0.88, x: 62, y: 92 };
-  if (unitId === 'steam_walker') return { scale: 1.12, x: 62, y: 90 };
-  if (unitId === 'star_archon') return { scale: 1.14, x: 68, y: 88 };
-  if (unitId === 'hover_drone') return { scale: 1.72, x: 70, y: 88 };
-  if (unitId === 'mbt') return { scale: 1.18, x: 58, y: 84 };
-  if (unitId === 'early_tank') return { scale: 1.24, x: 58, y: 86 };
-  if (unitId === 'heavy_cavalry' || unitId === 'dino_rider') return { scale: 1.26, x: 64, y: 91 };
-  if (unitId === 'sphinx_chariot' || unitId === 'chariot') return { scale: 1.32, x: 66, y: 88 };
-  if (unitId === 'catapult' || unitId === 'field_cannon') return { scale: 1.34, x: 68, y: 88 };
-  if (unitId === 'mortar_team') return { scale: 1.45, x: 66, y: 90 };
-  if (unitId === 'riot_juggernaut') return { scale: 1.38, x: 64, y: 91 };
-  return { scale: 1.62, x: 62, y: 91 };
+  if (unitId === 'omega_titan') return { scale: 0.70, x: 64, y: 92 };
+  if (unitId === 'colossus_mech') return { scale: 0.84, x: 62, y: 92 };
+  if (unitId === 'steam_walker') return { scale: 1.06, x: 64, y: 91 };
+  if (unitId === 'star_archon') return { scale: 1.06, x: 68, y: 89 };
+  if (unitId === 'hover_drone') return { scale: 1.66, x: 72, y: 88 };
+  if (unitId === 'mbt') return { scale: 1.15, x: 58, y: 86 };
+  if (unitId === 'early_tank') return { scale: 1.22, x: 58, y: 87 };
+  if (unitId === 'heavy_cavalry') return { scale: 1.18, x: 60, y: 91 };
+  if (unitId === 'dino_rider') return { scale: 1.24, x: 66, y: 91 };
+  if (unitId === 'sphinx_chariot' || unitId === 'chariot') return { scale: 1.28, x: 66, y: 89 };
+  if (unitId === 'catapult' || unitId === 'field_cannon') return { scale: 1.32, x: 68, y: 89 };
+  if (unitId === 'mortar_team') return { scale: 1.36, x: 66, y: 90 };
+  if (unitId === 'riot_juggernaut') return { scale: 1.20, x: 64, y: 91 };
+  if (unitId === 'void_templar') return { scale: 1.10, x: 64, y: 92 };
+  if (unitId === 'grenadier') return { scale: 1.12, x: 62, y: 92 };
+  if (
+    unitId === 'gravity_sniper' ||
+    unitId === 'cyborg' ||
+    unitId === 'anubis_warrior' ||
+    unitId === 'shaman' ||
+    unitId === 'sun_priest' ||
+    unitId === 'scorpion_guard' ||
+    unitId === 'centurion' ||
+    unitId === 'knight' ||
+    unitId === 'steam_trooper' ||
+    unitId === 'tesla_coil_trooper'
+  ) {
+    return { scale: 1.18, x: 62, y: 91 };
+  }
+  if (unitId === 'spearman' || unitId === 'pikeman' || unitId === 'railgun_sniper') {
+    return { scale: 1.24, x: 58, y: 91 };
+  }
+  return { scale: 1.34, x: 62, y: 91 };
 }
 
 export function getUnitIconUrl(unitId: UnitVisualKind): string {

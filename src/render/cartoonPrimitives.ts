@@ -260,6 +260,166 @@ export function drawInkLimb(
   ctx.restore();
 }
 
+/**
+ * Draw an anatomically tapered Flash-cartoon limb segment (wider bicep/thigh tapering cleanly
+ * toward wrist/ankle) with cel-shaded directional highlight, shadow edge, optional cuff band,
+ * and crisp outer ink weight.
+ */
+export function drawSculptedLimb(
+  ctx: CanvasRenderingContext2D,
+  x1: number,
+  y1: number,
+  x2: number,
+  y2: number,
+  startWidth: number,
+  endWidth: number,
+  fill: string,
+  opts?: {
+    highlight?: string;
+    shadow?: string;
+    lineWidth?: number;
+    cuffColor?: string;
+    piston?: boolean;
+  },
+): void {
+  const dx = x2 - x1;
+  const dy = y2 - y1;
+  const len = Math.hypot(dx, dy);
+  if (len < 0.5) return;
+
+  const angle = Math.atan2(dy, dx);
+  const r1 = Math.max(1.2, startWidth * 0.5);
+  const r2 = Math.max(1.0, endWidth * 0.5);
+
+  ctx.save();
+  ctx.translate(x1, y1);
+  ctx.rotate(angle);
+
+  // Optional chrome hydraulic piston strut running along rear of armored mech leg!
+  if (opts?.piston) {
+    ctx.fillStyle = '#94a3b8';
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.roundRect(len * 0.08, r1 * 0.55, len * 0.82, Math.max(2.2, r2 * 0.52), 1.2);
+    ctx.fill();
+    ctx.stroke();
+    ctx.fillStyle = '#f8fafc';
+    ctx.fillRect(len * 0.16, r1 * 0.62, len * 0.64, 1.1);
+  }
+
+  // Build smooth tapered capsule path along local +X axis (0 -> len)
+  ctx.beginPath();
+  ctx.arc(0, 0, r1, Math.PI * 0.5, Math.PI * 1.5);
+  ctx.lineTo(len, -r2);
+  ctx.arc(len, 0, r2, -Math.PI * 0.5, Math.PI * 0.5);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(0, -r1, 0, r1);
+  grad.addColorStop(0, opts?.highlight ?? fill);
+  grad.addColorStop(0.45, fill);
+  grad.addColorStop(1, opts?.shadow ?? fill);
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Clipped cel shading band + glossy top specular streak + optional cuff/greave band
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = opts?.shadow ?? 'rgba(10, 14, 24, 0.24)';
+  ctx.globalAlpha = opts?.shadow ? 0.45 : 0.26;
+  ctx.fillRect(-r1, r1 * 0.18, len + r1 + r2, r1 * 1.1);
+
+  ctx.globalAlpha = 0.28;
+  ctx.fillStyle = opts?.highlight ?? '#ffffff';
+  ctx.fillRect(0, -r1 * 0.86, len, Math.max(1.2, r1 * 0.42));
+
+  if (opts?.cuffColor) {
+    ctx.globalAlpha = 1;
+    ctx.fillStyle = opts.cuffColor;
+    ctx.fillRect(len * 0.64, -r1 - 1, len * 0.24, (r1 + 1) * 2);
+    ctx.strokeStyle = INK;
+    ctx.lineWidth = 1.1;
+    ctx.beginPath();
+    ctx.moveTo(len * 0.64, -r1);
+    ctx.lineTo(len * 0.64, r1);
+    ctx.moveTo(len * 0.88, -r1);
+    ctx.lineTo(len * 0.88, r1);
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  setInkStyle(ctx, opts?.lineWidth ?? 1.85);
+  ctx.beginPath();
+  ctx.arc(0, 0, r1, Math.PI * 0.5, Math.PI * 1.5);
+  ctx.lineTo(len, -r2);
+  ctx.arc(len, 0, r2, -Math.PI * 0.5, Math.PI * 0.5);
+  ctx.closePath();
+  ctx.stroke();
+  ctx.restore();
+}
+
+/**
+ * Draw a grounded, heroic Flash-cartoon boot with flat treaded sole, rounded toe cap,
+ * specular toe glint, and optional ankle cuff lip.
+ */
+export function drawSculptedBoot(
+  ctx: CanvasRenderingContext2D,
+  ankleX: number,
+  groundY: number,
+  fill: string,
+  opts?: {
+    highlight?: string;
+    cuffColor?: string;
+    soleColor?: string;
+    scale?: number;
+  },
+): void {
+  const sc = opts?.scale ?? 1;
+  ctx.save();
+  ctx.translate(ankleX, groundY);
+  ctx.scale(sc, sc);
+
+  // Boot upper profile (heel -> ankle -> arched vamp -> rounded toe -> flat sole)
+  ctx.beginPath();
+  ctx.moveTo(-3.4, -4.4);
+  ctx.lineTo(2.0, -4.4);
+  ctx.quadraticCurveTo(4.2, -3.2, 6.8, -2.1);
+  ctx.quadraticCurveTo(8.2, -1.2, 7.6, 0.8);
+  ctx.lineTo(-3.6, 0.8);
+  ctx.quadraticCurveTo(-4.4, -1.5, -3.4, -4.4);
+  ctx.closePath();
+
+  const grad = ctx.createLinearGradient(0, -4.5, 0, 1);
+  grad.addColorStop(0, opts?.highlight ?? fill);
+  grad.addColorStop(0.55, fill);
+  grad.addColorStop(1, '#0f172a');
+  ctx.fillStyle = grad;
+  ctx.fill();
+
+  // Sole strip & bright glossy toe cap highlight inside clip
+  ctx.save();
+  ctx.clip();
+  ctx.fillStyle = opts?.soleColor ?? '#0f172a';
+  ctx.fillRect(-5, -0.7, 14, 2.2);
+  ctx.fillStyle = 'rgba(255, 255, 255, 0.34)';
+  ctx.beginPath();
+  ctx.ellipse(4.4, -2.0, 2.2, 0.9, 0.25, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  setInkStyle(ctx, 1.75);
+  ctx.stroke();
+
+  // Optional folded boot cuff lip at top of ankle
+  if (opts?.cuffColor) {
+    drawCelRoundRect(ctx, -3.8, -5.8, 6.4, 2.4, 1, opts.cuffColor, {
+      highlight: 'rgba(255,255,255,0.35)',
+      lineWidth: 1.2,
+    });
+  }
+  ctx.restore();
+}
+
 /** Draw a metallic bolt/rivet row along armor, tanks, cannons, or steampunk hull plates */
 export function drawRivetStrip(
   ctx: CanvasRenderingContext2D,
@@ -428,39 +588,44 @@ export function drawCartoonCape(
   darkFill: string,
   phase: number,
 ): void {
-  const wave1 = Math.sin(phase * 1.45) * 4.8;
-  const wave2 = Math.cos(phase * 1.95 + 0.7) * 5.8;
-  ctx.save();
-  ctx.beginPath();
-  ctx.moveTo(anchorX, anchorY);
-  ctx.quadraticCurveTo(
-    anchorX - width * 0.68,
-    anchorY + length * 0.45 + wave1,
-    anchorX - width + wave2 * 0.42,
-    anchorY + length,
-  );
-  ctx.lineTo(anchorX - width * 0.2 + wave1 * 0.5, anchorY + length * 0.94);
-  ctx.quadraticCurveTo(anchorX - width * 0.08, anchorY + length * 0.45, anchorX + 2, anchorY + 4);
-  ctx.closePath();
+  const wave1 = Math.sin(phase * 1.45) * 4.2;
+  const wave2 = Math.cos(phase * 1.95 + 0.7) * 5.0;
+  const traceCape = (): void => {
+    ctx.beginPath();
+    ctx.moveTo(anchorX, anchorY);
+    ctx.quadraticCurveTo(
+      anchorX - width * 0.68,
+      anchorY + length * 0.45 + wave1,
+      anchorX - width + wave2 * 0.42,
+      anchorY + length,
+    );
+    ctx.lineTo(anchorX - width * 0.2 + wave1 * 0.5, anchorY + length * 0.94);
+    ctx.quadraticCurveTo(anchorX - width * 0.08, anchorY + length * 0.45, anchorX + 2, anchorY + 4);
+    ctx.closePath();
+  };
 
+  ctx.save();
+  traceCape();
   const grad = ctx.createLinearGradient(anchorX - width, anchorY, anchorX, anchorY + length);
   grad.addColorStop(0, fill);
   grad.addColorStop(1, darkFill);
   ctx.fillStyle = grad;
   ctx.fill();
 
-  // Golden hem highlight line
+  // Clipped golden hem trim strictly inside cape silhouette
   ctx.save();
   ctx.clip();
-  ctx.strokeStyle = 'rgba(250, 204, 21, 0.72)';
-  ctx.lineWidth = 2.2;
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.78)';
+  ctx.lineWidth = 2.4;
   ctx.beginPath();
-  ctx.moveTo(anchorX - width - 2, anchorY + length - 2);
-  ctx.lineTo(anchorX + 2, anchorY + length - 4);
+  ctx.moveTo(anchorX - width - 3, anchorY + length - 2.2);
+  ctx.lineTo(anchorX + 2, anchorY + length - 4.2);
   ctx.stroke();
   ctx.restore();
 
-  setInkStyle(ctx, 2.0);
+  // Stroke the actual cape Bezier silhouette (never the hem line!)
+  setInkStyle(ctx, 1.95);
+  traceCape();
   ctx.stroke();
   ctx.restore();
 }
@@ -603,7 +768,7 @@ export function drawTankTreads(
   }
 }
 
-/** Draw expressive Kingdom-Rush / Age-of-War cartoon face with glossy pupil glint inside head at (cx, cy) */
+/** Draw expressive Kingdom-Rush / Age-of-War cartoon face with glossy iris glint & crisp visor streaks */
 export function drawCartoonFace(
   ctx: CanvasRenderingContext2D,
   cx: number,
@@ -620,49 +785,97 @@ export function drawCartoonFace(
   const { mood, mask = 'none' } = opts;
 
   if (mask === 'visor') {
-    drawCelRoundRect(ctx, cx + 0.5, cy - 3.2, 8.2, 4.4, 2, opts.visorColor ?? '#38bdf8', {
+    drawCelRoundRect(ctx, cx + 0.4, cy - 3.3, 8.6, 4.6, 2.0, opts.visorColor ?? '#38bdf8', {
       highlight: '#ffffff',
-      lineWidth: 1.5,
+      lineWidth: 1.45,
     });
+    // Crisp diagonal lens reflection slash
+    ctx.save();
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.78)';
+    ctx.lineWidth = 1.4;
+    ctx.beginPath();
+    ctx.moveTo(cx + 2.2, cy - 2.6);
+    ctx.lineTo(cx + 4.4, cy + 0.5);
+    ctx.moveTo(cx + 5.2, cy - 2.5);
+    ctx.lineTo(cx + 6.4, cy - 0.8);
+    ctx.stroke();
+    ctx.restore();
     return;
   }
 
   if (mask === 'nvg') {
-    drawCelRoundRect(ctx, cx + 0.5, cy - 3.6, 8.4, 4.2, 1.8, '#1e293b', { lineWidth: 1.5 });
-    ctx.fillStyle = '#4ade80';
+    drawCelRoundRect(ctx, cx + 0.4, cy - 3.8, 8.8, 4.5, 1.8, '#1e293b', {
+      highlight: '#64748b',
+      lineWidth: 1.45,
+    });
+    ctx.fillStyle = '#22c55e';
     ctx.beginPath();
-    ctx.arc(cx + 3.2, cy - 1.5, 1.7, 0, Math.PI * 2);
-    ctx.arc(cx + 6.8, cy - 1.5, 1.7, 0, Math.PI * 2);
+    ctx.arc(cx + 3.1, cy - 1.5, 1.85, 0, Math.PI * 2);
+    ctx.arc(cx + 6.9, cy - 1.5, 1.85, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#bbf7d0';
+    ctx.beginPath();
+    ctx.arc(cx + 3.1, cy - 1.5, 1.05, 0, Math.PI * 2);
+    ctx.arc(cx + 6.9, cy - 1.5, 1.05, 0, Math.PI * 2);
     ctx.fill();
     ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx + 2.5, cy - 2.4, 1.1, 1.1);
-    ctx.fillRect(cx + 6.1, cy - 2.4, 1.1, 1.1);
+    ctx.fillRect(cx + 2.4, cy - 2.5, 1.0, 1.0);
+    ctx.fillRect(cx + 6.2, cy - 2.5, 1.0, 1.0);
     return;
   }
 
   if (mask === 'goggles') {
-    drawCelEllipse(ctx, cx + 3.2, cy - 1.4, 2.7, 2.5, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.5 });
-    drawCelEllipse(ctx, cx + 7.2, cy - 1.4, 2.4, 2.3, '#f59e0b', { highlight: '#fef08a', lineWidth: 1.5 });
-    ctx.fillStyle = '#38bdf8';
+    // Leather goggle strap wrapping around head
+    ctx.fillStyle = '#451a03';
+    ctx.fillRect(cx - 7.8, cy - 2.4, 10.5, 2.2);
+    drawCelEllipse(ctx, cx + 3.1, cy - 1.4, 2.8, 2.6, '#d97706', { highlight: '#fef08a', lineWidth: 1.45 });
+    drawCelEllipse(ctx, cx + 7.2, cy - 1.4, 2.45, 2.35, '#d97706', { highlight: '#fef08a', lineWidth: 1.45 });
+    ctx.fillStyle = '#0ea5e9';
     ctx.beginPath();
-    ctx.arc(cx + 3.4, cy - 1.4, 1.35, 0, Math.PI * 2);
-    ctx.arc(cx + 7.2, cy - 1.4, 1.25, 0, Math.PI * 2);
+    ctx.arc(cx + 3.3, cy - 1.4, 1.55, 0, Math.PI * 2);
+    ctx.arc(cx + 7.2, cy - 1.4, 1.4, 0, Math.PI * 2);
     ctx.fill();
-    ctx.fillStyle = '#ffffff';
-    ctx.fillRect(cx + 2.7, cy - 2.2, 1.0, 1.0);
-    ctx.fillRect(cx + 6.6, cy - 2.2, 1.0, 1.0);
+    ctx.fillStyle = '#e0f2fe';
+    ctx.beginPath();
+    ctx.arc(cx + 2.8, cy - 2.0, 0.72, 0, Math.PI * 2);
+    ctx.arc(cx + 6.7, cy - 2.0, 0.68, 0, Math.PI * 2);
+    ctx.fill();
     return;
   }
 
   if (mask === 'gasmask') {
-    drawCelEllipse(ctx, cx + 2.8, cy - 1.6, 2.3, 2.2, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.5 });
-    drawCelEllipse(ctx, cx + 6.6, cy - 1.6, 2.0, 2.0, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.5 });
-    drawCelRoundRect(ctx, cx + 2.8, cy + 0.8, 6.2, 4.4, 2, '#475569', { shadow: '#1e293b', lineWidth: 1.6 });
+    drawCelEllipse(ctx, cx + 2.6, cy - 1.6, 2.45, 2.35, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.45 });
+    drawCelEllipse(ctx, cx + 6.6, cy - 1.6, 2.1, 2.1, '#94a3b8', { highlight: '#ffffff', lineWidth: 1.45 });
+    // Dark smoked lenses with reflection glint
+    ctx.fillStyle = '#1e293b';
+    ctx.beginPath();
+    ctx.arc(cx + 2.7, cy - 1.6, 1.35, 0, Math.PI * 2);
+    ctx.arc(cx + 6.6, cy - 1.6, 1.15, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = 'rgba(255,255,255,0.75)';
+    ctx.fillRect(cx + 2.1, cy - 2.3, 0.9, 0.9);
+    ctx.fillRect(cx + 6.1, cy - 2.3, 0.8, 0.8);
+    // Snout filter canister + vent grille
+    drawCelRoundRect(ctx, cx + 2.6, cy + 0.6, 6.6, 4.6, 2.0, '#475569', {
+      highlight: '#94a3b8',
+      shadow: '#0f172a',
+      lineWidth: 1.55,
+    });
+    ctx.fillStyle = '#0f172a';
+    ctx.fillRect(cx + 6.8, cy + 1.8, 1.6, 2.2);
     return;
   }
 
   ctx.save();
-  setInkStyle(ctx, 1.5);
+  // Subtle rounded ear contour on back of face
+  if (opts.skin) {
+    drawCelEllipse(ctx, cx - 5.8, cy + 0.2, 1.7, 2.2, opts.skin, {
+      shadow: 'rgba(120,53,15,0.28)',
+      lineWidth: 1.3,
+    });
+  }
+
+  setInkStyle(ctx, 1.35);
   if (mood === 'dead') {
     ctx.beginPath();
     ctx.moveTo(cx + 1.5, cy - 2.8);
@@ -672,48 +885,63 @@ export function drawCartoonFace(
     ctx.stroke();
   } else if (mood === 'hurt') {
     ctx.beginPath();
-    ctx.moveTo(cx + 1.5, cy - 2.6);
+    ctx.moveTo(cx + 1.4, cy - 2.6);
     ctx.lineTo(cx + 5.2, cy - 1);
-    ctx.lineTo(cx + 1.5, cy + 0.6);
+    ctx.lineTo(cx + 1.4, cy + 0.6);
     ctx.stroke();
   } else {
-    // Subtle warm cheek blush on organic faces
+    // Subtle warm cheek blush & crisp nose bridge tick
     ctx.fillStyle = 'rgba(239, 68, 68, 0.16)';
     ctx.beginPath();
-    ctx.ellipse(cx + 2.2, cy + 1.5, 2.0, 1.1, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 2.0, cy + 1.7, 2.1, 1.1, 0, 0, Math.PI * 2);
     ctx.fill();
 
-    // Crisp expressive eye with gleaming white specular sparkle
+    // Crisp expressive eye with upper lash accent + iris ring + double white specular catchlight
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.ellipse(cx + 3.6, cy - 1.2, 2.35, 2.55, 0, 0, Math.PI * 2);
+    ctx.ellipse(cx + 3.7, cy - 1.2, 2.45, 2.65, 0, 0, Math.PI * 2);
     ctx.fill();
     ctx.stroke();
-    ctx.fillStyle = opts.eyeColor ?? INK;
+
+    // Colored iris + crisp dark pupil
+    ctx.fillStyle = opts.eyeColor ?? '#1e293b';
     ctx.beginPath();
-    ctx.arc(cx + 4.4, cy - 1.1, 1.3, 0, Math.PI * 2);
+    ctx.arc(cx + 4.45, cy - 1.05, 1.45, 0, Math.PI * 2);
     ctx.fill();
+    ctx.fillStyle = '#090d16';
+    ctx.beginPath();
+    ctx.arc(cx + 4.55, cy - 1.05, 0.78, 0, Math.PI * 2);
+    ctx.fill();
+    // Primary + secondary glossy catchlight dots
     ctx.fillStyle = '#ffffff';
     ctx.beginPath();
-    ctx.arc(cx + 3.9, cy - 1.7, 0.55, 0, Math.PI * 2);
+    ctx.arc(cx + 3.9, cy - 1.75, 0.62, 0, Math.PI * 2);
+    ctx.arc(cx + 4.9, cy - 0.35, 0.3, 0, Math.PI * 2);
     ctx.fill();
 
-    // Expressive angled brow
+    // Expressive angled heroic brow
     setInkStyle(ctx, 1.85);
     ctx.beginPath();
-    ctx.moveTo(cx + 0.8, cy - (mood === 'attack' ? 4.5 : 3.8));
-    ctx.lineTo(cx + 6.5, cy - (mood === 'attack' ? 2.4 : 3.2));
+    ctx.moveTo(cx + 0.6, cy - (mood === 'attack' ? 4.7 : 3.9));
+    ctx.lineTo(cx + 6.7, cy - (mood === 'attack' ? 2.4 : 3.25));
     ctx.stroke();
 
-    // Fierce battle-cry mouth with gleaming teeth on attack!
+    // Mouth: determined smirk normally, fierce battle-cry with gleaming teeth on attack!
     if (mood === 'attack') {
+      setInkStyle(ctx, 1.3);
       ctx.fillStyle = '#7f1d1d';
       ctx.beginPath();
-      ctx.ellipse(cx + 3.9, cy + 3.1, 2.3, 1.8, 0, 0, Math.PI * 2);
+      ctx.ellipse(cx + 4.0, cy + 3.2, 2.4, 1.9, 0, 0, Math.PI * 2);
       ctx.fill();
       ctx.stroke();
       ctx.fillStyle = '#ffffff';
-      ctx.fillRect(cx + 2.5, cy + 1.9, 2.8, 1.1);
+      ctx.fillRect(cx + 2.4, cy + 1.9, 3.1, 1.15);
+    } else if (!opts.beard) {
+      setInkStyle(ctx, 1.25, '#5c3412');
+      ctx.beginPath();
+      ctx.moveTo(cx + 2.8, cy + 3.1);
+      ctx.quadraticCurveTo(cx + 4.5, cy + 3.4, cx + 5.7, cy + 2.7);
+      ctx.stroke();
     }
   }
 
@@ -721,13 +949,14 @@ export function drawCartoonFace(
     drawCelPoly(
       ctx,
       [
-        [cx - 1.5, cy + 2],
-        [cx + 6.5, cy + 2.2],
-        [cx + 5, cy + 7.4],
-        [cx - 0.5, cy + 6.4],
+        [cx - 1.6, cy + 1.9],
+        [cx + 6.8, cy + 2.1],
+        [cx + 5.4, cy + 7.6],
+        [cx + 1.6, cy + 6.8],
+        [cx - 0.6, cy + 7.2],
       ],
       opts.beard,
-      { shadow: INK_SOFT, lineWidth: 1.6 },
+      { shadow: INK_SOFT, lineWidth: 1.5 },
     );
   }
   ctx.restore();
@@ -828,7 +1057,14 @@ export interface HumanoidRigConfig {
   beltColor?: string;
   pantsColor: string;
   bootColor: string;
+  bootCuffColor?: string;
   armColor?: string;
+  sleeveCuffColor?: string;
+  gloveColor?: string;
+  skirtColor?: string;
+  skirtTrim?: string;
+  skirtStyle?: 'tunic' | 'kilt' | 'tassets' | 'coat' | 'none';
+  trimHighlight?: string;
   capeColor?: string;
   capeDark?: string;
   pauldronColor?: string;
@@ -846,21 +1082,22 @@ export interface HumanoidRigConfig {
 }
 
 /**
- * Deluxe Age-of-War-2 / Kingdom-Rush articulated humanoid rig with heroic V-tapered silhouette,
- * armored cuffs & knee guards, 12-principles anticipation/follow-through, and anime weapon smears.
+ * Studio-grade Age-of-War-2 / Kingdom-Rush articulated humanoid rig with tapered sculpted limbs,
+ * bent-elbow 2-segment arms, grounded cuffed boots, hip skirts/tassets/coats, crisp ink weight
+ * hierarchy, 12-principles anticipation/follow-through, and anime weapon smears.
  */
 export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: HumanoidRigConfig): void {
   const s = (cfg.scale ?? 1) * 1.04;
-  const torsoW = cfg.torsoW ?? 16.5;
-  const torsoH = cfg.torsoH ?? 19.5;
-  const headR = cfg.headR ?? 8.3;
-  const legLen = cfg.legLen ?? 14.5;
+  const torsoW = cfg.torsoW ?? 16.8;
+  const torsoH = cfg.torsoH ?? 19.2;
+  const headR = cfg.headR ?? 8.4;
+  const legLen = cfg.legLen ?? 16.0;
   const dp = cfg.deathProgress;
 
   const stride = cfg.isWalking ? Math.sin(cfg.walkPhase) : 0;
-  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 4.4 : 0;
-  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 4.4 : 0;
-  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 2.8 : Math.sin(cfg.walkPhase * 1.1) * 0.9;
+  const liftA = cfg.isWalking ? Math.max(0, -Math.cos(cfg.walkPhase)) * 4.5 : 0;
+  const liftB = cfg.isWalking ? Math.max(0, Math.cos(cfg.walkPhase)) * 4.5 : 0;
+  const bob = cfg.isWalking ? Math.abs(Math.sin(cfg.walkPhase)) * 2.8 : Math.sin(cfg.walkPhase * 1.1) * 0.85;
 
   const atk = cfg.attackAnim;
   const firing = atk > 0.42 && atk < 0.84;
@@ -875,7 +1112,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   if (atk > 0.01) {
     if (style === 'overhead') {
       if (atk > 0.72) {
-        // Dramatic coiled wind-up!
         const t = (1 - atk) / 0.28;
         const ease = Math.sin(t * Math.PI * 0.5);
         weaponAngle = -1.88 * ease;
@@ -884,7 +1120,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
         headLag = -0.1 * ease;
         attackStanceShift = -2.2 * ease;
       } else if (atk > 0.30) {
-        // Explosive snap downward cleave!
         const t = (0.72 - atk) / 0.42;
         const snap = Math.sin(t * Math.PI * 0.5);
         weaponAngle = -1.88 + 3.16 * snap;
@@ -893,7 +1128,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
         headLag = 0.12 * snap;
         attackStanceShift = 4.2 * snap;
       } else {
-        // Heavy follow-through recovery
         const t = atk / 0.30;
         weaponAngle = 1.28 * t;
         torsoLean = 0.28 * t;
@@ -956,6 +1190,11 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   const mood: 'normal' | 'attack' | 'hurt' | 'dead' =
     dp > 0.2 ? 'dead' : cfg.hitFlash > 0.32 ? 'hurt' : atk > 0.22 ? 'attack' : 'normal';
 
+  const armBase = cfg.armColor ?? cfg.skin;
+  const handFill = cfg.gloveColor ?? cfg.skin;
+  const cuffAccent = cfg.sleeveCuffColor ?? cfg.beltColor ?? '#475569';
+  const bootCuff = cfg.bootCuffColor ?? cfg.pauldronTrim;
+
   ctx.save();
   ctx.scale(s, s);
 
@@ -982,7 +1221,7 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
 
   const hipY = -legLen - bob;
   const torsoTopY = hipY - torsoH;
-  const shoulderY = torsoTopY + 5;
+  const shoulderY = torsoTopY + 5.2;
 
   // 1. Back fluttering 2-tone cape with bold dynamic wave during attack!
   if (cfg.capeColor) {
@@ -991,53 +1230,75 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
       -torsoW * 0.38,
       shoulderY - 1,
       torsoH + legLen * 0.56,
-      torsoW * 1.04 + (atk > 0.2 ? 3.5 : 0),
+      torsoW * 1.05 + (atk > 0.2 ? 3.5 : 0),
       cfg.capeColor,
       cfg.capeDark ?? INK_SOFT,
       cfg.walkPhase + atk * 5.2,
     );
   }
 
-  // 2. Back leg + knee cap + cuffed boot
-  const backFootX = -2.5 - stride * 8.4 - Math.max(0, attackStanceShift * 0.35);
-  const backFootY = -2 - liftB;
-  const backKneeX = (-2.5 + backFootX) * 0.5 + 2.8;
+  // 2. Sculpted tapered Back Leg + knee plate + grounded hero boot
+  const backFootX = -2.8 - stride * 8.4 - Math.max(0, attackStanceShift * 0.35);
+  const backFootY = -1.2 - liftB;
+  const backKneeX = (-2.8 + backFootX) * 0.5 + 3.0;
   const backKneeY = (hipY + backFootY) * 0.5;
-  drawInkLimb(ctx, -2.5, hipY + 1, backKneeX, backKneeY, 4.7, cfg.pantsColor);
-  drawInkLimb(ctx, backKneeX, backKneeY, backFootX, backFootY, 4.3, cfg.bootColor);
-  drawCelEllipse(ctx, backKneeX + 0.6, backKneeY, 2.3, 2.1, cfg.bootColor, {
-    highlight: 'rgba(255,255,255,0.22)',
-    lineWidth: 1.3,
+  drawSculptedLimb(ctx, -2.8, hipY + 0.5, backKneeX, backKneeY, 6.0, 4.5, cfg.pantsColor, {
+    shadow: 'rgba(0,0,0,0.36)',
+    lineWidth: 1.75,
   });
-  drawCelEllipse(ctx, backFootX + 2.4, backFootY, 4.8, 2.8, cfg.bootColor, {
-    shadow: '#0f172a',
-    lineWidth: 1.8,
+  drawSculptedLimb(ctx, backKneeX, backKneeY, backFootX, backFootY - 2.2, 4.7, 3.7, cfg.bootColor, {
+    shadow: '#090d16',
+    lineWidth: 1.7,
+    cuffColor: bootCuff,
+  });
+  drawSculptedBoot(ctx, backFootX, backFootY, cfg.bootColor, {
+    cuffColor: bootCuff,
+    scale: 0.96,
   });
 
-  // 3. Expressive back arm (swings opposite to legs / lunges on dual attacks)
-  const backArmSwing = cfg.isWalking ? -stride * 4.2 : Math.sin(cfg.walkPhase * 1.1) * 0.8;
-  const dualCounterX = style === 'dual' && atk > 0.1 ? Math.sin(atk * Math.PI) * 9 : 0;
-  const backArmX = torsoW * 0.36 + backArmSwing + dualCounterX;
-  const backArmY = shoulderY + 6.5 + (atk > 0.2 ? -3 : 0);
-  drawInkLimb(ctx, 2, shoulderY + 1, backArmX, backArmY, 4.4, cfg.armColor ?? cfg.skin);
-  drawCelEllipse(ctx, backArmX, backArmY, 2.8, 2.5, cfg.skin, { lineWidth: 1.5 });
+  // 3. Articulated 2-segment Back Arm (shoulder -> bent elbow -> bracer -> hand)
+  const backArmSwing = cfg.isWalking ? -stride * 4.4 : Math.sin(cfg.walkPhase * 1.1) * 0.8;
+  const dualCounterX = style === 'dual' && atk > 0.1 ? Math.sin(atk * Math.PI) * 9.5 : 0;
+  const backHandX = torsoW * 0.38 + backArmSwing + dualCounterX;
+  const backHandY = shoulderY + 6.5 + (atk > 0.2 ? -2.8 : 0);
+  const backElbowX = (2.4 + backHandX) * 0.5 - 1.4;
+  const backElbowY = (shoulderY + 1 + backHandY) * 0.5 + 1.8;
+  drawSculptedLimb(ctx, 2.4, shoulderY + 1, backElbowX, backElbowY, 5.1, 4.1, armBase, {
+    shadow: 'rgba(0,0,0,0.32)',
+    lineWidth: 1.65,
+  });
+  drawSculptedLimb(ctx, backElbowX, backElbowY, backHandX, backHandY, 4.1, 3.3, armBase, {
+    shadow: 'rgba(0,0,0,0.28)',
+    cuffColor: cuffAccent,
+    lineWidth: 1.6,
+  });
+  drawCelEllipse(ctx, backHandX, backHandY, 2.7, 2.5, handFill, { lineWidth: 1.45 });
 
-  // 4. Front leg + armored knee guard + highlighted cuffed boot (plants forward during melee lunge!)
-  const frontFootX = 2.8 + stride * 8.4 + Math.max(0, attackStanceShift * 0.65);
-  const frontFootY = -2 - liftA;
-  const frontKneeX = (2.8 + frontFootX) * 0.5 + 3.5;
+  // 4. Sculpted tapered Front Leg + armored knee guard + grounded hero boot
+  const frontFootX = 3.0 + stride * 8.4 + Math.max(0, attackStanceShift * 0.65);
+  const frontFootY = -1.2 - liftA;
+  const frontKneeX = (3.0 + frontFootX) * 0.5 + 3.6;
   const frontKneeY = (hipY + frontFootY) * 0.5;
-  drawInkLimb(ctx, 2.8, hipY + 1, frontKneeX, frontKneeY, 5.0, cfg.pantsColor);
-  drawInkLimb(ctx, frontKneeX, frontKneeY, frontFootX, frontFootY, 4.5, cfg.bootColor);
-  // Boot top cuff & knee guard highlight
-  drawCelEllipse(ctx, frontKneeX + 0.8, frontKneeY, 2.6, 2.3, cfg.pauldronColor ?? cfg.bootColor, {
-    highlight: 'rgba(255,255,255,0.34)',
-    lineWidth: 1.4,
+  drawSculptedLimb(ctx, 3.0, hipY + 0.5, frontKneeX, frontKneeY, 6.4, 4.8, cfg.pantsColor, {
+    highlight: 'rgba(255,255,255,0.26)',
+    shadow: 'rgba(0,0,0,0.26)',
+    lineWidth: 1.85,
   });
-  drawCelEllipse(ctx, frontFootX + 2.6, frontFootY, 5.0, 2.9, cfg.bootColor, {
-    highlight: 'rgba(255,255,255,0.32)',
-    shadow: '#0f172a',
+  drawSculptedLimb(ctx, frontKneeX, frontKneeY, frontFootX, frontFootY - 2.2, 5.0, 3.9, cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.28)',
+    shadow: '#090d16',
     lineWidth: 1.8,
+    cuffColor: bootCuff,
+  });
+  // Sculpted knee guard plate
+  drawCelEllipse(ctx, frontKneeX + 0.9, frontKneeY, 2.8, 2.4, cfg.pauldronColor ?? cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.42)',
+    lineWidth: 1.35,
+  });
+  drawSculptedBoot(ctx, frontFootX, frontFootY, cfg.bootColor, {
+    highlight: 'rgba(255,255,255,0.34)',
+    cuffColor: bootCuff,
+    scale: 1.0,
   });
 
   // 5. Upper body (heroic V-tapered torso leaning dynamically during walk/attack)
@@ -1050,42 +1311,166 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     cfg.drawBackAccessory(ctx, torsoTopY);
   }
 
-  // Heroic V-tapered athletic silhouette torso (wider armored shoulders tapering to waist!)
-  const topHalfW = torsoW * 0.56;
+  const topHalfW = torsoW * 0.58;
   const botHalfW = torsoW * 0.44;
+
+  // Tailored heroic hip skirt / kilt / tassets / coat-tail cleanly framing upper thighs!
+  const skirtStyle = cfg.skirtStyle ?? (cfg.skirtColor ? 'tunic' : 'none');
+  if (skirtStyle !== 'none') {
+    const skColor = cfg.skirtColor ?? cfg.torsoFill;
+    const skTrim = cfg.skirtTrim ?? cfg.pauldronTrim;
+    const sway = stride * 1.4;
+    if (skirtStyle === 'kilt') {
+      drawCelPoly(
+        ctx,
+        [
+          [-botHalfW - 0.5, hipY - 0.8],
+          [botHalfW + 0.5, hipY - 0.8],
+          [botHalfW + 2.0 + sway * 0.35, hipY + 5.2],
+          [-botHalfW - 1.8 - sway * 0.35, hipY + 5.2],
+        ],
+        skColor,
+        { highlight: 'rgba(255,255,255,0.22)', shadow: 'rgba(0,0,0,0.32)', lineWidth: 1.55 },
+      );
+      setInkStyle(ctx, 1.1, INK_SOFT);
+      for (let k = -1; k <= 1; k++) {
+        ctx.beginPath();
+        ctx.moveTo(k * (botHalfW * 0.55), hipY - 0.5);
+        ctx.lineTo(k * (botHalfW * 0.65) + sway * 0.2, hipY + 4.8);
+        ctx.stroke();
+      }
+      if (skTrim) {
+        setInkStyle(ctx, 1.4, skTrim);
+        ctx.beginPath();
+        ctx.moveTo(-botHalfW - 1.2, hipY + 4.2);
+        ctx.lineTo(botHalfW + 1.4, hipY + 4.2);
+        ctx.stroke();
+      }
+    } else if (skirtStyle === 'tassets') {
+      drawCelPoly(
+        ctx,
+        [
+          [-botHalfW - 1.0, hipY - 0.8],
+          [-0.4, hipY - 0.8],
+          [-1.0, hipY + 5.4],
+          [-botHalfW - 2.0, hipY + 4.2],
+        ],
+        skColor,
+        { highlight: 'rgba(255,255,255,0.38)', shadow: 'rgba(0,0,0,0.34)', lineWidth: 1.5 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [0.4, hipY - 0.8],
+          [botHalfW + 1.0, hipY - 0.8],
+          [botHalfW + 2.0, hipY + 4.2],
+          [1.0, hipY + 5.4],
+        ],
+        skColor,
+        { highlight: 'rgba(255,255,255,0.38)', shadow: 'rgba(0,0,0,0.34)', lineWidth: 1.5 },
+      );
+      if (skTrim) {
+        drawCelPoly(
+          ctx,
+          [
+            [-2.0, hipY - 0.8],
+            [2.2, hipY - 0.8],
+            [1.4, hipY + 5.8],
+            [-1.4, hipY + 5.8],
+          ],
+          skTrim,
+          { lineWidth: 1.25 },
+        );
+      }
+    } else if (skirtStyle === 'coat') {
+      drawCelPoly(
+        ctx,
+        [
+          [-botHalfW - 0.5, hipY - 1.2],
+          [botHalfW + 0.5, hipY - 1.2],
+          [botHalfW + 1.2, hipY + 4.8],
+          [-botHalfW - 4.4 - sway * 0.5, hipY + 6.8],
+        ],
+        skColor,
+        { highlight: 'rgba(255,255,255,0.2)', shadow: 'rgba(0,0,0,0.36)', lineWidth: 1.6 },
+      );
+      if (skTrim) {
+        setInkStyle(ctx, 1.4, skTrim);
+        ctx.beginPath();
+        ctx.moveTo(-botHalfW - 3.6, hipY + 5.6);
+        ctx.lineTo(botHalfW + 0.6, hipY + 4.0);
+        ctx.stroke();
+      }
+    } else {
+      drawCelPoly(
+        ctx,
+        [
+          [-botHalfW - 0.4, hipY - 0.8],
+          [botHalfW + 0.4, hipY - 0.8],
+          [botHalfW + 1.2, hipY + 5.0],
+          [0.2, hipY + 6.4],
+          [-botHalfW - 1.4, hipY + 4.8],
+        ],
+        skColor,
+        { highlight: 'rgba(255,255,255,0.24)', shadow: 'rgba(0,0,0,0.3)', lineWidth: 1.55 },
+      );
+      if (skTrim) {
+        setInkStyle(ctx, 1.4, skTrim);
+        ctx.beginPath();
+        ctx.moveTo(-botHalfW - 0.6, hipY + 4.1);
+        ctx.lineTo(0.2, hipY + 5.4);
+        ctx.lineTo(botHalfW + 0.6, hipY + 4.1);
+        ctx.stroke();
+      }
+    }
+  }
+
+  // Heroic V-tapered athletic silhouette torso (wider armored shoulders tapering to waist!)
   drawCelPoly(
     ctx,
     [
-      [-topHalfW, torsoTopY + 2],
-      [-topHalfW + 3, torsoTopY - 0.5],
-      [topHalfW - 2.5, torsoTopY - 0.5],
-      [topHalfW + 0.8, torsoTopY + 3],
-      [botHalfW + 0.4, hipY + 1.5],
-      [-botHalfW - 0.4, hipY + 1.5],
+      [-topHalfW, torsoTopY + 2.2],
+      [-topHalfW + 3.2, torsoTopY - 0.6],
+      [topHalfW - 2.6, torsoTopY - 0.6],
+      [topHalfW + 1.0, torsoTopY + 3.0],
+      [botHalfW + 0.5, hipY + 1.5],
+      [-botHalfW - 0.5, hipY + 1.5],
     ],
     cfg.torsoFill,
     {
-      highlight: cfg.torsoHighlight ?? 'rgba(255,255,255,0.28)',
-      shadow: cfg.torsoShadow ?? 'rgba(0,0,0,0.30)',
-      lineWidth: 2.25,
+      highlight: cfg.torsoHighlight ?? 'rgba(255,255,255,0.30)',
+      shadow: cfg.torsoShadow ?? 'rgba(0,0,0,0.32)',
+      lineWidth: 2.15,
     },
   );
+
+  // Subtle top-shoulder rim gleam so dark-armored characters read clearly against dark skies!
+  if (cfg.trimHighlight) {
+    setInkStyle(ctx, 1.45, cfg.trimHighlight);
+    ctx.beginPath();
+    ctx.moveTo(-topHalfW + 2.5, torsoTopY + 0.5);
+    ctx.lineTo(topHalfW - 2.2, torsoTopY + 0.5);
+    ctx.stroke();
+  }
 
   if (cfg.drawTorsoDetail) {
     cfg.drawTorsoDetail(ctx, -torsoW / 2, torsoTopY, torsoW, torsoH + 2);
   }
 
-  // Waist belt + gleaming golden buckle
+  // Waist belt + gleaming golden buckle + side stud accents
   if (cfg.beltColor) {
-    drawCelRoundRect(ctx, -botHalfW - 1.4, hipY - 3.8, botHalfW * 2 + 2.8, 4.4, 1.6, cfg.beltColor, {
+    drawCelRoundRect(ctx, -botHalfW - 1.5, hipY - 3.9, botHalfW * 2 + 3.0, 4.4, 1.5, cfg.beltColor, {
+      highlight: 'rgba(255,255,255,0.2)',
       shadow: '#0f172a',
-      lineWidth: 1.6,
+      lineWidth: 1.55,
     });
-    drawCelRoundRect(ctx, 0.5, hipY - 4.0, 4.6, 4.7, 1, '#facc15', {
+    drawCelRoundRect(ctx, 0.5, hipY - 4.1, 4.7, 4.8, 1.1, '#facc15', {
       highlight: '#fef08a',
       shadow: '#b45309',
-      lineWidth: 1.35,
+      lineWidth: 1.3,
     });
+    ctx.fillStyle = '#78350f';
+    ctx.fillRect(2.2, hipY - 2.3, 1.4, 1.4);
   }
 
   // Head + expressive face with slight secondary spring tilt!
@@ -1096,29 +1481,44 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
   ctx.rotate(headLag);
   ctx.translate(-headX, -(headY + headR * 0.45));
 
-  // Subtle neck shadow collar
-  ctx.fillStyle = INK;
-  ctx.beginPath();
-  ctx.ellipse(headX, torsoTopY + 0.5, 4.2, 2.0, 0, 0, Math.PI * 2);
-  ctx.fill();
-
-  drawCelEllipse(ctx, headX, headY, headR * 1.05, headR, cfg.skin, {
-    highlight: 'rgba(255,255,255,0.34)',
-    shadow: cfg.skinShadow ?? 'rgba(120,53,15,0.22)',
-    lineWidth: 2.15,
+  // Subtle grounded neck cylinder + collar shadow
+  drawCelRoundRect(ctx, headX - 3.2, torsoTopY - 2.4, 6.4, 4.0, 1.5, cfg.skin, {
+    shadow: cfg.skinShadow ?? 'rgba(120,53,15,0.4)',
+    lineWidth: 1.35,
   });
 
-  drawCartoonFace(ctx, headX, headY + 0.5, {
-    mood,
-    eyeColor: cfg.eyeColor,
-    skin: cfg.skin,
-    beard: cfg.beardColor,
-    mask: cfg.mask,
-    visorColor: cfg.visorColor,
+  drawCelEllipse(ctx, headX, headY, headR * 1.06, headR, cfg.skin, {
+    highlight: 'rgba(255,255,255,0.36)',
+    shadow: cfg.skinShadow ?? 'rgba(120,53,15,0.24)',
+    lineWidth: 2.0,
   });
+
+  const maskOverHelmet = cfg.mask === 'goggles' || cfg.mask === 'nvg' || cfg.mask === 'gasmask';
+  if (!maskOverHelmet) {
+    drawCartoonFace(ctx, headX, headY + 0.5, {
+      mood,
+      eyeColor: cfg.eyeColor,
+      skin: cfg.skin,
+      beard: cfg.beardColor,
+      mask: cfg.mask,
+      visorColor: cfg.visorColor,
+    });
+  }
 
   if (cfg.drawHelmet) {
     cfg.drawHelmet(ctx, headX, headY, headR);
+  }
+
+  // Render goggles, NVGs, and gasmask respirators cleanly OVER the helmet brim!
+  if (maskOverHelmet) {
+    drawCartoonFace(ctx, headX, headY + 0.5, {
+      mood,
+      eyeColor: cfg.eyeColor,
+      skin: cfg.skin,
+      beard: cfg.beardColor,
+      mask: cfg.mask,
+      visorColor: cfg.visorColor,
+    });
   }
   ctx.restore();
 
@@ -1132,7 +1532,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     const smearStart = -1.92;
     const smearEnd = Math.max(smearStart + 0.35, weaponAngle + 0.16);
     ctx.save();
-    // Wide golden-amber outer glow arc
     ctx.globalAlpha = smearAlpha * 0.48;
     ctx.strokeStyle = style === 'dual' ? '#67e8f9' : '#fbbf24';
     ctx.lineWidth = 11.5;
@@ -1141,7 +1540,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     ctx.arc(3, 0, 27, smearStart, smearEnd);
     ctx.stroke();
 
-    // Crisp white razor inner motion edge
     ctx.globalAlpha = smearAlpha * 0.85;
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 4.2;
@@ -1149,7 +1547,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     ctx.arc(3, 0, 30, smearStart + 0.25, smearEnd);
     ctx.stroke();
 
-    // Secondary trailing X-arc for dual blade strikers
     if (style === 'dual') {
       ctx.globalAlpha = smearAlpha * 0.62;
       ctx.strokeStyle = '#fef08a';
@@ -1160,7 +1557,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     }
     ctx.restore();
   } else if (style === 'thrust' && atk > 0.26 && atk < 0.68) {
-    // Piercing sonic thrust speed lines & cone!
     const thrustAlpha = Math.sin(((atk - 0.26) / 0.42) * Math.PI);
     ctx.save();
     ctx.globalAlpha = thrustAlpha * 0.78;
@@ -1180,7 +1576,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     ctx.stroke();
     ctx.restore();
   } else if (style === 'throw' && atk > 0.25 && atk < 0.62) {
-    // Curved air-whoosh release arc
     const whooshAlpha = Math.sin(((atk - 0.25) / 0.37) * Math.PI) * 0.65;
     ctx.save();
     ctx.globalAlpha = whooshAlpha;
@@ -1192,7 +1587,6 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
     ctx.stroke();
     ctx.restore();
   } else if (style === 'aim' && atk > 0.46 && atk < 0.86) {
-    // Ejected spinning brass shell glint + tiny recoil smoke puff on firearm shot!
     const t = (0.86 - atk) / 0.40;
     ctx.save();
     ctx.globalAlpha = Math.max(0, 1 - t) * 0.9;
@@ -1205,34 +1599,53 @@ export function drawCartoonHumanoid(ctx: CanvasRenderingContext2D, cfg: Humanoid
 
   ctx.rotate(weaponAngle);
 
-  const handX = 8.8 + weaponPushX * 0.58;
+  // Articulated 2-segment bent-elbow front arm!
+  const handX = 9.0 + weaponPushX * 0.58;
   const handY = 4.4 + weaponPushY * 0.58;
-  drawInkLimb(ctx, 0, 0, handX, handY, 4.8, cfg.armColor ?? cfg.skin);
-  // Gauntlet / wrist bracer band
-  drawCelEllipse(ctx, handX * 0.72, handY * 0.72, 2.6, 2.5, cfg.beltColor ?? '#475569', {
-    highlight: 'rgba(255,255,255,0.35)',
-    lineWidth: 1.3,
+  const elbowX = handX * 0.44 - 1.6;
+  const elbowY = handY * 0.58 + 2.4;
+  drawSculptedLimb(ctx, 0, 0, elbowX, elbowY, 5.7, 4.6, armBase, {
+    highlight: 'rgba(255,255,255,0.28)',
+    shadow: 'rgba(0,0,0,0.24)',
+    lineWidth: 1.75,
   });
-  drawCelEllipse(ctx, handX, handY, 3.3, 3.0, cfg.skin, { highlight: '#ffffff', lineWidth: 1.7 });
+  drawSculptedLimb(ctx, elbowX, elbowY, handX, handY, 4.7, 3.8, armBase, {
+    highlight: 'rgba(255,255,255,0.28)',
+    shadow: 'rgba(0,0,0,0.22)',
+    cuffColor: cuffAccent,
+    lineWidth: 1.7,
+  });
 
+  // Draw weapon tucked cleanly in hand grip, then thumb/knuckles gripping over hilt!
   ctx.save();
   ctx.translate(handX, handY);
   cfg.drawWeapon(ctx, firing, atk);
   ctx.restore();
 
+  drawCelEllipse(ctx, handX, handY, 3.3, 2.9, handFill, {
+    highlight: '#ffffff',
+    shadow: 'rgba(0,0,0,0.22)',
+    lineWidth: 1.55,
+  });
+
   if (cfg.pauldronColor) {
-    drawCelEllipse(ctx, 0, -1.2, 6.0, 5.1, cfg.pauldronColor, {
-      highlight: 'rgba(255,255,255,0.48)',
-      shadow: 'rgba(0,0,0,0.3)',
-      lineWidth: 1.95,
+    drawCelEllipse(ctx, 0, -1.3, 6.2, 5.2, cfg.pauldronColor, {
+      highlight: 'rgba(255,255,255,0.50)',
+      shadow: 'rgba(0,0,0,0.32)',
+      lineWidth: 1.85,
     });
     if (cfg.pauldronTrim) {
       ctx.strokeStyle = cfg.pauldronTrim;
       ctx.lineWidth = 1.6;
       ctx.beginPath();
-      ctx.arc(0, -1.2, 3.8, 0.18, Math.PI * 0.88);
+      ctx.arc(0, -1.3, 3.9, 0.15, Math.PI * 0.9);
       ctx.stroke();
     }
+    // Crisp metallic pauldron boss rivet
+    ctx.fillStyle = '#fef9c3';
+    ctx.beginPath();
+    ctx.arc(-1.8, -2.8, 1.0, 0, Math.PI * 2);
+    ctx.fill();
   }
   ctx.restore();
 
