@@ -190,4 +190,75 @@ describe('Flash-Cartoon Vector Renderer, Zero Camera Shake & Combat Popups', () 
     const xs = engine.popups.map((p) => p.x);
     expect(Math.max(...xs) - Math.min(...xs)).toBeGreaterThan(20);
   });
+
+  it('spawns muzzle_flash, impact_cross, and ground_shockwave and renders all 12 upgraded Ultimates cleanly', async () => {
+    const {
+      renderActiveUltimates,
+      renderBeams,
+      renderParticles,
+      renderPopups,
+      renderProjectiles,
+      renderScorchMarks,
+      renderSlashes,
+      renderUltimateAtmosphere,
+    } = await import('../render/vfxRenderer');
+
+    // 1. Verify ranged gunpowder/energy units emit directional muzzle_flash & beam hits emit impact_cross
+    const engCombat = new GameEngine();
+    engCombat.startNewGame('normal', 3030);
+    engCombat.player.eraIndex = 9;
+    const sniper = engCombat.spawnUnit('player', UNIT_BY_ID.railgun_sniper);
+    sniper.x = 700;
+    sniper.attackCooldown = 0;
+    const target = engCombat.spawnUnit('enemy', UNIT_BY_ID.colossus_mech);
+    target.x = 920;
+    target.attackCooldown = 10;
+    engCombat.step(0.05);
+
+    expect(engCombat.particles.some((p) => p.shape === 'muzzle_flash')).toBe(true);
+    expect(engCombat.particles.some((p) => p.shape === 'impact_cross')).toBe(true);
+
+    // Heavy melee slam spawns perspective ground_shockwave
+    const titan = engCombat.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    titan.x = 1200;
+    titan.attackCooldown = 0;
+    const enemyHeavy = engCombat.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    enemyHeavy.x = 1228;
+    enemyHeavy.attackCooldown = 10;
+    engCombat.step(0.05);
+    expect(engCombat.particles.some((p) => p.shape === 'ground_shockwave')).toBe(true);
+
+    const mockCombat = createMockCanvasContext();
+    const snapCombat = engCombat.getSnapshot();
+    renderSlashes(mockCombat.ctx, snapCombat.slashes);
+    renderProjectiles(mockCombat.ctx, snapCombat.projectiles);
+    renderBeams(mockCombat.ctx, snapCombat.beams);
+    renderParticles(mockCombat.ctx, snapCombat.particles);
+    renderPopups(mockCombat.ctx, snapCombat.popups);
+    expect(mockCombat.drawCalls).toBeGreaterThan(25);
+
+    // 2. Verify all 12 Era Ultimates trigger, animate, impact, and render rich sky & world VFX cleanly!
+    for (let eraIdx = 0; eraIdx < ERAS.length; eraIdx++) {
+      const eng = new GameEngine();
+      eng.startNewGame('normal', 4000 + eraIdx);
+      eng.player.eraIndex = eraIdx;
+      eng.player.ultimateCooldown = 0;
+      eng.player.xp = ERAS[eraIdx].ultimate.xpCost + 1000;
+      const eUnit = eng.spawnUnit('enemy', ERAS[eraIdx].units[0]);
+      eUnit.x = 1100;
+      eUnit.attackCooldown = 10;
+
+      expect(eng.triggerUltimate('player')).toBe(true);
+      for (let t = 0; t < 18; t++) eng.step(0.05);
+
+      const snap = eng.getSnapshot();
+      const mock = createMockCanvasContext();
+      renderUltimateAtmosphere(mock.ctx, snap.ultimates, 852);
+      renderScorchMarks(mock.ctx, snap.scorchMarks);
+      renderActiveUltimates(mock.ctx, snap.ultimates);
+      renderBeams(mock.ctx, snap.beams);
+      renderParticles(mock.ctx, snap.particles);
+      expect(mock.drawCalls, `Ultimate era ${eraIdx} (${ERAS[eraIdx].ultimate.kind}) emitted too few draw calls`).toBeGreaterThan(15);
+    }
+  });
 });

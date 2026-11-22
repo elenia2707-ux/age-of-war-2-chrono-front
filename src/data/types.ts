@@ -450,7 +450,18 @@ export interface ParticleEntity {
   life: number;
   maxLife: number;
   gravity: number;
-  shape: 'circle' | 'spark' | 'smoke' | 'ring' | 'debris' | 'flash_star' | 'fireball' | 'dust_wave';
+  shape:
+    | 'circle'
+    | 'spark'
+    | 'smoke'
+    | 'ring'
+    | 'debris'
+    | 'flash_star'
+    | 'fireball'
+    | 'dust_wave'
+    | 'ground_shockwave'
+    | 'muzzle_flash'
+    | 'impact_cross';
   rotation?: number;
   vRot?: number;
 }
