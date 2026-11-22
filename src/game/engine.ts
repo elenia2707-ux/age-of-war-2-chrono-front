@@ -9,10 +9,14 @@ import {
   getArmorPierceFraction,
   getAttackSpeedMult,
   getBaseMaxHpMult,
+  getBerserkAttackSpeedMult,
+  getBerserkDamageMult,
   getCostDiscountMult,
   getCritChanceBonus,
   getCritDamageBonus,
   getExecutionerDamageMult,
+  getFeverDurationSec,
+  getFeverPowerBonus,
   getGoldIncomeMult,
   getKillGoldMult,
   getKillXpMult,
@@ -25,6 +29,8 @@ import {
   getRegenRatePerSec,
   getSiegeDamageMult,
   getSplashRadiusMult,
+  getSupplyCrateCooldownMult,
+  getSupplyCrateRewardMult,
   getThornsReflectRatio,
   getTrainSpeedMult,
   getTurretAttackSpeedMult,
@@ -33,6 +39,10 @@ import {
   getUltimateCooldownMult,
   getUltimateDamageMult,
   getUltimateXpCostMult,
+  getVanguardShieldRatio,
+  getVeteranRankForKills,
+  getVeteranSpawnChance,
+  getVeteranStatMult,
   getWeaponDamageMult,
   getXpMasteryMult,
 } from '../data/upgrades';
@@ -323,6 +333,18 @@ export class GameEngine {
       syncUltCooldown();
       const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
       this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.26, 'heal');
+    } else if (id === 'vanguard_shield') {
+      const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          const nextMaxShield = Math.round(u.maxHp * shieldRatio);
+          const gain = Math.max(0, nextMaxShield - u.maxShield);
+          u.maxShield = nextMaxShield;
+          u.shield = Math.min(u.maxShield, u.shield + gain);
+          u.upgradeFlash = 1;
+        }
+      }
+      this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#38bdf8', 1.2, 'elemental');
     } else if (id === 'ultimate_power') {
       syncUltCooldown();
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#f472b6', 1.22, 'crit');
@@ -330,7 +352,8 @@ export class GameEngine {
       def.category === 'offense' ||
       def.category === 'defense' ||
       def.category === 'tactics' ||
-      def.category === 'special'
+      def.category === 'special' ||
+      def.category === 'command'
     ) {
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
@@ -344,7 +367,9 @@ export class GameEngine {
             ? '#4ade80'
             : def.category === 'special'
               ? '#22d3ee'
-              : '#c084fc';
+              : def.category === 'command'
+                ? '#f43f5e'
+                : '#c084fc';
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, col, 1.18, 'crit');
     } else {
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#facc15', 1.18, 'gold');
@@ -667,8 +692,10 @@ export class GameEngine {
 
     if (crate.hp <= 0) {
       const winner = this.getFaction(attackerTeam);
-      const rewardGold = Math.round(crate.goldReward * (winner.feverTimer > 0 ? 1.25 : 1));
-      const rewardXp = Math.round(crate.xpReward * getXpMasteryMult(winner.upgrades));
+      const crateRewardMult = getSupplyCrateRewardMult(winner.upgrades);
+      const feverGoldBonus = winner.feverTimer > 0 ? 1.25 + getFeverPowerBonus(winner.upgrades) : 1;
+      const rewardGold = Math.round(crate.goldReward * crateRewardMult * feverGoldBonus);
+      const rewardXp = Math.round(crate.xpReward * crateRewardMult * getXpMasteryMult(winner.upgrades));
       winner.gold += rewardGold;
       winner.xp += rewardXp;
       winner.totalXp += rewardXp;
@@ -707,7 +734,8 @@ export class GameEngine {
   private updateSupplyCrates(dt: number): void {
     if (this.elapsed >= this.nextSupplyCrateAt && this.supplyCrates.length === 0) {
       this.spawnSupplyCrate();
-      this.nextSupplyCrateAt = this.elapsed + 36 + this.random() * 10;
+      const cdMult = getSupplyCrateCooldownMult(this.player.upgrades);
+      this.nextSupplyCrateAt = this.elapsed + (36 + this.random() * 10) * cdMult;
     }
 
     for (let i = this.supplyCrates.length - 1; i >= 0; i--) {
@@ -769,8 +797,8 @@ export class GameEngine {
     const pEra = getEra(this.player.eraIndex);
     const eEra = getEra(this.enemy.eraIndex);
 
-    const pFeverGold = this.player.feverTimer > 0 ? 1.25 : 1;
-    const eFeverGold = this.enemy.feverTimer > 0 ? 1.25 : 1;
+    const pFeverGold = this.player.feverTimer > 0 ? 1.25 + getFeverPowerBonus(this.player.upgrades) : 1;
+    const eFeverGold = this.enemy.feverTimer > 0 ? 1.25 + getFeverPowerBonus(this.enemy.upgrades) : 1;
     this.player.gold += pEra.passiveGoldPerSec * getGoldIncomeMult(this.player.upgrades) * pFeverGold * dt;
     this.enemy.gold +=
       eEra.passiveGoldPerSec * diff.aiGoldMultiplier * getGoldIncomeMult(this.enemy.upgrades) * eFeverGold * dt;
@@ -859,7 +887,11 @@ export class GameEngine {
     const spawnX = team === 'player' ? PLAYER_SPAWN_X : ENEMY_SPAWN_X;
     const jitter = (this.random() - 0.5) * 6;
     const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
-    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades) * statMult);
+    const vetSpawnChance = getVeteranSpawnChance(faction.upgrades);
+    const initialVetRank: 0 | 1 | 2 | 3 = vetSpawnChance > 0 && this.random() < vetSpawnChance ? 1 : 0;
+    const vetHpMult = getVeteranStatMult(initialVetRank, faction.upgrades);
+    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades) * vetHpMult * statMult);
+    const maxShield = Math.round(scaledMaxHp * getVanguardShieldRatio(faction.upgrades));
     const unit: UnitEntity = {
       uid: this.nextUid++,
       team,
@@ -868,6 +900,8 @@ export class GameEngine {
       y: GROUND_Y,
       hp: scaledMaxHp,
       maxHp: scaledMaxHp,
+      shield: maxShield,
+      maxShield,
       displayHp: scaledMaxHp,
       displayHpHold: 0,
       state: 'walk',
@@ -876,11 +910,11 @@ export class GameEngine {
       walkPhase: this.random() * Math.PI * 2,
       hitFlash: 0,
       lastHitCrit: false,
-      upgradeFlash: 0,
+      upgradeFlash: initialVetRank > 0 ? 0.85 : 0,
       knockbackVel: 0,
       deathTimer: 0,
-      kills: 0,
-      vetRank: 0,
+      kills: initialVetRank > 0 ? 1 : 0,
+      vetRank: initialVetRank,
     };
     this.units.push(unit);
     faction.unitsSpawned += 1;
@@ -901,8 +935,9 @@ export class GameEngine {
       const enemyBaseFront = team === 'player' ? ENEMY_BASE_FRONT_X : PLAYER_BASE_FRONT_X;
       const teamFaction = this.getFaction(team);
       const feverOn = teamFaction.feverTimer > 0;
-      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades) * (feverOn ? 1.25 : 1);
-      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades) * (feverOn ? 1.2 : 1);
+      const feverPower = feverOn ? getFeverPowerBonus(teamFaction.upgrades) : 0;
+      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades) * (feverOn ? 1.25 + feverPower : 1);
+      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades) * (feverOn ? 1.2 + feverPower * 0.6 : 1);
       const rangeMult = getRangeMult(teamFaction.upgrades);
       const regenRate = getRegenRatePerSec(teamFaction.upgrades);
 
@@ -931,6 +966,23 @@ export class GameEngine {
               shape: 'circle',
             });
           }
+        }
+
+        // Berserk Fury crimson aura sparks on wounded fighters!
+        if (teamFaction.upgrades.berserk_fury > 0 && u.hp / Math.max(1, u.maxHp) <= 0.58 && this.random() < dt * 2.6) {
+          this.particles.push({
+            x: u.x + (this.random() - 0.5) * 18,
+            y: GROUND_Y - u.def.height * 0.55 - (u.def.hoverHeight ?? 0),
+            vx: (this.random() - 0.5) * 20,
+            vy: -42 - this.random() * 24,
+            size: 3.2,
+            color: '#f43f5e',
+            alpha: 0.88,
+            life: 0.3,
+            maxLife: 0.3,
+            gravity: -18,
+            shape: 'spark',
+          });
         }
 
         // Fighting-game delayed white/gold HP drain bar on units
@@ -986,10 +1038,13 @@ export class GameEngine {
         if (inRangeOfUnit || inRangeOfCrate || inRangeOfBase) {
           u.state = 'attack';
           if (u.attackCooldown <= 0) {
+            const hpRatio = u.hp / Math.max(1, u.maxHp);
+            const berserkSpd = getBerserkAttackSpeedMult(teamFaction.upgrades, hpRatio);
             const hitCrateFirst = inRangeOfCrate && (!inRangeOfUnit || minCrateDist <= minEnemyDist + 16);
             if (hitCrateFirst && targetCrate) {
-              const vetMult = u.vetRank === 3 ? 1.5 : u.vetRank === 2 ? 1.3 : u.vetRank === 1 ? 1.15 : 1;
-              const crateDmg = u.def.damage * getWeaponDamageMult(teamFaction.upgrades) * vetMult;
+              const vetMult = getVeteranStatMult(u.vetRank, teamFaction.upgrades);
+              const berserkDmg = getBerserkDamageMult(teamFaction.upgrades, hpRatio);
+              const crateDmg = u.def.damage * getWeaponDamageMult(teamFaction.upgrades) * vetMult * berserkDmg;
               this.callbacks.onSound?.(u.def.attackSound);
               if (!u.def.projectile) {
                 this.spawnMeleeSlash(u, u.x + dir * (u.def.width * 0.6), GROUND_Y - u.def.height * 0.72, dir, false);
@@ -998,7 +1053,7 @@ export class GameEngine {
             } else {
               this.performUnitAttack(u, inRangeOfUnit ? target : null);
             }
-            u.attackCooldown = 1 / (u.def.attackRate * atkSpdMult);
+            u.attackCooldown = 1 / (u.def.attackRate * atkSpdMult * berserkSpd);
             u.attackAnim = 1;
           }
         } else {
@@ -1073,13 +1128,17 @@ export class GameEngine {
     const critChance = Math.min(0.85, def.critChance + getCritChanceBonus(attackerFaction.upgrades));
     const critMult = CRIT_MULTIPLIER + getCritDamageBonus(attackerFaction.upgrades);
     const isCrit = this.random() < critChance;
-    const vetDamageMult =
-      attacker.vetRank === 3 ? 1.5 : attacker.vetRank === 2 ? 1.3 : attacker.vetRank === 1 ? 1.15 : 1;
+    const vetDamageMult = getVeteranStatMult(attacker.vetRank, attackerFaction.upgrades);
+    const berserkDamageMult = getBerserkDamageMult(
+      attackerFaction.upgrades,
+      attacker.hp / Math.max(1, attacker.maxHp),
+    );
     const aiDmgMult = attacker.team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
     const rawDamage =
       def.damage *
       getWeaponDamageMult(attackerFaction.upgrades) *
       vetDamageMult *
+      berserkDamageMult *
       aiDmgMult *
       (isCrit ? critMult : 1);
     const rangeMult = getRangeMult(attackerFaction.upgrades);
@@ -1896,10 +1955,16 @@ export class GameEngine {
     const executeBonus = isExecute ? getExecutionerDamageMult(attackerFaction.upgrades) : 1;
 
     const finalDamage = Math.max(1, Math.round(rawDamage * heavyBonus * executeBonus * (1 - effectiveArmor)));
-    victim.hp -= finalDamage;
+    const hadShield = victim.shield > 0;
+    const shieldAbsorbed = hadShield ? Math.min(victim.shield, finalDamage) : 0;
+    victim.shield -= shieldAbsorbed;
+    const hpDamage = finalDamage - shieldAbsorbed;
+    victim.hp -= hpDamage;
     victim.hitFlash = 1;
     victim.lastHitCrit = isCrit || isExecute;
-    victim.displayHpHold = Math.max(victim.displayHpHold, isCrit || isExecute ? 0.28 : 0.16);
+    if (hpDamage > 0) {
+      victim.displayHpHold = Math.max(victim.displayHpHold, isCrit || isExecute ? 0.28 : 0.16);
+    }
     victim.knockbackVel +=
       knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88) * getKnockbackResistMult(victimFaction.upgrades);
 
@@ -1938,18 +2003,26 @@ export class GameEngine {
     const impactX = victim.x - hitDir * Math.min(14, victim.def.width * 0.3);
     const impactY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
 
+    // Vanguard Shield shatter ring when energy barrier absorbs its final blow!
+    if (hadShield && victim.shield <= 0) {
+      this.spawnRing(victim.x, impactY, '#38bdf8', 32);
+    }
+
     // Supercharged arcade hit-impact starburst, directional sparks & recoil ground dust wave!
-    const sparkColor = isExecute
-      ? '#fb7185'
-      : isCrit
-        ? '#fde047'
-        : isThornsReflect
-          ? '#fb923c'
-          : victim.def.isMechanical
-            ? '#fef08a'
-            : armorPierce
-              ? '#67e8f9'
-              : '#ffedd5';
+    const sparkColor =
+      shieldAbsorbed > 0 && hpDamage === 0
+        ? '#38bdf8'
+        : isExecute
+          ? '#fb7185'
+          : isCrit
+            ? '#fde047'
+            : isThornsReflect
+              ? '#fb923c'
+              : victim.def.isMechanical
+                ? '#fef08a'
+                : armorPierce
+                  ? '#67e8f9'
+                  : '#ffedd5';
     this.spawnFlashStar(impactX, impactY, sparkColor, isCrit || isExecute ? 28 : 16);
     this.spawnDirectionalSparks(
       impactX,
@@ -1969,22 +2042,27 @@ export class GameEngine {
 
     // Distinct readable color-coded popup styling by hit type & victim team
     const popupKind: DamagePopup['kind'] =
-      isCrit || isExecute
-        ? 'crit'
-        : victim.team === 'player'
-          ? 'player_hit'
-          : armorPierce
-            ? 'elemental'
-            : 'normal';
-    const popupColor = isExecute
-      ? '#fb7185'
-      : popupKind === 'crit'
-        ? '#fde047'
-        : popupKind === 'player_hit'
-          ? '#fca5a5'
-          : popupKind === 'elemental'
-            ? '#67e8f9'
-            : '#ffffff';
+      shieldAbsorbed > 0 && hpDamage === 0
+        ? 'elemental'
+        : isCrit || isExecute
+          ? 'crit'
+          : victim.team === 'player'
+            ? 'player_hit'
+            : armorPierce
+              ? 'elemental'
+              : 'normal';
+    const popupColor =
+      shieldAbsorbed > 0 && hpDamage === 0
+        ? '#38bdf8'
+        : isExecute
+          ? '#fb7185'
+          : popupKind === 'crit'
+            ? '#fde047'
+            : popupKind === 'player_hit'
+              ? '#fca5a5'
+              : popupKind === 'elemental'
+                ? '#67e8f9'
+                : '#ffffff';
 
     this.addPopup(
       victim.x + (this.random() - 0.5) * 16,
@@ -2004,7 +2082,7 @@ export class GameEngine {
       const loser = this.getFaction(victim.team);
       const diff = DIFFICULTIES[this.difficulty];
 
-      const feverGoldMult = killer.feverTimer > 0 ? 1.25 : 1;
+      const feverGoldMult = killer.feverTimer > 0 ? 1.25 + getFeverPowerBonus(killer.upgrades) : 1;
       const goldMult =
         (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades) * feverGoldMult;
       const xpMult =
@@ -2020,16 +2098,16 @@ export class GameEngine {
       killer.totalXp += rewardXp;
       killer.kills += 1;
 
-      // Unit Veteran Promotion (1 kill -> ★, 3 kills -> ★★, 5 kills -> ★★★)!
+      // Unit Veteran Promotion (accelerated & amplified by veteran_drill upgrade)!
       if (attackerUnit && attackerUnit.state !== 'dead') {
         attackerUnit.kills += 1;
-        const nextRank: 0 | 1 | 2 | 3 =
-          attackerUnit.kills >= 5 ? 3 : attackerUnit.kills >= 3 ? 2 : attackerUnit.kills >= 1 ? 1 : 0;
+        const nextRank = getVeteranRankForKills(attackerUnit.kills, killer.upgrades);
         if (nextRank > attackerUnit.vetRank) {
           attackerUnit.vetRank = nextRank;
-          const vetHpMult = nextRank === 3 ? 1.5 : nextRank === 2 ? 1.3 : 1.15;
+          const vetHpMult = getVeteranStatMult(nextRank, killer.upgrades);
+          const statMult = attackerTeam === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
           const newMax = Math.round(
-            attackerUnit.def.maxHp * getArmorHpMult(killer.upgrades) * vetHpMult,
+            attackerUnit.def.maxHp * getArmorHpMult(killer.upgrades) * vetHpMult * statMult,
           );
           const hpDelta = Math.max(0, newMax - attackerUnit.maxHp);
           attackerUnit.maxHp = newMax;
@@ -2050,13 +2128,15 @@ export class GameEngine {
         }
       }
 
-      // Chrono Fever Kill-Streak Charge (10 kills -> 10s Golden Rush!)
+      // Chrono Fever Kill-Streak Charge (duration & power scaled by chrono_fever upgrade!)
       if (killer.feverTimer <= 0) {
         killer.feverKills += 1;
         if (killer.feverKills >= FEVER_KILLS_TARGET) {
           killer.feverKills = 0;
-          killer.feverTimer = FEVER_DURATION_SEC;
-          killer.feverDuration = FEVER_DURATION_SEC;
+          const feverSec = getFeverDurationSec(FEVER_DURATION_SEC, killer.upgrades);
+          const feverBonusPct = Math.round(getFeverPowerBonus(killer.upgrades) * 100);
+          killer.feverTimer = feverSec;
+          killer.feverDuration = feverSec;
           for (const ally of this.units) {
             if (ally.team === attackerTeam && ally.state !== 'dead') {
               ally.upgradeFlash = 1;
@@ -2066,7 +2146,7 @@ export class GameEngine {
             this.callbacks.onSound?.('evolve');
             this.callbacks.onBanner?.(
               '크로노 피버 발동!',
-              '10초간 전 아군 공속 +25% · 이속 +20% · 골드 +25%',
+              `${Math.round(feverSec)}초간 전 아군 공속 +${25 + feverBonusPct}% · 골드 +${25 + feverBonusPct}%`,
               '#facc15',
             );
           }

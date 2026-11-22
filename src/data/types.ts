@@ -68,9 +68,14 @@ export type UpgradeId =
   | 'xp_mastery'
   | 'ult_efficiency'
   | 'executioner'
-  | 'turret_rapid';
+  | 'turret_rapid'
+  // Command (지휘)
+  | 'vanguard_shield'
+  | 'berserk_fury'
+  | 'veteran_drill'
+  | 'chrono_fever';
 
-export type UpgradeCategory = 'offense' | 'defense' | 'tactics' | 'empire' | 'special';
+export type UpgradeCategory = 'offense' | 'defense' | 'tactics' | 'empire' | 'special' | 'command';
 
 export type UpgradeLevels = Record<UpgradeId, number>;
 
@@ -350,6 +355,8 @@ export interface UnitEntity {
   y: number;
   hp: number;
   maxHp: number;
+  shield: number;
+  maxShield: number;
   displayHp: number;
   displayHpHold: number;
   state: 'walk' | 'attack' | 'idle' | 'dead';

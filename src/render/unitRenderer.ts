@@ -240,7 +240,8 @@ export function renderUnitEntity(
   }
 
   const topOffset = getUnitHpBarOffset(unit.def.id, unit.def.height);
-  const showHpBar = unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5);
+  const showHpBar =
+    unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5 || unit.shield > 0.5);
 
   // 5. Crisp Cel-Framed Overhead HP Bar with Delayed White/Gold Fighting-Game Trail!
   if (showHpBar) {
@@ -289,11 +290,29 @@ export function renderUnitEntity(
     ctx.beginPath();
     ctx.roundRect(barLeft, barY, barW, barH, 3);
     ctx.stroke();
+
+    // Gleaming Cyan Vanguard Energy Shield strip riding cleanly atop the HP bar!
+    if (unit.shield > 0.5 && unit.maxShield > 0) {
+      const shFrac = Math.max(0, Math.min(1, unit.shield / unit.maxShield));
+      const shY = barY - 4.5;
+      const shW = Math.max(3, barW * shFrac);
+      ctx.fillStyle = 'rgba(12, 22, 38, 0.78)';
+      ctx.beginPath();
+      ctx.roundRect(barLeft, shY, barW, 3.6, 1.8);
+      ctx.fill();
+      ctx.fillStyle = '#38bdf8';
+      ctx.beginPath();
+      ctx.roundRect(barLeft, shY, shW, 3.6, 1.8);
+      ctx.fill();
+      ctx.fillStyle = 'rgba(224, 242, 254, 0.75)';
+      ctx.fillRect(barLeft + 1, shY + 0.5, Math.max(0, shW - 2), 1.1);
+    }
   }
 
   // 6. Gleaming Golden Veteran Promotion Stars (★ / ★★ / ★★★) above promoted fighters!
   if (unit.state !== 'dead' && unit.vetRank > 0) {
-    const starY = spriteY - topOffset - (showHpBar ? 19 : 9);
+    const hasShieldBar = showHpBar && unit.shield > 0.5 && unit.maxShield > 0;
+    const starY = spriteY - topOffset - (hasShieldBar ? 23 : showHpBar ? 19 : 9);
     const stars = '★'.repeat(unit.vetRank);
     ctx.save();
     ctx.font = '900 10.5px system-ui, sans-serif';

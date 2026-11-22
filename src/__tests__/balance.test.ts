@@ -107,14 +107,15 @@ describe('12-Era & 6-Difficulty Balance & Catalog Integrity', () => {
     expect(DIFFICULTIES.mythic.aiUnitStatMult).toBeGreaterThan(1.2);
   });
 
-  it('defines 20 gold spec upgrades (5 categories x 4) with strictly increasing gold costs up to Lv.10', () => {
-    expect(UPGRADES).toHaveLength(20);
+  it('defines 24 gold spec upgrades (6 categories x 4) with strictly increasing gold costs up to Lv.10', () => {
+    expect(UPGRADES).toHaveLength(24);
     expect(MAX_UPGRADE_LEVEL).toBe(10);
     expect(getUpgradesByCategory('offense')).toHaveLength(4);
     expect(getUpgradesByCategory('defense')).toHaveLength(4);
     expect(getUpgradesByCategory('tactics')).toHaveLength(4);
     expect(getUpgradesByCategory('empire')).toHaveLength(4);
     expect(getUpgradesByCategory('special')).toHaveLength(4);
+    expect(getUpgradesByCategory('command')).toHaveLength(4);
     for (const upg of UPGRADES) {
       expect(upg.maxLevel).toBe(MAX_UPGRADE_LEVEL);
       expect(upg.costs).toHaveLength(MAX_UPGRADE_LEVEL);

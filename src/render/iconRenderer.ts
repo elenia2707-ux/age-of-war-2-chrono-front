@@ -601,5 +601,125 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
       drawEnergyOrb(ctx, 25, 8, 5.2, '#22d3ee', '#ffffff');
       break;
     }
+
+    case 'vanguard_shield': {
+      // Radiant hexagonal cyan-gold Aegis barrier crest!
+      drawCelPoly(
+        ctx,
+        [
+          [0, -25],
+          [22, -13],
+          [20, 10],
+          [0, 26],
+          [-20, 10],
+          [-22, -13],
+        ],
+        '#0ea5e9',
+        { highlight: '#bae6fd', shadow: '#0369a1', lineWidth: 2.5 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [0, -17],
+          [14, -8],
+          [12, 7],
+          [0, 18],
+          [-12, 7],
+          [-14, -8],
+        ],
+        '#38bdf8',
+        { highlight: '#ffffff', shadow: '#0284c7', lineWidth: 1.7 },
+      );
+      drawEnergyOrb(ctx, 0, -1, 7.2, '#facc15', '#ffffff');
+      break;
+    }
+
+    case 'berserk_fury': {
+      // Blazing crimson-amber crossed battle-axes & raging fury flame!
+      drawCelPoly(
+        ctx,
+        [
+          [0, -26],
+          [15, -8],
+          [22, 6],
+          [11, 23],
+          [0, 15],
+          [-11, 23],
+          [-22, 6],
+          [-15, -8],
+        ],
+        '#e11d48',
+        { highlight: '#fda4af', shadow: '#881337', lineWidth: 2.4 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [0, -17],
+          [10, 0],
+          [6, 15],
+          [0, 9],
+          [-6, 15],
+          [-10, 0],
+        ],
+        '#fb923c',
+        { highlight: '#fef08a', shadow: '#c2410c', lineWidth: 1.8 },
+      );
+      drawEnergyOrb(ctx, 0, 2, 6.2, '#fde047', '#ffffff');
+      break;
+    }
+
+    case 'veteran_drill': {
+      // Triple-star gold commander chevron medal with crimson ribbon!
+      drawCelPoly(
+        ctx,
+        [
+          [-18, -22],
+          [18, -22],
+          [22, 6],
+          [0, 24],
+          [-22, 6],
+        ],
+        '#b91c1c',
+        { highlight: '#f87171', shadow: '#7f1d1d', lineWidth: 2.4 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [-15, 2],
+          [0, 14],
+          [15, 2],
+          [15, 9],
+          [0, 21],
+          [-15, 9],
+        ],
+        '#facc15',
+        { highlight: '#fef08a', shadow: '#a16207', lineWidth: 1.8 },
+      );
+      drawEnergyOrb(ctx, 0, -11, 7.5, '#facc15', '#ffffff');
+      drawEnergyOrb(ctx, -11, -5, 4.4, '#fde047', '#ffffff');
+      drawEnergyOrb(ctx, 11, -5, 4.4, '#fde047', '#ffffff');
+      break;
+    }
+
+    case 'chrono_fever': {
+      // Golden Chrono supply crate + blazing lightning fever wings!
+      drawCelRoundRect(ctx, -17, -14, 34, 30, 5, '#d97706', { highlight: '#fde047', shadow: '#78350f', lineWidth: 2.5 });
+      drawCelRoundRect(ctx, -17, -4, 34, 8, 2, '#facc15', { highlight: '#fef9c3', lineWidth: 1.6 });
+      drawCelRoundRect(ctx, -4, -14, 8, 30, 2, '#facc15', { highlight: '#fef9c3', lineWidth: 1.6 });
+      drawCelPoly(
+        ctx,
+        [
+          [3, -26],
+          [-9, -6],
+          [1, -6],
+          [-4, 12],
+          [11, -10],
+          [1, -10],
+        ],
+        '#22d3ee',
+        { highlight: '#ffffff', shadow: '#0e7490', lineWidth: 1.8 },
+      );
+      break;
+    }
   }
 }

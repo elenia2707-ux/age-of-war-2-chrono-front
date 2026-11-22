@@ -284,7 +284,7 @@ export class HudController {
       this.switchTab('turrets');
     });
 
-    const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire', 'special'];
+    const categoryOrder: UpgradeCategory[] = ['offense', 'defense', 'tactics', 'empire', 'special', 'command'];
 
     bindButtonTap(this.tabUpgradesBtn, () => {
       this.onUnlockAudio();

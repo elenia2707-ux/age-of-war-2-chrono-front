@@ -538,4 +538,138 @@ describe('GameEngine Core Simulation', () => {
     expect(hero.maxHp).toBeGreaterThan(initialHeroMaxHp);
     expect(engine.player.feverTimer).toBeGreaterThan(0);
   });
+
+  it('applies all 4 Command upgrades (vanguard_shield, berserk_fury, veteran_drill, chrono_fever)', () => {
+    // 1. Vanguard Shield grants starting shield to existing & newly spawned allies and absorbs damage before HP
+    const engShield = new GameEngine();
+    engShield.startNewGame('normal', 901);
+    engShield.player.gold = 200000;
+    const livingAlly = engShield.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    livingAlly.x = 600;
+    expect(livingAlly.maxShield).toBe(0);
+
+    for (let i = 0; i < 5; i++) expect(engShield.buyUpgrade('player', 'vanguard_shield')).toBe(true);
+    expect(livingAlly.maxShield).toBeGreaterThan(0);
+    expect(livingAlly.shield).toBeGreaterThan(0);
+
+    const shieldedUnit = engShield.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    shieldedUnit.x = 1100;
+    shieldedUnit.attackCooldown = 10;
+    expect(shieldedUnit.maxShield).toBe(Math.round(shieldedUnit.maxHp * 0.3));
+    expect(shieldedUnit.shield).toBe(shieldedUnit.maxShield);
+
+    const enemyHitter = engShield.spawnUnit('enemy', UNIT_BY_ID.clubman);
+    enemyHitter.x = 1125;
+    enemyHitter.attackCooldown = 0;
+    const hpBeforeHit = shieldedUnit.hp;
+    const shieldBeforeHit = shieldedUnit.shield;
+    engShield.step(0.05);
+    expect(shieldedUnit.shield).toBeLessThan(shieldBeforeHit);
+    expect(shieldedUnit.hp).toBe(hpBeforeHit);
+
+    // 2. Berserk Fury scales attack damage & attack speed as HP drops
+    const engFull = new GameEngine();
+    engFull.startNewGame('normal', 902);
+    engFull.player.gold = 200000;
+    for (let i = 0; i < 6; i++) expect(engFull.buyUpgrade('player', 'berserk_fury')).toBe(true);
+    const fullHpFighter = engFull.spawnUnit('player', UNIT_BY_ID.clubman);
+    fullHpFighter.x = 1000;
+    fullHpFighter.attackCooldown = 0;
+    const targetFull = engFull.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    targetFull.x = 1025;
+    targetFull.attackCooldown = 10;
+    engFull.step(0.05);
+    const dmgAtFullHp = targetFull.maxHp - targetFull.hp;
+    const cdAtFullHp = fullHpFighter.attackCooldown;
+
+    const engLow = new GameEngine();
+    engLow.startNewGame('normal', 902);
+    engLow.player.gold = 200000;
+    for (let i = 0; i < 6; i++) expect(engLow.buyUpgrade('player', 'berserk_fury')).toBe(true);
+    const woundedFighter = engLow.spawnUnit('player', UNIT_BY_ID.clubman);
+    woundedFighter.x = 1000;
+    woundedFighter.hp = woundedFighter.maxHp * 0.2;
+    woundedFighter.attackCooldown = 0;
+    const targetLow = engLow.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    targetLow.x = 1025;
+    targetLow.attackCooldown = 10;
+    engLow.step(0.05);
+    const dmgAtLowHp = targetLow.maxHp - targetLow.hp;
+    const cdAtLowHp = woundedFighter.attackCooldown;
+
+    expect(dmgAtLowHp).toBeGreaterThan(dmgAtFullHp);
+    expect(cdAtLowHp).toBeLessThan(cdAtFullHp);
+
+    // 3. Veteran Drill accelerates promotion threshold (3 kills -> ★★★ at Lv.7+) and boosts veteran stats
+    const engVet = new GameEngine();
+    engVet.startNewGame('normal', 903);
+    engVet.player.gold = 500000;
+    for (let i = 0; i < 7; i++) expect(engVet.buyUpgrade('player', 'veteran_drill')).toBe(true);
+    const elite = engVet.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    elite.vetRank = 0;
+    elite.maxHp = UNIT_BY_ID.dino_rider.maxHp;
+    elite.hp = elite.maxHp;
+    elite.x = 1200;
+
+    for (let k = 0; k < 3; k++) {
+      const f = engVet.spawnUnit('enemy', UNIT_BY_ID.clubman);
+      f.x = 1228;
+      f.hp = 1;
+      f.attackCooldown = 10;
+      elite.attackCooldown = 0;
+      engVet.step(0.05);
+    }
+    expect(elite.kills).toBe(3);
+    expect(elite.vetRank).toBe(3);
+    // Base ★★★ gives 1.5x maxHp; Lv.7 veteran_drill amplifies bonus by +105% -> ~2.025x
+    expect(elite.maxHp).toBeGreaterThan(Math.round(UNIT_BY_ID.dino_rider.maxHp * 1.75));
+
+    // 4. Chrono Fever upgrade extends fever duration and increases Supply Crate Gold/XP rewards
+    const engBaseCrate = new GameEngine();
+    engBaseCrate.startNewGame('normal', 904);
+    const baseCrate = engBaseCrate.spawnSupplyCrate(1100);
+    baseCrate.y = 326;
+    baseCrate.landed = true;
+    baseCrate.hp = 10;
+    const baseGold0 = engBaseCrate.player.gold;
+    const baseXp0 = engBaseCrate.player.xp;
+    const r0 = engBaseCrate.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    r0.x = 1065;
+    r0.attackCooldown = 0;
+    engBaseCrate.step(0.05);
+    const baseCrateGoldGain = engBaseCrate.player.gold - baseGold0;
+    const baseCrateXpGain = engBaseCrate.player.xp - baseXp0;
+
+    const engFever = new GameEngine();
+    engFever.startNewGame('normal', 904);
+    engFever.player.gold = 500000;
+    for (let i = 0; i < 6; i++) expect(engFever.buyUpgrade('player', 'chrono_fever')).toBe(true);
+    const boostedCrate = engFever.spawnSupplyCrate(1100);
+    boostedCrate.y = 326;
+    boostedCrate.landed = true;
+    boostedCrate.hp = 10;
+    const feverGold0 = engFever.player.gold;
+    const feverXp0 = engFever.player.xp;
+    const r1 = engFever.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    r1.x = 1065;
+    r1.attackCooldown = 0;
+    engFever.step(0.05);
+    const boostedCrateGoldGain = engFever.player.gold - feverGold0;
+    const boostedCrateXpGain = engFever.player.xp - feverXp0;
+    expect(boostedCrateGoldGain).toBeGreaterThan(baseCrateGoldGain * 1.6);
+    expect(boostedCrateXpGain).toBeGreaterThan(baseCrateXpGain * 1.6);
+
+    // Trigger 10 kills -> feverTimer should exceed base 10s (Lv.6 -> 16s)
+    const champ = engFever.spawnUnit('player', UNIT_BY_ID.dino_rider);
+    champ.x = 1350;
+    for (let k = 0; k < 10; k++) {
+      const m = engFever.spawnUnit('enemy', UNIT_BY_ID.clubman);
+      m.x = 1378;
+      m.hp = 1;
+      m.attackCooldown = 10;
+      champ.attackCooldown = 0;
+      engFever.step(0.05);
+    }
+    expect(engFever.player.feverTimer).toBeGreaterThan(14.5);
+  });
 });

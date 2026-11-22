@@ -223,18 +223,21 @@ export class EnemyAI {
     const eraBonus = diff.aiCounterSmartness >= 0.9 ? 3 : diff.aiCounterSmartness >= 0.75 ? 2 : 1;
     const eraCap = Math.min(diff.aiMaxUpgradeLevel, Math.max(1, enemy.eraIndex + eraBonus));
 
-    // Tactical priority order across all 20 upgrades based on live battlefield pressure
+    // Tactical priority order across all 24 upgrades based on live battlefield pressure
     let priority: UpgradeId[];
     if (enemy.baseHp < enemy.baseMaxHp * 0.65) {
       priority = [
         'fortress',
         'turret_rapid',
+        'vanguard_shield',
         'armor',
         'regeneration',
         'thorns',
+        'berserk_fury',
         'weapons',
         'lifesteal',
         'executioner',
+        'veteran_drill',
         'ultimate_power',
         'ult_efficiency',
         'attack_speed',
@@ -243,6 +246,7 @@ export class EnemyAI {
         'siege_craft',
         'mobility',
         'crit_mastery',
+        'chrono_fever',
         'xp_mastery',
         'discount',
         'economy',
@@ -254,11 +258,15 @@ export class EnemyAI {
         'xp_mastery',
         'discount',
         'bounty',
+        'chrono_fever',
         'weapons',
         'armor',
+        'vanguard_shield',
+        'veteran_drill',
         'regeneration',
         'attack_speed',
         'range_optics',
+        'berserk_fury',
         'executioner',
         'lifesteal',
         'armor_pierce',
@@ -275,10 +283,14 @@ export class EnemyAI {
       priority = [
         'weapons',
         'attack_speed',
+        'berserk_fury',
+        'veteran_drill',
         'executioner',
+        'vanguard_shield',
         'armor_pierce',
         'siege_craft',
         'crit_mastery',
+        'chrono_fever',
         'lifesteal',
         'range_optics',
         'armor',
@@ -297,12 +309,16 @@ export class EnemyAI {
     } else {
       priority = [
         'armor',
+        'vanguard_shield',
         'weapons',
         'xp_mastery',
+        'veteran_drill',
         'regeneration',
         'attack_speed',
+        'berserk_fury',
         'executioner',
         'range_optics',
+        'chrono_fever',
         'thorns',
         'armor_pierce',
         'lifesteal',

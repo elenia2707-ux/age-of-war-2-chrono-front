@@ -8,6 +8,7 @@ export const UPGRADE_CATEGORIES: readonly { id: UpgradeCategory; label: string }
   { id: 'tactics', label: '전술' },
   { id: 'empire', label: '제국' },
   { id: 'special', label: '특수' },
+  { id: 'command', label: '지휘' },
 ] as const;
 
 const STANDARD_UPGRADE_COSTS = [80, 170, 360, 760, 1550, 3200, 6500, 13000, 25000, 48000] as const;
@@ -236,6 +237,50 @@ export const UPGRADES: readonly UpgradeDef[] = [
     costs: FORTRESS_UPGRADE_COSTS,
     spriteKey: 'icon/upg_turret_rapid',
   },
+
+  // ============================================================================
+  // PAGE 6: 지휘 (COMMAND — 4종)
+  // ============================================================================
+  {
+    id: 'vanguard_shield',
+    category: 'command',
+    name: '선봉 방벽',
+    shortName: '선봉방벽',
+    effectText: '초기 보호막 +6%',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: TACTICAL_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_vanguard_shield',
+  },
+  {
+    id: 'berserk_fury',
+    category: 'command',
+    name: '전투 광기',
+    shortName: '전투광기',
+    effectText: '저체력 공·공속↑',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: SPECIALIST_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_berserk_fury',
+  },
+  {
+    id: 'veteran_drill',
+    category: 'command',
+    name: '정예 훈련',
+    shortName: '정예훈련',
+    effectText: '베테랑 승급·강화',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: SPECIALIST_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_veteran_drill',
+  },
+  {
+    id: 'chrono_fever',
+    category: 'command',
+    name: '피버·보급',
+    shortName: '피버보급',
+    effectText: '피버·보급상자↑',
+    maxLevel: MAX_UPGRADE_LEVEL,
+    costs: ECONOMY_UPGRADE_COSTS,
+    spriteKey: 'icon/upg_chrono_fever',
+  },
 ];
 
 export const UPGRADE_BY_ID: Record<UpgradeId, UpgradeDef> = Object.fromEntries(
@@ -268,6 +313,10 @@ export function createInitialUpgrades(): UpgradeLevels {
     ult_efficiency: 0,
     executioner: 0,
     turret_rapid: 0,
+    vanguard_shield: 0,
+    berserk_fury: 0,
+    veteran_drill: 0,
+    chrono_fever: 0,
   };
 }
 
@@ -292,7 +341,11 @@ export function getTotalUpgradeLevel(upgrades: UpgradeLevels): number {
     upgrades.xp_mastery +
     upgrades.ult_efficiency +
     upgrades.executioner +
-    upgrades.turret_rapid
+    upgrades.turret_rapid +
+    upgrades.vanguard_shield +
+    upgrades.berserk_fury +
+    upgrades.veteran_drill +
+    upgrades.chrono_fever
   );
 }
 
@@ -464,4 +517,68 @@ export function getTurretAttackSpeedMult(upgrades: UpgradeLevels): number {
 /** Extra turret range multiplier (+6% per turret_rapid level, stacks with range_optics) */
 export function getTurretRapidRangeMult(upgrades: UpgradeLevels): number {
   return 1 + upgrades.turret_rapid * 0.06;
+}
+
+// ---- COMMAND (지휘) ----
+
+/** Starting energy shield ratio of max HP (+6% per vanguard_shield level, up to 60%) */
+export function getVanguardShieldRatio(upgrades: UpgradeLevels): number {
+  return upgrades.vanguard_shield * 0.06;
+}
+
+/** Dynamic low-HP damage multiplier from Berserk Fury (up to +6% per level as HP approaches 0%) */
+export function getBerserkDamageMult(upgrades: UpgradeLevels, hpRatio: number): number {
+  if (upgrades.berserk_fury <= 0) return 1;
+  const missing = Math.max(0, Math.min(1, 1 - hpRatio));
+  return 1 + missing * upgrades.berserk_fury * 0.06;
+}
+
+/** Dynamic low-HP attack speed multiplier from Berserk Fury (up to +4% per level as HP approaches 0%) */
+export function getBerserkAttackSpeedMult(upgrades: UpgradeLevels, hpRatio: number): number {
+  if (upgrades.berserk_fury <= 0) return 1;
+  const missing = Math.max(0, Math.min(1, 1 - hpRatio));
+  return 1 + missing * upgrades.berserk_fury * 0.04;
+}
+
+/** Veteran star rank unlocked for a unit's kill count (accelerated by veteran_drill) */
+export function getVeteranRankForKills(kills: number, upgrades: UpgradeLevels): 0 | 1 | 2 | 3 {
+  const rank3Kills = upgrades.veteran_drill >= 7 ? 3 : upgrades.veteran_drill >= 3 ? 4 : 5;
+  const rank2Kills = upgrades.veteran_drill >= 3 ? 2 : 3;
+  if (kills >= rank3Kills) return 3;
+  if (kills >= rank2Kills) return 2;
+  if (kills >= 1) return 1;
+  return 0;
+}
+
+/** Veteran star stat multiplier (damage & max HP), amplified +15% per veteran_drill level */
+export function getVeteranStatMult(vetRank: 0 | 1 | 2 | 3, upgrades: UpgradeLevels): number {
+  const baseBonus = vetRank === 3 ? 0.5 : vetRank === 2 ? 0.3 : vetRank === 1 ? 0.15 : 0;
+  if (baseBonus === 0) return 1;
+  return 1 + baseBonus * (1 + upgrades.veteran_drill * 0.15);
+}
+
+/** Chance for newly deployed units to start immediately at ★ Veteran rank (unlocks at Lv.4+, up to 60%) */
+export function getVeteranSpawnChance(upgrades: UpgradeLevels): number {
+  if (upgrades.veteran_drill < 4) return 0;
+  return Math.min(0.6, (upgrades.veteran_drill - 3) * 0.085);
+}
+
+/** Chrono Fever duration in seconds (+10% per chrono_fever level) */
+export function getFeverDurationSec(baseSec: number, upgrades: UpgradeLevels): number {
+  return baseSec * (1 + upgrades.chrono_fever * 0.1);
+}
+
+/** Extra Chrono Fever attack-speed / gold bonus (+2.5% per chrono_fever level) */
+export function getFeverPowerBonus(upgrades: UpgradeLevels): number {
+  return upgrades.chrono_fever * 0.025;
+}
+
+/** Midfield Supply Crate Gold & XP reward multiplier (+15% per chrono_fever level) */
+export function getSupplyCrateRewardMult(upgrades: UpgradeLevels): number {
+  return 1 + upgrades.chrono_fever * 0.15;
+}
+
+/** Midfield Supply Crate drop interval multiplier (-4.5% per chrono_fever level, floor 0.55x) */
+export function getSupplyCrateCooldownMult(upgrades: UpgradeLevels): number {
+  return Math.max(0.55, 1 - upgrades.chrono_fever * 0.045);
 }
