@@ -21,6 +21,12 @@ import { formatDuration } from '../storage/records';
 
 export type DockTab = 'units' | 'turrets' | 'upgrades';
 
+function setTextIfChanged(el: Element, text: string): void {
+  if (el.textContent !== text) {
+    el.textContent = text;
+  }
+}
+
 function renderSpriteMarkup(iconUrl: string, alt: string, extraClass = ''): string {
   const cls = extraClass ? `card-sprite ${extraClass}` : 'card-sprite';
   if (!iconUrl) {
@@ -49,6 +55,7 @@ export class HudController {
   private minimapShell = document.getElementById('minimap-shell')!;
 
   private speedBtn = document.getElementById('btn-speed') as HTMLButtonElement;
+  private speedLabelEl = document.getElementById('speed-label')!;
   private muteBtn = document.getElementById('btn-mute') as HTMLButtonElement;
   private pauseBtn = document.getElementById('btn-pause') as HTMLButtonElement;
 
@@ -152,34 +159,36 @@ export class HudController {
     const e = snapshot.enemy;
     const era = getEra(p.eraIndex);
 
-    // Top stats (in Era 10 show spendable XP so players can budget Black Hole casts!)
-    this.goldEl.textContent = Math.floor(p.gold).toLocaleString();
-    this.xpEl.textContent =
+    // Top stats (use setTextIfChanged to prevent 60Hz DOM text-node churn on iOS WebKit)
+    setTextIfChanged(this.goldEl, Math.floor(p.gold).toLocaleString());
+    setTextIfChanged(
+      this.xpEl,
       era.evolveXp > 0
         ? `${Math.floor(p.xp).toLocaleString()}/${era.evolveXp.toLocaleString()}`
-        : `${Math.floor(p.xp).toLocaleString()} XP`;
-    this.eraBadgeEl.textContent = `${era.roman} ${era.shortName}`;
+        : `${Math.floor(p.xp).toLocaleString()} XP`,
+    );
+    setTextIfChanged(this.eraBadgeEl, `${era.roman} ${era.shortName}`);
 
-    this.playerHpEl.textContent = Math.ceil(p.baseHp).toLocaleString();
-    this.enemyHpEl.textContent = Math.ceil(e.baseHp).toLocaleString();
+    setTextIfChanged(this.playerHpEl, Math.ceil(p.baseHp).toLocaleString());
+    setTextIfChanged(this.enemyHpEl, Math.ceil(e.baseHp).toLocaleString());
     this.playerHpBar.style.width = `${Math.max(0, Math.min(100, (p.baseHp / p.baseMaxHp) * 100)).toFixed(1)}%`;
     this.enemyHpBar.style.width = `${Math.max(0, Math.min(100, (e.baseHp / e.baseMaxHp) * 100)).toFixed(1)}%`;
     if (p.feverTimer > 0) {
-      this.timerEl.textContent = `FEVER ${Math.ceil(p.feverTimer)}s`;
+      setTextIfChanged(this.timerEl, `FEVER ${Math.ceil(p.feverTimer)}s`);
       this.timerEl.classList.add('fever-active');
     } else {
-      this.timerEl.textContent = formatDuration(snapshot.elapsed);
+      setTextIfChanged(this.timerEl, formatDuration(snapshot.elapsed));
       this.timerEl.classList.remove('fever-active');
     }
 
-    // Speed visual
-    this.speedBtn.textContent = `${snapshot.speed}x`;
+    // Speed visual (only touch label span when speed actually changes!)
+    setTextIfChanged(this.speedLabelEl, `${snapshot.speed}x`);
     this.speedBtn.classList.toggle('active', snapshot.speed === 2);
 
     // Turret slot count badge & total upgrade level badge (across all 20 upgrades!)
     const installedCount = p.turrets.filter((t) => t !== null).length;
-    this.turretSlotCountEl.textContent = `${installedCount}/${p.turretSlots}`;
-    this.upgradeLevelTotalEl.textContent = `Lv${getTotalUpgradeLevel(p.upgrades)}`;
+    setTextIfChanged(this.turretSlotCountEl, `${installedCount}/${p.turretSlots}`);
+    setTextIfChanged(this.upgradeLevelTotalEl, `Lv${getTotalUpgradeLevel(p.upgrades)}`);
 
     // Rebuild bottom action cards only when era, active tab, or upgrade page changes
     if (
@@ -204,16 +213,16 @@ export class HudController {
       const nextEra = getEra(p.eraIndex + 1);
       const frac = Math.min(1, p.xp / era.evolveXp);
       const ready = p.xp >= era.evolveXp;
-      this.evolveKicker.textContent = '시대 진화';
-      this.evolveLabel.textContent = `${nextEra.roman} ${nextEra.shortName}`;
-      this.evolveSub.textContent = ready ? '진화 가능!' : `${Math.max(0, Math.ceil(era.evolveXp - p.xp))} XP`;
+      setTextIfChanged(this.evolveKicker, '시대 진화');
+      setTextIfChanged(this.evolveLabel, `${nextEra.roman} ${nextEra.shortName}`);
+      setTextIfChanged(this.evolveSub, ready ? '진화 가능!' : `${Math.max(0, Math.ceil(era.evolveXp - p.xp))} XP`);
       this.evolveFill.style.height = `${(frac * 100).toFixed(1)}%`;
       this.evolveBtn.classList.toggle('ready', ready);
       this.evolveBtn.disabled = !ready;
     } else {
-      this.evolveKicker.textContent = '최종 시대';
-      this.evolveLabel.textContent = `${era.roman} ${era.shortName}`;
-      this.evolveSub.textContent = 'MAX';
+      setTextIfChanged(this.evolveKicker, '최종 시대');
+      setTextIfChanged(this.evolveLabel, `${era.roman} ${era.shortName}`);
+      setTextIfChanged(this.evolveSub, 'MAX');
       this.evolveFill.style.height = '100%';
       this.evolveBtn.classList.remove('ready');
       this.evolveBtn.disabled = true;
@@ -234,9 +243,9 @@ export class HudController {
       ? Math.max(0, 1 - p.ultimateCooldown / Math.max(1, p.ultimateMaxCooldown))
       : Math.min(1, p.xp / Math.max(1, ultXpCost));
 
-    this.ultKicker.textContent = `필살·${fmtXpShort(ultXpCost)}`;
-    this.ultLabel.textContent = era.ultimate.shortName;
-    this.ultSub.textContent = !cdReady ? `${Math.ceil(p.ultimateCooldown)}s` : xpReady ? 'READY!' : 'XP 부족';
+    setTextIfChanged(this.ultKicker, `필살·${fmtXpShort(ultXpCost)}`);
+    setTextIfChanged(this.ultLabel, era.ultimate.shortName);
+    setTextIfChanged(this.ultSub, !cdReady ? `${Math.ceil(p.ultimateCooldown)}s` : xpReady ? 'READY!' : 'XP 부족');
     this.ultFill.style.height = `${(ultFrac * 100).toFixed(1)}%`;
     this.ultBtn.classList.toggle('ready', ultReady);
     this.ultBtn.classList.toggle('xp-short', cdReady && !xpReady);
@@ -249,7 +258,9 @@ export class HudController {
   private bindEvents(): void {
     this.speedBtn.addEventListener('click', () => {
       this.onUnlockAudio();
-      this.engine.toggleSpeed();
+      const nextSpeed = this.engine.toggleSpeed();
+      setTextIfChanged(this.speedLabelEl, `${nextSpeed}x`);
+      this.speedBtn.classList.toggle('active', nextSpeed === 2);
     });
 
     this.muteBtn.addEventListener('click', () => {
@@ -534,14 +545,14 @@ export class HudController {
 
         const costEl = card.querySelector<HTMLElement>('.card-cost');
         if (costEl) {
-          costEl.textContent = `${effCost.toLocaleString()}G`;
+          setTextIfChanged(costEl, `${effCost.toLocaleString()}G`);
         }
 
         const queuedCount = p.queue.filter((q) => q.unitId === unitId).length;
         const badge = card.querySelector<HTMLElement>('.card-queue-badge');
         if (badge) {
           badge.classList.toggle('hidden', queuedCount === 0);
-          badge.textContent = `x${queuedCount}`;
+          setTextIfChanged(badge, `x${queuedCount}`);
         }
       }
       return;
@@ -558,13 +569,13 @@ export class HudController {
 
         const levelBadge = card.querySelector<HTMLElement>('[data-upg-level]');
         if (levelBadge) {
-          levelBadge.textContent = maxed ? 'MAX' : `Lv.${level}`;
+          setTextIfChanged(levelBadge, maxed ? 'MAX' : `Lv.${level}`);
           levelBadge.classList.toggle('maxed', maxed);
         }
 
         const costEl = card.querySelector<HTMLElement>('[data-upg-cost]');
         if (costEl) {
-          costEl.textContent = maxed ? 'MAX' : `${nextCost.toLocaleString()}G`;
+          setTextIfChanged(costEl, maxed ? 'MAX' : `${nextCost.toLocaleString()}G`);
         }
 
         card.disabled = maxed;
@@ -583,11 +594,11 @@ export class HudController {
       if (kind === 'expand_slot') {
         const costEl = card.querySelector<HTMLElement>('[data-slot-cost]');
         if (nextSlotCost === null) {
-          if (costEl) costEl.textContent = 'MAX';
+          if (costEl) setTextIfChanged(costEl, 'MAX');
           card.disabled = true;
           card.classList.add('unaffordable');
         } else {
-          if (costEl) costEl.textContent = `${nextSlotCost.toLocaleString()}G`;
+          if (costEl) setTextIfChanged(costEl, `${nextSlotCost.toLocaleString()}G`);
           const affordable = p.gold >= nextSlotCost;
           card.disabled = false;
           card.classList.toggle('unaffordable', !affordable);
@@ -598,7 +609,7 @@ export class HudController {
         if (!def) continue;
         const effCost = this.engine.getEffectiveTurretCost('player', def.cost);
         const costEl = card.querySelector<HTMLElement>('.card-cost');
-        if (costEl) costEl.textContent = `${effCost.toLocaleString()}G`;
+        if (costEl) setTextIfChanged(costEl, `${effCost.toLocaleString()}G`);
         const ok = hasEmptySlot && p.gold >= effCost;
         card.classList.toggle('unaffordable', !ok);
       } else if (kind === 'sell_turret') {
@@ -609,12 +620,13 @@ export class HudController {
         const refundEl = card.querySelector<HTMLElement>('[data-sell-refund]');
         if (refundEl) {
           if (!canSell) {
-            refundEl.textContent = '포탑 없음';
+            setTextIfChanged(refundEl, '포탑 없음');
           } else {
             const oldest = installed.reduce((best, cur) => (cur!.eraIndex < best!.eraIndex ? cur : best))!;
-            refundEl.textContent = this.sellHighlightMode
-              ? '다시 눌러 판매'
-              : `+${Math.round(oldest.cost * 0.5)}G`;
+            setTextIfChanged(
+              refundEl,
+              this.sellHighlightMode ? '다시 눌러 판매' : `+${Math.round(oldest.cost * 0.5)}G`,
+            );
           }
         }
       }

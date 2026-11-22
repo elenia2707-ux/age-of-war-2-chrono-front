@@ -162,22 +162,40 @@ document.addEventListener('contextmenu', (ev) => {
   ev.preventDefault();
 });
 
-// Prevent iOS WebKit focus-scroll when tapping bottom HUD buttons
-document.addEventListener('focusin', (ev) => {
-  const target = ev.target;
-  if (target instanceof HTMLButtonElement) {
-    target.blur();
+// Prevent iOS WebKit focus-scroll without interrupting in-flight tap/click synthesis
+function blurActiveButton(): void {
+  const active = document.activeElement;
+  if (active instanceof HTMLButtonElement) {
+    active.blur();
   }
   lockViewportOrigin();
-});
+}
 
+document.addEventListener('click', () => {
+  blurActiveButton();
+  requestAnimationFrame(blurActiveButton);
+});
 window.addEventListener('scroll', lockViewportOrigin, { passive: true });
 window.visualViewport?.addEventListener('scroll', lockViewportOrigin);
 window.addEventListener(
   'touchend',
   () => {
     lockViewportOrigin();
-    requestAnimationFrame(lockViewportOrigin);
+    requestAnimationFrame(blurActiveButton);
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'pointerup',
+  () => {
+    requestAnimationFrame(blurActiveButton);
+  },
+  { passive: true },
+);
+window.addEventListener(
+  'mouseup',
+  () => {
+    requestAnimationFrame(blurActiveButton);
   },
   { passive: true },
 );
