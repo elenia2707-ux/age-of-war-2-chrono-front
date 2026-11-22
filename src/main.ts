@@ -82,8 +82,105 @@ function startMatch(difficulty: DifficultyId): void {
   hud.setVisible(true);
   overlays.hideAllGameOverlays();
   const era = getEra(0);
-  hud.showBanner(`시대 1: ${era.name}`, '골드 강화와 함께 10시대 성간 문명까지 진화하세요', era.palette.accent);
+  hud.showBanner(`시대 1: ${era.name}`, '골드 강화와 함께 12시대 초월 문명까지 진화하세요', era.palette.accent);
 }
+
+// ============================================================================
+// iOS SAFARI / STANDALONE PWA VIEWPORT & TOUCH-SCROLL LOCK
+// Prevents bottom HUD unit taps from ever scrolling, rubber-banding, or zooming
+// ============================================================================
+function lockViewportOrigin(): void {
+  const vv = window.visualViewport;
+  const displaced =
+    window.scrollX !== 0 ||
+    window.scrollY !== 0 ||
+    document.documentElement.scrollTop !== 0 ||
+    document.documentElement.scrollLeft !== 0 ||
+    document.body.scrollTop !== 0 ||
+    document.body.scrollLeft !== 0 ||
+    (vv != null && (Math.abs(vv.offsetTop) > 0.5 || Math.abs(vv.offsetLeft) > 0.5));
+
+  if (displaced) {
+    window.scrollTo(0, 0);
+    document.documentElement.scrollTop = 0;
+    document.documentElement.scrollLeft = 0;
+    document.body.scrollTop = 0;
+    document.body.scrollLeft = 0;
+  }
+}
+
+document.addEventListener(
+  'touchstart',
+  (ev) => {
+    if (ev.touches.length > 1 && ev.cancelable) {
+      const target = ev.target;
+      if (!(target instanceof Element && target.closest('button'))) {
+        ev.preventDefault();
+      }
+    }
+  },
+  { passive: false },
+);
+
+document.addEventListener(
+  'touchmove',
+  (ev) => {
+    if (ev.cancelable) {
+      ev.preventDefault();
+    }
+  },
+  { passive: false },
+);
+
+for (const evtName of ['gesturestart', 'gesturechange', 'gestureend'] as const) {
+  document.addEventListener(
+    evtName,
+    (ev) => {
+      if (ev.cancelable) {
+        ev.preventDefault();
+      }
+    },
+    { passive: false },
+  );
+}
+
+document.addEventListener(
+  'dblclick',
+  (ev) => {
+    if (ev.cancelable) {
+      ev.preventDefault();
+    }
+  },
+  { passive: false },
+);
+
+document.addEventListener('selectstart', (ev) => {
+  ev.preventDefault();
+});
+
+document.addEventListener('contextmenu', (ev) => {
+  ev.preventDefault();
+});
+
+// Prevent iOS WebKit focus-scroll when tapping bottom HUD buttons
+document.addEventListener('focusin', (ev) => {
+  const target = ev.target;
+  if (target instanceof HTMLButtonElement) {
+    target.blur();
+  }
+  lockViewportOrigin();
+});
+
+window.addEventListener('scroll', lockViewportOrigin, { passive: true });
+window.visualViewport?.addEventListener('scroll', lockViewportOrigin);
+window.addEventListener(
+  'touchend',
+  () => {
+    lockViewportOrigin();
+    requestAnimationFrame(lockViewportOrigin);
+  },
+  { passive: true },
+);
 
 // ============================================================================
 // CANVAS TOUCH / MOUSE DRAG CAMERA + DIRECT TURRET TAP-TO-SELL
@@ -166,6 +263,7 @@ window.addEventListener('keyup', (ev) => heldKeys.delete(ev.code));
 // VIEWPORT RESIZE & PORTRAIT DETECTION (iOS Standalone PWA Safe!)
 // ============================================================================
 function handleResize(): void {
+  lockViewportOrigin();
   const rect = canvas.getBoundingClientRect();
   const vv = window.visualViewport;
   const w = Math.round(rect.width || vv?.width || window.innerWidth);
@@ -216,6 +314,8 @@ overlays.showTitle(initialRecords);
 let lastFrameTime = performance.now();
 
 function frame(now: number): void {
+  lockViewportOrigin();
+
   const rawDt = Math.min(0.05, Math.max(0.001, (now - lastFrameTime) / 1000));
   lastFrameTime = now;
 

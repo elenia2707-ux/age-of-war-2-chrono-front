@@ -26,7 +26,7 @@ function renderSpriteMarkup(iconUrl: string, alt: string, extraClass = ''): stri
   if (!iconUrl) {
     return `<span class="card-sprite-placeholder ${extraClass}" aria-hidden="true"></span>`;
   }
-  return `<img class="${cls}" src="${iconUrl}" alt="${alt}" />`;
+  return `<img class="${cls}" src="${iconUrl}" alt="${alt}" draggable="false" />`;
 }
 
 export class HudController {
@@ -84,6 +84,7 @@ export class HudController {
   private renderedTab: DockTab | null = null;
   private renderedUpgradeCategory: UpgradeCategory | null = null;
   private lastQueueSignature = '';
+  private suppressUpgradeClickUntil = 0;
 
   private engine: GameEngine;
   private camera: BattleCamera;
@@ -292,7 +293,7 @@ export class HudController {
       });
     }
 
-    // Horizontal swipe on upgrade cards steps smoothly across all 4 categories
+    // Horizontal swipe on upgrade cards steps smoothly across all 5 categories
     let swipeStartX = 0;
     let swipeTracking = false;
     this.actionCardsEl.addEventListener('pointerdown', (ev) => {
@@ -305,6 +306,7 @@ export class HudController {
       swipeTracking = false;
       const dx = ev.clientX - swipeStartX;
       if (Math.abs(dx) > 36) {
+        this.suppressUpgradeClickUntil = performance.now() + 260;
         const idx = categoryOrder.indexOf(this.upgradeCategory);
         const nextIdx = (idx + (dx < 0 ? 1 : -1) + categoryOrder.length) % categoryOrder.length;
         this.setUpgradeCategory(categoryOrder[nextIdx]);
@@ -378,6 +380,7 @@ export class HudController {
       for (const unit of era.units) {
         const btn = document.createElement('button');
         btn.type = 'button';
+        btn.tabIndex = -1;
         btn.className = 'action-card';
         btn.dataset.kind = 'unit';
         btn.dataset.unitId = unit.id;
@@ -406,6 +409,7 @@ export class HudController {
       for (const upg of pageUpgrades) {
         const btn = document.createElement('button');
         btn.type = 'button';
+        btn.tabIndex = -1;
         btn.className = 'action-card upgrade-card';
         btn.dataset.kind = 'upgrade';
         btn.dataset.upgradeId = upg.id;
@@ -421,6 +425,7 @@ export class HudController {
         `;
 
         btn.addEventListener('click', () => {
+          if (performance.now() < this.suppressUpgradeClickUntil) return;
           this.onUnlockAudio();
           this.engine.buyUpgrade('player', upg.id);
         });
@@ -435,6 +440,7 @@ export class HudController {
     // 1. Expand Slot Card
     const expandBtn = document.createElement('button');
     expandBtn.type = 'button';
+    expandBtn.tabIndex = -1;
     expandBtn.className = 'action-card';
     expandBtn.dataset.kind = 'expand_slot';
     expandBtn.innerHTML = `
@@ -457,6 +463,7 @@ export class HudController {
     for (const turret of era.turrets) {
       const btn = document.createElement('button');
       btn.type = 'button';
+      btn.tabIndex = -1;
       btn.className = 'action-card';
       btn.dataset.kind = 'turret';
       btn.dataset.turretId = turret.id;
@@ -481,6 +488,7 @@ export class HudController {
     // 4. Sell Turret Card
     const sellBtn = document.createElement('button');
     sellBtn.type = 'button';
+    sellBtn.tabIndex = -1;
     sellBtn.className = 'action-card';
     sellBtn.dataset.kind = 'sell_turret';
     sellBtn.innerHTML = `
@@ -629,11 +637,12 @@ export class HudController {
       queue.forEach((item, idx) => {
         const slot = document.createElement('button');
         slot.type = 'button';
+        slot.tabIndex = -1;
         slot.className = 'queue-slot';
         slot.title = '터치하여 생산 취소 (100% 환급)';
         const iconUrl = getUnitIconUrl(item.unitId);
         slot.innerHTML = `
-          ${iconUrl ? `<img src="${iconUrl}" alt="" />` : '<span class="card-sprite-placeholder" aria-hidden="true"></span>'}
+          ${iconUrl ? `<img src="${iconUrl}" alt="" draggable="false" />` : '<span class="card-sprite-placeholder" aria-hidden="true"></span>'}
           <span class="queue-cancel-x">×</span>
           ${idx === 0 ? '<span class="queue-progress"></span>' : ''}
         `;

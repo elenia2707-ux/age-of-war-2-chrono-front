@@ -1,7 +1,7 @@
 {
   "name": "전쟁시대 2: 크로노 프론트",
   "short_name": "전쟁시대 2",
-  "description": "원시 시대부터 성간 문명까지 10단 진화 2D 횡스크롤 전략 디펜스 게임",
+  "description": "원시 시대부터 초월 문명까지 12단 진화 2D 횡스크롤 전략 디펜스 게임",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",
