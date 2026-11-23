@@ -4,13 +4,62 @@ import type {
   FactionCombatMods,
   RelicDef,
   RelicId,
+  RelicSynergyDef,
+  RelicSynergyId,
   SanctuaryLevels,
 } from './types';
+
+export const RELIC_SYNERGIES: Record<RelicSynergyId, RelicSynergyDef> = {
+  storm: {
+    id: 'storm',
+    name: '폭풍 공명',
+    shortName: '폭풍',
+    glyph: '⚡',
+    accentColor: '#38bdf8',
+    twoSetDesc: '탄속·포탑 공속 +18% · 뇌전 플라즈마 탄환 궤적',
+    threeSetDesc: '원거리/포탑 5회 사격마다 천벌 궤도 낙뢰 강타!',
+  },
+  berserker: {
+    id: 'berserker',
+    name: '광전 혈맹',
+    shortName: '광전',
+    glyph: '🔥',
+    accentColor: '#fb923c',
+    twoSetDesc: '공속 +12% · 체력 75% 이하 아군 광전 화염 오라(화력 +16%)',
+    threeSetDesc: '적 처치 시 지면에 용암 파쇄 광역 충격파 폭발!',
+  },
+  bulwark: {
+    id: 'bulwark',
+    name: '성운 철벽',
+    shortName: '철벽',
+    glyph: '🛡',
+    accentColor: '#4ade80',
+    twoSetDesc: '전군 보호막 +14% · 피격 시 공격자 서리 둔화 반격',
+    threeSetDesc: '아군 성채가 8초마다 최전방 적에게 성운 심판 광선 발사!',
+  },
+  imperial: {
+    id: 'imperial',
+    name: '황금 제국',
+    shortName: '제국',
+    glyph: '👑',
+    accentColor: '#facc15',
+    twoSetDesc: '처치·전리품 골드 +20% · ★베테랑 황금 후광(스탯 +16%)',
+    threeSetDesc: '유닛 6기 생산마다 무료 쌍둥이 정예 호위병 추가 출격!',
+  },
+};
+
+export const RELIC_SYNERGY_LIST: readonly RelicSynergyDef[] = [
+  RELIC_SYNERGIES.storm,
+  RELIC_SYNERGIES.berserker,
+  RELIC_SYNERGIES.bulwark,
+  RELIC_SYNERGIES.imperial,
+];
 
 export const RELICS: readonly RelicDef[] = [
   {
     id: 'chrono_overclock',
     rarity: 'rare',
+    synergy: 'storm',
     name: '시공 가속 태엽',
     shortName: '가속 태엽',
     effectText: '유닛 생산속도 +32% · 필살기 쿨타임 -20%',
@@ -20,6 +69,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'golden_chalice',
     rarity: 'rare',
+    synergy: 'imperial',
     name: '황금 연금술 성배',
     shortName: '연금 성배',
     effectText: '초당 골드 +45% · 보급상자 보상 +50%',
@@ -29,6 +79,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'blood_oath',
     rarity: 'epic',
+    synergy: 'berserker',
     name: '피의 서약 도끼',
     shortName: '피의 도끼',
     effectText: '아군 흡혈 +10% · 체력 50% 이하 공격력 +30%',
@@ -38,6 +89,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'thunder_core',
     rarity: 'epic',
+    synergy: 'storm',
     name: '천둥벼락 공명핵',
     shortName: '벼락 공명핵',
     effectText: '원거리·포탑 타격 26% 확률로 주변 2기 연쇄 번개 발동',
@@ -47,6 +99,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'immortal_bastion',
     rarity: 'rare',
+    synergy: 'bulwark',
     name: '불멸의 수호 문장',
     shortName: '수호 문장',
     effectText: '출전 시 최대체력 22% 보호막 + 성채 초당 0.6% 자동수리',
@@ -56,6 +109,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'warlord_signet',
     rarity: 'epic',
+    synergy: 'imperial',
     name: '전장의 패왕 인장',
     shortName: '패왕 인장',
     effectText: '즉시 ★베테랑 출전 +35% · 베테랑 스탯 보너스 +35%',
@@ -65,6 +119,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'guillotine_blade',
     rarity: 'epic',
+    synergy: 'berserker',
     name: '처형자의 단두날',
     shortName: '처형 단두날',
     effectText: '공격력 +16% · 처치 시 주변 아군 최대체력 9% 즉시 회복',
@@ -74,6 +129,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'prism_split',
     rarity: 'mythic',
+    synergy: 'storm',
     name: '차원 분열 프리즘',
     shortName: '분열 프리즘',
     effectText: '원거리 유닛 공격 시 25% 확률로 추가 투사체/광선 연속 발사',
@@ -83,6 +139,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'siegebreaker_ram',
     rarity: 'rare',
+    synergy: 'berserker',
     name: '공성 파쇄추',
     shortName: '공성 파쇄추',
     effectText: '적 성채·중장갑 피해 +45% · 이동속도 +12%',
@@ -92,6 +149,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'turret_overcharge',
     rarity: 'rare',
+    synergy: 'storm',
     name: '과충전 포탑 코어',
     shortName: '포탑 코어',
     effectText: '포탑 공격력 +40% · 포탑 공속 +28%',
@@ -101,6 +159,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'rewind_hourglass',
     rarity: 'mythic',
+    synergy: 'bulwark',
     name: '시간 역행 모래시계',
     shortName: '역행 시계',
     effectText: '성채 위기(25%↓) 시 1회 체력 45% 역행 회복 + 피버 발동',
@@ -110,6 +169,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'starlight_bounty',
     rarity: 'rare',
+    synergy: 'imperial',
     name: '별빛 현상금 계약서',
     shortName: '현상금 계약',
     effectText: '처치 골드·XP +28% · 정예/보스 보상 1.8배',
@@ -119,6 +179,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'iron_maiden',
     rarity: 'rare',
+    synergy: 'bulwark',
     name: '강철 가시 성갑',
     shortName: '가시 성갑',
     effectText: '아군 최대체력 +22% · 방어력 +7%p · 가시 반사 +32%',
@@ -128,6 +189,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'berserker_horn',
     rarity: 'epic',
+    synergy: 'berserker',
     name: '광전사의 뿔피리',
     shortName: '광전 뿔피리',
     effectText: '크로노 피버 필요 킬 10→7킬 단축 · 공격속도 +14%',
@@ -137,6 +199,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'imperial_conscription',
     rarity: 'mythic',
+    synergy: 'imperial',
     name: '제국 총동원령',
     shortName: '총동원령',
     effectText: '유닛 비용 -15% · 최대 동시 병력 한도 18→22기 확장',
@@ -146,6 +209,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'supernova_catalyst',
     rarity: 'mythic',
+    synergy: 'imperial',
     name: '초신성 증폭기',
     shortName: '초신성 핵',
     effectText: '필살기 피해량 +50% · 필살기 XP 소모량 -32%',
@@ -155,6 +219,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'cryo_shard',
     rarity: 'epic',
+    synergy: 'bulwark',
     name: '절대영도 시공석',
     shortName: '시공 빙결석',
     effectText: '타격 시 35% 확률로 적 2.2초간 이속·공속 28% 둔화',
@@ -164,6 +229,7 @@ export const RELICS: readonly RelicDef[] = [
   {
     id: 'meteor_incendiary',
     rarity: 'epic',
+    synergy: 'berserker',
     name: '유성 소이 탄두',
     shortName: '유성 탄두',
     effectText: '모든 광역 폭발 반경 +28px · 공격력 +18%',
@@ -200,6 +266,7 @@ export function createBaseCombatMods(): FactionCombatMods {
     ultCooldownMult: 1,
     ultXpCostMult: 1,
     crateRewardMult: 1,
+    projectileSpeedMult: 1,
     shieldBonusRatio: 0,
     lifestealBonus: 0,
     regenBonusPerSec: 0,
@@ -218,6 +285,11 @@ export function createBaseCombatMods(): FactionCombatMods {
     hasRewindHourglass: false,
     bloodOathLowHpBonus: 0,
     bountyBossMult: 1,
+    synergyCounts: { storm: 0, berserker: 0, bulwark: 0, imperial: 0 },
+    stormTier: 0,
+    berserkerTier: 0,
+    bulwarkTier: 0,
+    imperialTier: 0,
   };
 }
 
@@ -268,9 +340,14 @@ export function computeFactionCombatMods(params: {
     }
   }
 
-  // 3. Collected Chrono Relics
+  // 3. Collected Chrono Relics & Synergy Tag Counts
   for (let i = 0; i < relics.length; i++) {
-    switch (relics[i]) {
+    const relicId = relics[i];
+    const def = RELIC_BY_ID[relicId];
+    if (def) {
+      m.synergyCounts[def.synergy] += 1;
+    }
+    switch (relicId) {
       case 'chrono_overclock':
         m.trainSpeedMult *= 1.32;
         m.ultCooldownMult *= 0.8;
@@ -344,7 +421,30 @@ export function computeFactionCombatMods(params: {
     }
   }
 
-  // 4. Daily Challenge Mutators (apply symmetrically unless noted)
+  // 3b. Relic Set Synergy Resonance Bonuses (2-Set & 3-Set!)
+  const toTier = (n: number): 0 | 2 | 3 => (n >= 3 ? 3 : n >= 2 ? 2 : 0);
+  m.stormTier = toTier(m.synergyCounts.storm);
+  m.berserkerTier = toTier(m.synergyCounts.berserker);
+  m.bulwarkTier = toTier(m.synergyCounts.bulwark);
+  m.imperialTier = toTier(m.synergyCounts.imperial);
+
+  if (m.stormTier >= 2) {
+    m.projectileSpeedMult *= 1.18;
+    m.turretRateMult *= 1.18;
+  }
+  if (m.berserkerTier >= 2) {
+    m.attackSpeedMult *= 1.12;
+  }
+  if (m.bulwarkTier >= 2) {
+    m.shieldBonusRatio += 0.14;
+  }
+  if (m.imperialTier >= 2) {
+    m.killGoldMult *= 1.2;
+    m.crateRewardMult *= 1.2;
+    m.vetStatBonusMult *= 1.16;
+  }
+
+  // 4. Daily Challenge Mutators
   if (mutators) {
     for (let i = 0; i < mutators.length; i++) {
       switch (mutators[i]) {
@@ -386,13 +486,19 @@ export function rollRelicChoices(
   randomFn: () => number,
   luckLevel = 0,
   count = 3,
+  excludeCurrent?: readonly RelicId[],
 ): RelicId[] {
-  const pool = RELICS.filter((r) => !owned.includes(r.id));
-  if (pool.length <= count) return pool.map((r) => r.id);
+  const unowned = RELICS.filter((r) => !owned.includes(r.id));
+  if (unowned.length <= count) return unowned.map((r) => r.id);
+
+  // When rerolling, prefer fresh relics not currently shown on screen if enough exist
+  const freshPool =
+    excludeCurrent && excludeCurrent.length > 0
+      ? unowned.filter((r) => !excludeCurrent.includes(r.id))
+      : unowned;
+  const available = freshPool.length >= count ? [...freshPool] : [...unowned];
 
   const picked: RelicId[] = [];
-  const available = [...pool];
-
   const weightOf = (r: RelicDef): number => {
     if (r.rarity === 'mythic') return 14 + luckLevel * 4;
     if (r.rarity === 'epic') return 34 + luckLevel * 3;

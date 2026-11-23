@@ -253,4 +253,10 @@ export const ACHIEVEMENTS: readonly AchievementDef[] = [
   { id: 'endless_wave_5', name: '차원문 방어선', description: '무한 크로노 웨이브 5웨이브 돌파', medalReward: 30, accentColor: '#a855f7' },
   { id: 'endless_wave_12', name: '영겁의 수호자', description: '무한 크로노 웨이브 12웨이브 돌파', medalReward: 75, accentColor: '#e879f9' },
   { id: 'daily_clear', name: '오늘의 시공 제패', description: '일일 시공 챌린지 클리어', medalReward: 50, accentColor: '#fde047' },
+  { id: 'synergy_2', name: '유물 공명 각성', description: '동일 계열 유물 2세트 공명 시너지 발동', medalReward: 25, accentColor: '#38bdf8' },
+  { id: 'synergy_3', name: '초월 공명 마스터', description: '동일 계열 유물 3세트 최종 공명 달성', medalReward: 60, accentColor: '#facc15' },
+  { id: 'bounty_hunter_5', name: '전장 특임관', description: '전장 긴급 지령 누적 5회 완수', medalReward: 35, accentColor: '#4ade80' },
+  { id: 'drone_hunter_3', name: '보물 수송기 사냥꾼', description: '황금 차원 수송기 누적 3기 격추', medalReward: 40, accentColor: '#fde047' },
+  { id: 'spoil_collector_20', name: '전장의 수확자', description: '전장 드롭 전리품 직접 터치 회수 20회 달성', medalReward: 25, accentColor: '#fb923c' },
+  { id: 'relic_collector_18', name: '만물 유물 지배자', description: '18종 모든 크로노 유물 도감 100% 완성', medalReward: 100, accentColor: '#2dd4bf' },
 ];

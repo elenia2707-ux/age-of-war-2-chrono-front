@@ -21,14 +21,17 @@ import {
 } from './unitRenderer';
 import {
   renderActiveUltimates,
+  renderBattleSpoils,
   renderBeams,
   renderChronoRift,
+  renderFrontlineMomentum,
   renderParticles,
   renderPopups,
   renderProjectiles,
   renderScorchMarks,
   renderSlashes,
   renderSupplyCrates,
+  renderTreasureDrone,
   renderUltimateAtmosphere,
 } from './vfxRenderer';
 
@@ -202,8 +205,16 @@ export class GameRenderer {
     ctx.save();
     ctx.translate(-camera.x, 0);
 
-    // Persistent crater scorch marks & active midfield Chrono Rift zone on the road
+    // Persistent crater scorch marks, Tug-of-War Frontline conduits & Chrono Rift zone on the road
     renderScorchMarks(ctx, snapshot.scorchMarks, viewMinX, viewMaxX);
+    renderFrontlineMomentum(
+      ctx,
+      snapshot.frontlineX,
+      snapshot.frontlineActive,
+      wallTime,
+      viewMinX,
+      viewMaxX,
+    );
     renderChronoRift(ctx, snapshot.activeRift, wallTime, viewMinX, viewMaxX);
 
     // Monumental Cartoon Fortresses & Rotating Turrets (culled when off-screen!)
@@ -214,8 +225,9 @@ export class GameRenderer {
       renderBase(ctx, snapshot.enemy, wallTime, false);
     }
 
-    // Midfield Parachuting Chrono Supply Crates!
+    // Midfield Parachuting Chrono Supply Crates & Flying Golden Treasure Drone!
     renderSupplyCrates(ctx, snapshot.supplyCrates, wallTime);
+    renderTreasureDrone(ctx, snapshot.treasureDrone, wallTime, viewMinX, viewMaxX);
 
     // Units (reusable sort buffer — zero array allocation per frame!)
     const sorted = this.sortedUnits;
@@ -233,7 +245,8 @@ export class GameRenderer {
       renderUnitEntity(ctx, unit, unit.team === 'player' ? playerFever : enemyFever, wallTime);
     }
 
-    // Combat VFX: Slashes, Active Ultimates, Projectiles, Beams, Particles, Popups
+    // Interactive Battlefield Spoils + Combat VFX
+    renderBattleSpoils(ctx, snapshot.spoils, wallTime, viewMinX, viewMaxX);
     renderSlashes(ctx, snapshot.slashes, viewMinX, viewMaxX);
     renderActiveUltimates(ctx, snapshot.ultimates);
     renderProjectiles(ctx, snapshot.projectiles, viewMinX, viewMaxX);
@@ -437,6 +450,31 @@ export function renderMinimap(
     ctx.lineTo(cx - 3.5, cy);
     ctx.closePath();
     ctx.fill();
+  }
+
+  // Flying Golden Treasure Drone minimap beacon
+  if (snapshot.treasureDrone) {
+    const dx = snapshot.treasureDrone.x * invWorldW;
+    const dy = Math.max(4, (snapshot.treasureDrone.y / GROUND_Y) * groundLine);
+    ctx.fillStyle = '#2dd4bf';
+    ctx.beginPath();
+    ctx.arc(dx, dy, 3.8, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = '#fef08a';
+    ctx.beginPath();
+    ctx.arc(dx, dy, 2.1, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // Frontline clash tick on minimap road
+  if (snapshot.frontlineActive) {
+    const fx = snapshot.frontlineX * invWorldW;
+    ctx.strokeStyle = '#fef08a';
+    ctx.lineWidth = 1.6;
+    ctx.beginPath();
+    ctx.moveTo(fx, groundLine - 8);
+    ctx.lineTo(fx, groundLine + 2);
+    ctx.stroke();
   }
 
   // Active Ultimate markers

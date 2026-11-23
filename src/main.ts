@@ -118,6 +118,16 @@ const overlays = new OverlayController({
       engine.setPaused(false);
     }
   },
+  onRerollRelic: () => {
+    sound.unlock();
+    const before = engine.player.relicRerolls;
+    engine.rerollRelicDraft();
+    return engine.player.relicRerolls < before;
+  },
+  getDraftContext: () => ({
+    ownedRelics: [...engine.player.relics],
+    rerollsLeft: engine.player.relicRerolls,
+  }),
 });
 
 engine.setCallbacks({
@@ -126,7 +136,7 @@ engine.setCallbacks({
   onUltimateSound: (kind) => sound.playUltimate(kind),
   onBanner: (title, sub, accent) => hud.showBanner(title, sub, accent),
   onRelicDraft: (choices) => {
-    if (engine.status === 'playing') {
+    if (engine.status === 'playing' || overlays.isRelicDraftOpen()) {
       engine.setPaused(true);
       overlays.showRelicDraft(choices);
     }
@@ -333,11 +343,12 @@ window.addEventListener(
 );
 
 // ============================================================================
-// CANVAS TOUCH / MOUSE DRAG CAMERA + DIRECT TURRET TAP-TO-SELL
+// CANVAS TOUCH / MOUSE DRAG CAMERA + SPOIL / DRONE TAP-TO-CLAIM + TURRET SELL
 // ============================================================================
 let pointerActive = false;
 let pointerId: number | null = null;
 let lastPointerX = 0;
+let lastPointerY = 0;
 let dragDistance = 0;
 
 canvas.addEventListener('pointerdown', (ev) => {
@@ -346,16 +357,23 @@ canvas.addEventListener('pointerdown', (ev) => {
   pointerActive = true;
   pointerId = ev.pointerId;
   lastPointerX = ev.clientX;
+  lastPointerY = ev.clientY;
   dragDistance = 0;
   camera.beginDrag();
-  canvas.setPointerCapture(ev.pointerId);
+  try {
+    canvas.setPointerCapture(ev.pointerId);
+  } catch {
+    // Ignore synthetic touch pointers without active capture handle
+  }
 });
 
 canvas.addEventListener('pointermove', (ev) => {
   if (!pointerActive || ev.pointerId !== pointerId) return;
   const dx = ev.clientX - lastPointerX;
+  const dy = ev.clientY - lastPointerY;
   lastPointerX = ev.clientX;
-  dragDistance += Math.abs(dx);
+  lastPointerY = ev.clientY;
+  dragDistance += Math.hypot(dx, dy);
   camera.dragByScreenDelta(dx, renderer.getCssSize().height);
 });
 
@@ -365,21 +383,25 @@ function finishCanvasPointer(ev: PointerEvent): void {
   pointerId = null;
   camera.endDrag();
 
-  if (dragDistance < 10 && hud.sellHighlightMode && engine.status === 'playing') {
+  if (dragDistance < 10 && engine.status === 'playing') {
     const rect = canvas.getBoundingClientRect();
     const scale = rect.height / WORLD_HEIGHT;
     const worldX = (ev.clientX - rect.left) / scale + camera.x;
     const worldY = (ev.clientY - rect.top) / scale;
 
-    for (let i = 0; i < engine.player.turretSlots; i++) {
-      if (!engine.player.turrets[i]) continue;
-      const pos = engine.getTurretWorldPosition('player', i);
-      if (Math.hypot(worldX - pos.x, worldY - pos.y) <= 28) {
-        engine.sellTurret('player', i);
-        hud.sellHighlightMode = false;
-        break;
+    if (hud.sellHighlightMode) {
+      for (let i = 0; i < engine.player.turretSlots; i++) {
+        if (!engine.player.turrets[i]) continue;
+        const pos = engine.getTurretWorldPosition('player', i);
+        if (Math.hypot(worldX - pos.x, worldY - pos.y) <= 28) {
+          engine.sellTurret('player', i);
+          hud.sellHighlightMode = false;
+          return;
+        }
       }
     }
+
+    engine.collectSpoilsNear(worldX, worldY, true);
   }
 }
 
@@ -536,6 +558,10 @@ function frame(now: number): void {
       waveReached: snapshot.wave,
       maxCombo: snapshot.player.maxCombo,
       bossKills: snapshot.player.bossKills,
+      bountiesCleared: snapshot.player.bountiesCleared,
+      dronesKilled: snapshot.player.dronesKilled,
+      spoilsTapped: snapshot.player.spoilsTapped,
+      liveMedalsEarned: snapshot.player.liveMedalsEarned,
       baseHpRatio: snapshot.player.baseHp / Math.max(1, snapshot.player.baseMaxHp),
       relicsCollected: snapshot.player.relics,
       dailyDateKey: engine.dailyDateKey,

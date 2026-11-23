@@ -255,10 +255,13 @@ describe('Web Audio SoundEngine Quality & Master Bus', () => {
       'boss_spawn',
       'rift_open',
       'achievement',
+      'spoil_pickup',
+      'synergy_unlock',
+      'bounty_clear',
       'victory',
       'defeat',
     ];
-    expect(allCues).toHaveLength(32);
+    expect(allCues).toHaveLength(35);
 
     for (const cue of allCues) {
       createdCtx!.flushEndedVoices();

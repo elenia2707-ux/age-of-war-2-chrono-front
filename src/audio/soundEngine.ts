@@ -21,6 +21,9 @@ const HIGH_PRIORITY_CUES = new Set<SoundCue>([
   'tactical',
   'boss_spawn',
   'rift_open',
+  'spoil_pickup',
+  'synergy_unlock',
+  'bounty_clear',
   'achievement',
   'ui_tap',
 ]);
@@ -409,6 +412,26 @@ export class SoundEngine {
         this.playTone(t, 'sine', 330, 990, 0.36, 0.1, 0.015);
         this.playTone(t + 0.05, 'triangle', 495, 1485, 0.34, 0.08, 0.015);
         this.playNoise(t, 0.28, 2200, 'bandpass', 0.08, 2.2, false);
+        break;
+
+      case 'spoil_pickup':
+        // Crisp arcade gold coin + crystal sparkle chime
+        this.playTone(t, 'triangle', 987.77 * j, 1002 * j, 0.075, 0.095, 0.003);
+        this.playTone(t + 0.048, 'sine', 1318.51 * j, 1567.98 * j, 0.13, 0.085, 0.003);
+        break;
+
+      case 'synergy_unlock':
+        // Majestic Relic Set Resonance awakening chord + octave harmonic gleam
+        this.playChord(t, [440.0, 659.25, 880.0, 1108.73], 0.32, 0.15);
+        this.playChord(t + 0.14, [587.33, 880.0, 1174.66, 1760.0], 0.56, 0.18);
+        this.playTone(t + 0.14, 'sine', 1174.66, 2349.32, 0.42, 0.09, 0.012);
+        break;
+
+      case 'bounty_clear':
+        // Energetic battlefield directive completion fanfare
+        this.playTone(t, 'triangle', 587.33, 592, 0.09, 0.1, 0.004);
+        this.playTone(t + 0.07, 'triangle', 783.99, 790, 0.1, 0.1, 0.004);
+        this.playChord(t + 0.14, [587.33, 880.0, 1174.66, 1567.98], 0.44, 0.16);
         break;
 
       case 'achievement':

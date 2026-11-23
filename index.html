@@ -88,10 +88,11 @@
         </div>
       </header>
 
-      <!-- SUB-HUD LIVE STATUS PILLS (MODE/WAVE, COMBO, BOSS BAR) -->
+      <!-- SUB-HUD LIVE STATUS PILLS (MODE/WAVE, COMBO, BOUNTY, BOSS BAR) -->
       <div id="hud-sub-left" class="hud-sub-left hidden" aria-live="off">
         <div id="hud-mode-pill" class="sub-pill mode-pill hidden"></div>
         <div id="hud-combo-pill" class="sub-pill combo-pill hidden"></div>
+        <div id="hud-bounty-pill" class="sub-pill bounty-pill hidden"></div>
       </div>
 
       <div id="hud-boss-bar" class="hud-boss-bar hidden" aria-label="보스 체력">
@@ -230,7 +231,7 @@
                 🏛 시공 성소 <small id="sanctuary-lv-badge" class="num">Lv.0</small>
               </button>
               <button id="btn-open-codex" class="meta-nav-btn codex-nav" type="button">
-                📜 업적·도감 <small id="codex-count-badge" class="num">0/24</small>
+                📜 업적·도감 <small id="codex-count-badge" class="num">0/30</small>
               </button>
             </div>
           </div>
@@ -246,7 +247,7 @@
             <div id="difficulty-desc" class="diff-desc"></div>
             <button id="btn-start-game" class="primary-cta" type="button">전투 시작</button>
             <div class="controls-hint">
-              좌우 드래그 · 미니맵 이동 · 전술/진화/필살 &amp; 유물 드래프트
+              좌우 드래그 · 전리품/수송기 터치 회수 · 전술/진화/필살 &amp; 유물 시너지
             </div>
           </div>
         </div>
@@ -287,7 +288,7 @@
             </div>
             <div class="submodal-header-right">
               <button id="btn-codex-prev" class="mini-action-btn" type="button" aria-label="이전 페이지">◀</button>
-              <span id="codex-page-label" class="codex-page-label num">1 / 3</span>
+              <span id="codex-page-label" class="codex-page-label num">1 / 4</span>
               <button id="btn-codex-next" class="mini-action-btn" type="button" aria-label="다음 페이지">▶</button>
               <button id="btn-codex-close" class="mini-close-btn" type="button">닫기</button>
             </div>
@@ -300,9 +301,14 @@
       <section id="overlay-relic" class="overlay-backdrop hidden" aria-label="크로노 유물 선택">
         <div class="relic-modal glass-modal">
           <div class="relic-header">
-            <span class="relic-eyebrow">CHRONO RELIC RESONANCE</span>
+            <div class="relic-header-top">
+              <span class="relic-eyebrow">CHRONO RELIC RESONANCE</span>
+              <button id="btn-relic-reroll" class="mini-action-btn relic-reroll-btn" type="button">
+                🎲 유물 재추첨 (1)
+              </button>
+            </div>
             <h2>✨ 크로노 유물 선택</h2>
-            <p>전군에 영구 부여할 고대 시공 유물 1종을 선택하세요</p>
+            <p>같은 계열 유물을 2개·3개 모으면 강력한 세트 공명 시너지가 각성합니다!</p>
           </div>
           <div id="relic-draft-cards" class="relic-draft-cards"></div>
         </div>

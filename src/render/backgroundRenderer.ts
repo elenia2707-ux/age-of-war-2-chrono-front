@@ -505,6 +505,43 @@ function drawSkyAtmosphere(
   ctx.arc(sunX - orbR * 0.25, sunY - orbR * 0.25, orbR * 0.36, 0, Math.PI * 2);
   ctx.fill();
 
+  // Era II (1), IV (3), IX (8) & X (9): Crisp baked celestial halos, companion moons & orbital ring!
+  if (eraIndex === 1) {
+    ctx.strokeStyle = 'rgba(254, 240, 138, 0.44)';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.arc(sunX, sunY, orbR + 14, 0, Math.PI * 2);
+    ctx.stroke();
+  } else if (eraIndex === 3 || eraIndex === 8) {
+    const mx = sunX - 185;
+    const my = 58;
+    ctx.fillStyle = eraIndex === 8 ? 'rgba(226, 232, 240, 0.62)' : 'rgba(255, 241, 242, 0.56)';
+    ctx.beginPath();
+    ctx.arc(mx, my, 11, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.fillStyle = eraIndex === 8 ? '#0f172a' : '#881337';
+    ctx.globalAlpha = 0.48;
+    ctx.beginPath();
+    ctx.arc(mx + 4.5, my - 1.5, 9.5, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.globalAlpha = 1;
+  } else if (eraIndex === 9) {
+    ctx.save();
+    ctx.translate(sunX - 140, 68);
+    ctx.rotate(-0.22);
+    ctx.strokeStyle = 'rgba(56, 189, 248, 0.48)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(0, 0, 42, 11, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    ctx.fillStyle = 'rgba(186, 230, 253, 0.75)';
+    ctx.beginPath();
+    ctx.arc(-42, 0, 3.2, 0, Math.PI * 2);
+    ctx.arc(42, 0, 3.2, 0, Math.PI * 2);
+    ctx.fill();
+    ctx.restore();
+  }
+
   // Era XI (10): Interstellar dual-ringed Saturnian gas giant + orbiting crescent moon + star-cruiser armada!
   if (eraIndex === 10) {
     ctx.save();
@@ -2482,7 +2519,11 @@ function drawCartoonGround(
   ctx.lineTo(viewportW + 4, GROUND_Y - 3);
   ctx.stroke();
 
-  ctx.strokeStyle = 'rgba(0, 0, 0, 0.36)';
+  // Crisp sunlit upper curb bevel + lower subterranean masonry trim (baked once into groundTile!)
+  ctx.fillStyle = eraIndex >= 9 ? 'rgba(94, 234, 212, 0.22)' : 'rgba(255, 255, 255, 0.18)';
+  ctx.fillRect(0, GROUND_Y + 13, viewportW + 4, 1.8);
+
+  ctx.strokeStyle = 'rgba(0, 0, 0, 0.38)';
   ctx.lineWidth = 2.2;
   ctx.beginPath();
   ctx.moveTo(0, GROUND_Y + 15);

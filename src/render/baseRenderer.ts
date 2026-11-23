@@ -140,6 +140,42 @@ export function renderBase(
     drawCartoonDamageSmokeAndFire(ctx, hpRatio, time, dir);
   }
 
+  // Rising emerald-gold repair diamond glints when Fortress Regeneration or Aegis Sanctuary is active!
+  if ((faction.upgrades.fortress >= 1 && hpRatio < 0.998) || faction.aegisProtectedTimer > 0) {
+    for (let s = 0; s < 4; s++) {
+      const phase = (time * 0.85 + s * 0.25) % 1;
+      const sx = (-46 + s * 31) * dir + Math.sin(time * 3 + s) * 4;
+      const sy = -28 - phase * 116;
+      const sr = (1 - phase * 0.45) * 4.2;
+      ctx.save();
+      ctx.globalAlpha = Math.sin(phase * Math.PI) * 0.85;
+      ctx.fillStyle = s % 2 === 0 ? '#4ade80' : '#fef08a';
+      ctx.beginPath();
+      ctx.moveTo(sx, sy - sr * 1.4);
+      ctx.lineTo(sx + sr, sy);
+      ctx.lineTo(sx, sy + sr * 1.4);
+      ctx.lineTo(sx - sr, sy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.restore();
+    }
+  }
+
+  // Bulwark 3-Set Synergy: Floating Astral Judgement Spire Halo above the fortress!
+  if (faction.mods.bulwarkTier >= 3) {
+    const chargeFrac = Math.min(1, Math.max(0, 1 - faction.bulwarkBeamTimer / 8));
+    const bPulse = 0.72 + Math.sin(time * (4.5 + chargeFrac * 6)) * 0.24;
+    const hy = -232 + Math.sin(time * 2.6) * 2.5;
+    ctx.save();
+    ctx.strokeStyle = `rgba(74, 222, 128, ${(0.55 + chargeFrac * 0.4).toFixed(2)})`;
+    ctx.lineWidth = 2.4;
+    ctx.beginPath();
+    ctx.ellipse(0, hy, 28, 7.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    drawEnergyOrb(ctx, 0, hy, (5.2 + chargeFrac * 2.8) * bPulse, '#4ade80', '#fef08a');
+    ctx.restore();
+  }
+
   // Crisp comic hit starburst on fortress front gate when struck
   if (faction.baseHitFlash > 0.08) {
     const f = faction.baseHitFlash;
@@ -1839,6 +1875,16 @@ export function drawTurretArt(
       drawEnergyOrb(ctx, 29, 0, firing ? 12.5 : 6.6, '#2dd4bf', '#fef9c3');
       break;
     }
+  }
+
+  // Crisp expanding muzzle shock-ring on initial turret blast (zero gradient!)
+  if (recoil > 0.58) {
+    const rPulse = (recoil - 0.58) / 0.42;
+    ctx.strokeStyle = `rgba(254, 249, 195, ${(rPulse * 0.85).toFixed(2)})`;
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.ellipse(26 + (1 - rPulse) * 6, 0, 3.2, 8.5 + (1 - rPulse) * 4, 0, 0, Math.PI * 2);
+    ctx.stroke();
   }
 
   ctx.restore();

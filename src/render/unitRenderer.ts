@@ -318,6 +318,64 @@ export function renderUnitEntity(
     ctx.stroke();
   }
 
+  // 1d. Anti-Gravity Thruster Ground Ring beneath Hovering Units
+  if (unit.state !== 'dead' && hoverLift > 0) {
+    const hPulse = 0.65 + Math.sin(wallTime * 7.2 + unit.uid) * 0.25;
+    ctx.strokeStyle =
+      unit.team === 'player'
+        ? `rgba(56, 189, 248, ${(0.58 * hPulse).toFixed(2)})`
+        : `rgba(244, 114, 182, ${(0.58 * hPulse).toFixed(2)})`;
+    ctx.lineWidth = 1.8;
+    ctx.beginPath();
+    ctx.ellipse(drawX, groundY + 1, shadowRx * (0.82 + hPulse * 0.14), shadowRy * 0.88, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
+  // 1e. Rhythmic Cel-Shaded Footstep Dust Puffs behind Walking Heavy / Cavalry / Siege / Elite Units!
+  if (
+    unit.state === 'walk' &&
+    hoverBase === 0 &&
+    (LARGE_UNITS.has(unit.def.id) || unit.eliteKind !== undefined)
+  ) {
+    for (let d = 0; d < 2; d++) {
+      const stepCycle = (((unit.walkPhase * 0.32 + d * 0.5) % 1) + 1) % 1;
+      const puffAlpha = (1 - stepCycle) * 0.42;
+      if (puffAlpha > 0.05) {
+        const px = drawX - dir * (shadowRx * 0.52 + stepCycle * 18);
+        const py = groundY - 2 - stepCycle * 7;
+        const pr = (3.6 + stepCycle * 5.2) * (unit.eliteKind === 'boss' ? 1.3 : 1);
+        ctx.fillStyle = `rgba(214, 211, 209, ${puffAlpha.toFixed(2)})`;
+        ctx.beginPath();
+        ctx.arc(px, py, pr, 0, Math.PI * 2);
+        ctx.fill();
+      }
+    }
+  }
+
+  // 1f. Berserker 2-Set Synergy: Flickering Crimson-Gold Battle Rage Flame Aura (<75% HP)!
+  if (unit.state !== 'dead' && unit.berserkerAura) {
+    const flameH = unit.def.height * unitScale * 0.48;
+    for (let fIdx = -1; fIdx <= 1; fIdx += 2) {
+      const sway = Math.sin(wallTime * 12 + unit.uid + fIdx * 1.7) * 3.2;
+      const fx = drawX + fIdx * shadowRx * 0.62;
+      const fy = spriteY - 6;
+      ctx.fillStyle = 'rgba(249, 115, 22, 0.74)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 5.5, fy);
+      ctx.lineTo(fx + sway, fy - flameH);
+      ctx.lineTo(fx + 5.5, fy);
+      ctx.closePath();
+      ctx.fill();
+      ctx.fillStyle = 'rgba(254, 240, 138, 0.82)';
+      ctx.beginPath();
+      ctx.moveTo(fx - 2.8, fy);
+      ctx.lineTo(fx + sway * 0.6, fy - flameH * 0.62);
+      ctx.lineTo(fx + 2.8, fy);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
   // 2. Golden Upgrade Power-Up Aura (zero-gradient crisp double-tier column & expanding ring)
   if (unit.state !== 'dead' && unit.upgradeFlash > 0.04) {
     const f = unit.upgradeFlash;
@@ -382,19 +440,43 @@ export function renderUnitEntity(
   }
   ctx.restore();
 
-  // 3b. Subtle Cyan Vanguard Energy Barrier front arc on actively shielded units!
+  // 3b. Subtle Cyan Vanguard Energy Barrier (+ Emerald Bulwark Hex Rim when Bulwark 2-Set active!)
   if (unit.state !== 'dead' && unit.shield > 0.5 && unit.maxShield > 0) {
     const shPulse = 0.42 + Math.sin(wallTime * 6.5 + unit.uid) * 0.16;
     const shRadius = Math.max(20, unit.def.height * unitScale * 0.54);
     const shCenterY = spriteY - unit.def.height * unitScale * 0.56;
-    ctx.strokeStyle = `rgba(56, 189, 248, ${shPulse.toFixed(2)})`;
-    ctx.lineWidth = unit.hitFlash > 0.35 ? 3.2 : 2.0;
+    ctx.strokeStyle = unit.bulwarkHex
+      ? `rgba(74, 222, 128, ${(shPulse + 0.2).toFixed(2)})`
+      : `rgba(56, 189, 248, ${shPulse.toFixed(2)})`;
+    ctx.lineWidth = unit.hitFlash > 0.35 ? 3.2 : unit.bulwarkHex ? 2.6 : 2.0;
     ctx.beginPath();
     if (dir === 1) {
       ctx.arc(drawX + recoilDx + 4, shCenterY, shRadius, -0.82, 0.82);
     } else {
       ctx.arc(drawX + recoilDx - 4, shCenterY, shRadius, Math.PI - 0.82, Math.PI + 0.82);
     }
+    ctx.stroke();
+
+    if (unit.bulwarkHex) {
+      const hx = drawX + recoilDx + dir * (shRadius + 2);
+      ctx.fillStyle = 'rgba(187, 247, 208, 0.82)';
+      ctx.beginPath();
+      ctx.moveTo(hx, shCenterY - 5);
+      ctx.lineTo(hx + 3.5, shCenterY);
+      ctx.lineTo(hx, shCenterY + 5);
+      ctx.lineTo(hx - 3.5, shCenterY);
+      ctx.closePath();
+      ctx.fill();
+    }
+  }
+
+  // 3c. Imperial 2-Set Synergy: Gleaming Golden Sovereign Halo above ★Veteran Units!
+  if (unit.state !== 'dead' && unit.imperialHalo) {
+    const haloY = spriteY - unit.def.height * unitScale - 8;
+    ctx.strokeStyle = 'rgba(250, 204, 21, 0.92)';
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(drawX + recoilDx, haloY, 12, 3.6, 0, 0, Math.PI * 2);
     ctx.stroke();
   }
 

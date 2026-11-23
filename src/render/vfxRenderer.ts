@@ -1,5 +1,6 @@
 import type {
   ActiveUltimate,
+  BattleSpoil,
   BeamEffect,
   ChronoRiftZone,
   DamagePopup,
@@ -8,8 +9,9 @@ import type {
   ScorchMark,
   SlashEffect,
   SupplyCrateEntity,
+  TreasureDrone,
 } from '../data/types';
-import { GROUND_Y, WORLD_HEIGHT } from '../game/constants';
+import { ENEMY_BASE_X, GROUND_Y, PLAYER_BASE_X, WORLD_HEIGHT } from '../game/constants';
 import {
   INK,
   drawCelEllipse,
@@ -717,6 +719,7 @@ export function renderProjectiles(
 
       // Bright white-hot core streak for energetic / high-velocity projectiles
       if (
+        p.electrified ||
         p.style === 'bullet' ||
         p.style === 'plasma' ||
         p.style === 'quantum_orb' ||
@@ -726,11 +729,24 @@ export function renderProjectiles(
         p.style === 'rocket' ||
         p.style === 'fire_arrow'
       ) {
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.85)';
-        ctx.globalAlpha = 0.9;
-        ctx.lineWidth = Math.max(1.5, outerW * 0.36);
+        ctx.strokeStyle = p.electrified ? 'rgba(103, 232, 249, 0.95)' : 'rgba(255, 255, 255, 0.85)';
+        ctx.globalAlpha = 0.92;
+        ctx.lineWidth = Math.max(1.6, outerW * 0.38);
         ctx.beginPath();
         ctx.moveTo((mx + p.x) * 0.5, (my + p.y) * 0.5);
+        ctx.lineTo(p.x, p.y);
+        ctx.stroke();
+      }
+      if (p.electrified) {
+        const nx = -p.vy / speed;
+        const ny = p.vx / speed;
+        const jitter = Math.sin(p.life * 48 + p.uid) * 4.5;
+        ctx.strokeStyle = '#fef08a';
+        ctx.lineWidth = 1.6;
+        ctx.beginPath();
+        ctx.moveTo(tx, ty);
+        ctx.lineTo(mx + nx * jitter, my + ny * jitter);
+        ctx.lineTo((mx + p.x) * 0.5 - nx * jitter * 0.7, (my + p.y) * 0.5 - ny * jitter * 0.7);
         ctx.lineTo(p.x, p.y);
         ctx.stroke();
       }
@@ -2274,4 +2290,328 @@ export function renderChronoRift(
 
   ctx.restore();
 }
+
+/**
+ * Render Tug-of-War Frontline Momentum road conduits & Clash Beacon (zero gradients, zero clips).
+ */
+export function renderFrontlineMomentum(
+  ctx: CanvasRenderingContext2D,
+  frontlineX: number,
+  frontlineActive: boolean,
+  wallTime: number,
+  viewMinX: number,
+  viewMaxX: number,
+): void {
+  const cy = GROUND_Y + 9;
+  const clampedFront = Math.max(PLAYER_BASE_X + 90, Math.min(ENEMY_BASE_X - 90, frontlineX));
+
+  ctx.save();
+
+  // Subtle animated directional chevron ticks along controlled road territory
+  const step = 132;
+  const start = Math.max(PLAYER_BASE_X + 80, Math.floor(viewMinX / step) * step);
+  const end = Math.min(ENEMY_BASE_X - 80, Math.ceil(viewMaxX / step) * step);
+  ctx.lineWidth = 2.0;
+  ctx.lineCap = 'round';
+  ctx.lineJoin = 'round';
+
+  for (let x = start; x <= end; x += step) {
+    if (Math.abs(x - clampedFront) < 42) continue;
+    const isPlayerSide = x < clampedFront;
+    const wave = 0.24 + 0.2 * Math.sin(wallTime * 4.2 - (isPlayerSide ? x : -x) * 0.015);
+    ctx.strokeStyle = isPlayerSide
+      ? `rgba(56, 189, 248, ${wave.toFixed(2)})`
+      : `rgba(251, 113, 133, ${wave.toFixed(2)})`;
+    const dir = isPlayerSide ? 1 : -1;
+    ctx.beginPath();
+    ctx.moveTo(x - dir * 5, cy - 3.2);
+    ctx.lineTo(x + dir * 4, cy);
+    ctx.lineTo(x - dir * 5, cy + 3.2);
+    ctx.stroke();
+  }
+
+  // Glowing Frontline Clash Beacon where opposing armies meet!
+  if (frontlineActive && clampedFront + 40 >= viewMinX && clampedFront - 40 <= viewMaxX) {
+    const pulse = 0.76 + Math.sin(wallTime * 8.5) * 0.24;
+    ctx.strokeStyle = `rgba(250, 204, 21, ${(0.78 * pulse).toFixed(2)})`;
+    ctx.lineWidth = 2.2;
+    ctx.beginPath();
+    ctx.ellipse(clampedFront, GROUND_Y + 2, 22 * pulse, 5.5, 0, 0, Math.PI * 2);
+    ctx.stroke();
+
+    // Twin opposed sapphire vs crimson clash wedges on roadbed
+    drawCelPoly(
+      ctx,
+      [
+        [clampedFront - 16, cy],
+        [clampedFront - 5, cy - 4.5],
+        [clampedFront - 2, cy],
+        [clampedFront - 5, cy + 4.5],
+      ],
+      '#38bdf8',
+      { highlight: '#bae6fd', lineWidth: 1.4 },
+    );
+    drawCelPoly(
+      ctx,
+      [
+        [clampedFront + 16, cy],
+        [clampedFront + 5, cy - 4.5],
+        [clampedFront + 2, cy],
+        [clampedFront + 5, cy + 4.5],
+      ],
+      '#fb7185',
+      { highlight: '#fecdd3', lineWidth: 1.4 },
+    );
+    drawEnergyOrb(ctx, clampedFront, cy, 4.2 * pulse, '#facc15', '#ffffff');
+  }
+
+  ctx.restore();
+}
+
+/**
+ * Render interactive Battlefield Spoils (Gold Coins, XP Crystals, Chrono Medals)
+ * with pulsing manual-tap ring indicators (zero gradients, zero clips).
+ */
+export function renderBattleSpoils(
+  ctx: CanvasRenderingContext2D,
+  spoils: BattleSpoil[],
+  wallTime: number,
+  viewMinX: number,
+  viewMaxX: number,
+): void {
+  if (spoils.length === 0) return;
+
+  for (let i = 0; i < spoils.length; i++) {
+    const s = spoils[i];
+    if (s.x + 40 < viewMinX || s.x - 40 > viewMaxX) continue;
+
+    const fade = Math.min(1, s.life * 1.4);
+    const pulse = 0.78 + Math.sin(wallTime * 7.5 + s.uid) * 0.22;
+    const hoverBob = s.landed ? Math.sin(wallTime * 5.4 + s.uid) * 3.2 : 0;
+    const drawY = s.y - 10 + hoverBob;
+
+    ctx.save();
+    ctx.globalAlpha = fade;
+
+    // Ground contact shadow + pulsing golden/cyan tap-target ring
+    ctx.fillStyle = 'rgba(10, 14, 24, 0.34)';
+    ctx.beginPath();
+    ctx.ellipse(s.x, GROUND_Y + 2, 12, 3.6, 0, 0, Math.PI * 2);
+    ctx.fill();
+
+    if (s.landed) {
+      ctx.strokeStyle =
+        s.kind === 'medal'
+          ? `rgba(94, 234, 212, ${(0.78 * pulse).toFixed(2)})`
+          : s.kind === 'xp'
+            ? `rgba(192, 132, 252, ${(0.72 * pulse).toFixed(2)})`
+            : `rgba(250, 204, 21, ${(0.78 * pulse).toFixed(2)})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(s.x, GROUND_Y + 2, 16 + (1 - pulse) * 8, 4.8, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+
+    ctx.translate(s.x, drawY);
+
+    if (s.kind === 'gold') {
+      // Gleaming Cel-Shaded Golden Sovereign Coin
+      const spinW = Math.max(5.5, Math.abs(Math.cos(wallTime * 4.2 + s.uid)) * 10.5);
+      drawCelEllipse(ctx, 0, 0, spinW, 10.5, '#facc15', {
+        highlight: '#fef9c3',
+        shadow: '#b45309',
+        lineWidth: 2.0,
+      });
+      if (spinW > 7) {
+        ctx.fillStyle = '#92400e';
+        ctx.font = '900 9px system-ui, sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('G', 0, 0.5);
+      }
+    } else if (s.kind === 'xp') {
+      // Faceted Amethyst-Cyan Chrono XP Crystal
+      drawCelPoly(
+        ctx,
+        [
+          [0, -12],
+          [9, -2],
+          [5, 10],
+          [-5, 10],
+          [-9, -2],
+        ],
+        '#a855f7',
+        { highlight: '#f3e8ff', shadow: '#581c87', lineWidth: 2.0 },
+      );
+      drawEnergyOrb(ctx, 0, -1, 3.6, '#38bdf8', '#ffffff');
+    } else {
+      // Radiant Teal-Gold Chrono Sanctuary Medal!
+      drawCelPoly(
+        ctx,
+        [
+          [-4, 8],
+          [-7, 15],
+          [0, 12],
+          [7, 15],
+          [4, 8],
+        ],
+        '#0d9488',
+        { highlight: '#5eead4', lineWidth: 1.5 },
+      );
+      drawCelEllipse(ctx, 0, 0, 11, 11, '#f59e0b', {
+        highlight: '#fef08a',
+        shadow: '#92400e',
+        lineWidth: 2.1,
+      });
+      drawEnergyOrb(ctx, 0, 0, 4.6 * pulse, '#2dd4bf', '#ffffff');
+    }
+
+    // Crisp 4-point sparkle glint
+    const gx = 8;
+    const gy = -9;
+    const gr = 4.2 * pulse;
+    ctx.fillStyle = '#ffffff';
+    ctx.beginPath();
+    ctx.moveTo(gx - gr, gy);
+    ctx.lineTo(gx, gy - gr * 0.3);
+    ctx.lineTo(gx + gr, gy);
+    ctx.lineTo(gx, gy + gr * 0.3);
+    ctx.closePath();
+    ctx.fill();
+    ctx.beginPath();
+    ctx.moveTo(gx, gy - gr);
+    ctx.lineTo(gx + gr * 0.3, gy);
+    ctx.lineTo(gx, gy + gr);
+    ctx.lineTo(gx - gr * 0.3, gy);
+    ctx.closePath();
+    ctx.fill();
+
+    ctx.restore();
+  }
+}
+
+/**
+ * Render the flying Golden Dimensional Cargo Drone (`TreasureDrone`) across the mid-sky
+ * (zero gradients, zero clips).
+ */
+export function renderTreasureDrone(
+  ctx: CanvasRenderingContext2D,
+  drone: TreasureDrone | null,
+  wallTime: number,
+  viewMinX: number,
+  viewMaxX: number,
+): void {
+  if (!drone) return;
+  if (drone.x + 80 < viewMinX || drone.x - 80 > viewMaxX) return;
+
+  const dir = drone.vx >= 0 ? 1 : -1;
+  const bob = Math.sin(wallTime * 5.5) * 4.5;
+  const dy = drone.y + bob;
+  const jolt = drone.hitFlash > 0.15 ? Math.sin(wallTime * 52) * 3.5 * drone.hitFlash : 0;
+  const pulse = 0.78 + Math.sin(wallTime * 9) * 0.22;
+
+  ctx.save();
+
+  // Faint ground tracking reticle shadow so players see where spoils will land!
+  ctx.strokeStyle = 'rgba(250, 204, 21, 0.38)';
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.ellipse(drone.x, GROUND_Y + 2, 18, 4.5, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.translate(drone.x + jolt, dy);
+
+  // Twin plasma thruster wake behind drone
+  ctx.strokeStyle = 'rgba(94, 234, 212, 0.72)';
+  ctx.lineWidth = 4.2;
+  ctx.lineCap = 'round';
+  ctx.beginPath();
+  ctx.moveTo(-dir * 22, -2);
+  ctx.lineTo(-dir * (40 + pulse * 10), -2);
+  ctx.stroke();
+  ctx.strokeStyle = '#fef08a';
+  ctx.lineWidth = 2.0;
+  ctx.beginPath();
+  ctx.moveTo(-dir * 20, -2);
+  ctx.lineTo(-dir * 31, -2);
+  ctx.stroke();
+
+  ctx.save();
+  if (dir < 0) ctx.scale(-1, 1);
+
+  // Suspended golden treasure vault pod underneath
+  drawCelRoundRect(ctx, -11, 7, 22, 14, 4, drone.hitFlash > 0.45 ? '#ffffff' : '#d97706', {
+    highlight: '#fef08a',
+    shadow: '#78350f',
+    lineWidth: 2.0,
+  });
+  drawEnergyOrb(ctx, 0, 14, 3.8 * pulse, '#fde047', '#ffffff');
+
+  // Sleek armored Golden-Chrono fuselage
+  drawCelPoly(
+    ctx,
+    [
+      [-22, -2],
+      [-12, -11],
+      [14, -11],
+      [25, -1],
+      [14, 7],
+      [-14, 7],
+    ],
+    drone.hitFlash > 0.45 ? '#fef9c3' : '#facc15',
+    { highlight: '#ffffff', shadow: '#b45309', lineWidth: 2.2 },
+  );
+  // Teal Chrono cockpit dome
+  drawCelEllipse(ctx, 7, -3, 7.5, 4.6, '#2dd4bf', {
+    highlight: '#ccfbf1',
+    shadow: '#0f766e',
+    lineWidth: 1.6,
+  });
+
+  // Twin spinning cel-shaded anti-grav rotor blades
+  const bladeW = 10 + Math.abs(Math.sin(wallTime * 26)) * 9;
+  for (const rx of [-12, 12]) {
+    ctx.strokeStyle = '#94a3b8';
+    ctx.lineWidth = 2.0;
+    ctx.beginPath();
+    ctx.moveTo(rx, -11);
+    ctx.lineTo(rx, -16);
+    ctx.stroke();
+    drawCelEllipse(ctx, rx, -17, bladeW, 2.6, '#e0f2fe', {
+      highlight: '#ffffff',
+      lineWidth: 1.3,
+    });
+  }
+  ctx.restore();
+
+  // Overhead HP bar + crisp target badge
+  const barW = 46;
+  const barH = 6;
+  const barY = -29;
+  const ratio = Math.max(0, Math.min(1, drone.hp / Math.max(1, drone.maxHp)));
+  ctx.fillStyle = '#141c2c';
+  ctx.beginPath();
+  ctx.roundRect(-barW / 2, barY, barW, barH, 3);
+  ctx.fill();
+  ctx.fillStyle = '#facc15';
+  ctx.beginPath();
+  ctx.roundRect(-barW / 2, barY, barW * ratio, barH, 2.5);
+  ctx.fill();
+  setInkStyle(ctx, 1.6, INK);
+  ctx.beginPath();
+  ctx.roundRect(-barW / 2, barY, barW, barH, 3);
+  ctx.stroke();
+
+  ctx.font = '900 9.5px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.lineWidth = 2.8;
+  ctx.strokeStyle = INK;
+  ctx.strokeText('💰 보물 수송기', 0, barY - 8);
+  ctx.fillStyle = '#fef08a';
+  ctx.fillText('💰 보물 수송기', 0, barY - 8);
+
+  ctx.restore();
+}
+
 

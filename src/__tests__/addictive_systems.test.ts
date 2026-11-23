@@ -7,16 +7,28 @@ import {
   getDailyChallengeInfo,
   SANCTUARY_UPGRADES,
 } from '../data/metaProgression';
-import { computeFactionCombatMods, RELICS, rollRelicChoices } from '../data/relics';
+import {
+  computeFactionCombatMods,
+  RELIC_SYNERGY_LIST,
+  RELICS,
+  rollRelicChoices,
+} from '../data/relics';
 import type { CommanderId, RelicId, SanctuaryUpgradeId } from '../data/types';
 import { GameEngine } from '../game/engine';
+import { renderBase } from '../render/baseRenderer';
 import {
   drawCartoonCommanderIcon,
   drawCartoonRelicIcon,
   drawCartoonSanctuaryIcon,
 } from '../render/iconRenderer';
 import { renderUnitEntity, resetUnitCacheFrameBudget } from '../render/unitRenderer';
-import { renderChronoRift } from '../render/vfxRenderer';
+import {
+  renderBattleSpoils,
+  renderChronoRift,
+  renderFrontlineMomentum,
+  renderProjectiles,
+  renderTreasureDrone,
+} from '../render/vfxRenderer';
 import {
   buySanctuaryUpgrade,
   loadRecords,
@@ -86,9 +98,10 @@ function createSpyCanvasContext() {
 describe('Chrono Relics, Commanders, Rifts, Elites/Bosses, Modes & Sanctuary Meta', () => {
   it('validates all 18 Chrono Relics, rollRelicChoices uniqueness, and in-run Relic mechanics (Prism Split, Thunder Core, Cryo Shard, Rewind Hourglass)', () => {
     expect(RELICS).toHaveLength(18);
+    expect(RELIC_SYNERGY_LIST).toHaveLength(4);
     expect(DAILY_MUTATOR_LIST).toHaveLength(8);
     expect(SANCTUARY_UPGRADES).toHaveLength(8);
-    expect(ACHIEVEMENTS).toHaveLength(24);
+    expect(ACHIEVEMENTS).toHaveLength(30);
 
     let seed = 100;
     const rng = () => {
@@ -358,8 +371,220 @@ describe('Chrono Relics, Commanders, Rifts, Elites/Bosses, Modes & Sanctuary Met
     renderChronoRift(spy.ctx, rift, 2.5, 0, 2400);
     renderUnitEntity(spy.ctx, boss, true, 2.5);
 
+    // Verify new Frontline Clash Beacon, Battle Spoils, Treasure Drone, Synergy Unit Auras & Fortress Spire render with 0 gradients & 0 clips
+    eng.selectRelic('immortal_bastion', 'player');
+    eng.selectRelic('iron_maiden', 'player');
+    eng.selectRelic('cryo_shard', 'player');
+    eng.player.upgrades.fortress = 2;
+    eng.player.baseHp = eng.player.baseMaxHp - 40;
+
+    const synUnit = eng.spawnUnit('player', UNIT_BY_ID.aegis_seraph);
+    synUnit.berserkerAura = true;
+    synUnit.bulwarkHex = true;
+    synUnit.imperialHalo = true;
+    synUnit.shield = 80;
+    synUnit.maxShield = 100;
+
+    const spoil1 = eng.spawnSpoil(920, 'gold', 50);
+    spoil1.landed = true;
+    const spoil2 = eng.spawnSpoil(950, 'xp', 80);
+    spoil2.landed = true;
+    const spoil3 = eng.spawnSpoil(980, 'medal', 2);
+    spoil3.landed = true;
+    const drone = eng.spawnTreasureDrone();
+
+    renderFrontlineMomentum(spy.ctx, 1180, true, 2.5, 0, 2400);
+    renderBattleSpoils(spy.ctx, eng.spoils, 2.5, 0, 2400);
+    renderTreasureDrone(spy.ctx, drone, 2.5, 0, 2400);
+    renderBase(spy.ctx, eng.player, 2.5, false);
+    renderUnitEntity(spy.ctx, synUnit, false, 2.5);
+    renderProjectiles(
+      spy.ctx,
+      [
+        {
+          uid: 1,
+          team: 'player',
+          style: 'plasma',
+          x: 1000,
+          y: 260,
+          prevX: 980,
+          prevY: 260,
+          vx: 520,
+          vy: 0,
+          damage: 30,
+          splashRadius: 0,
+          armorPierce: false,
+          isCrit: true,
+          electrified: true,
+          baseDamageMult: 1,
+          knockback: 0,
+          pierceRemaining: 1,
+          hitUids: [],
+          gravity: 0,
+          life: 0.4,
+          maxLife: 0.8,
+        },
+      ],
+      0,
+      2400,
+    );
+
     expect(spy.metrics.gradientCalls).toBe(0);
     expect(spy.metrics.clipCalls).toBe(0);
-    expect(spy.metrics.drawCalls).toBeGreaterThan(150);
+    expect(spy.metrics.drawCalls).toBeGreaterThan(250);
+  });
+
+  it('activates all 4 Relic Set Synergies (2-Set & 3-Set), Relic Draft Reroll, Battle Spoils (+35% tap bonus), Treasure Drones, and Tactical Bounties', () => {
+    const eng = new GameEngine();
+    eng.startNewGame('normal', 2028, { mode: 'campaign', commanderId: 'vanguard' });
+
+    // 1. Relic Draft Reroll swaps 3 choices cleanly
+    eng.player.xp = ERAS[0].evolveXp;
+    expect(eng.evolve('player')).toBe(true);
+    const firstChoices = [...eng.pendingRelicDraft];
+    expect(firstChoices).toHaveLength(3);
+    expect(eng.player.relicRerolls).toBe(1);
+    const rerolled = [...eng.rerollRelicDraft()];
+    expect(rerolled).toHaveLength(3);
+    expect(eng.player.relicRerolls).toBe(0);
+    expect(rerolled).not.toEqual(firstChoices);
+    expect(eng.rerollRelicDraft()).toEqual(rerolled); // 0 rerolls left -> unchanged
+    eng.selectRelic(eng.pendingRelicDraft[0], 'player');
+
+    // 2. Storm 3-Set: electrified shots + every 5th ranged shot calls Orbital Sky Lightning
+    const stormEng = new GameEngine();
+    stormEng.startNewGame('normal', 301, { mode: 'campaign', commanderId: 'ordnance' });
+    stormEng.selectRelic('thunder_core', 'player');
+    stormEng.selectRelic('prism_split', 'player');
+    stormEng.selectRelic('chrono_overclock', 'player');
+    expect(stormEng.player.mods.stormTier).toBe(3);
+
+    const gunner = stormEng.spawnUnit('player', UNIT_BY_ID.rifleman);
+    gunner.x = 900;
+    const dummy = stormEng.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    dummy.x = 1040;
+    dummy.hp = 5000;
+    dummy.maxHp = 5000;
+    dummy.attackCooldown = 30;
+    let sawLightning = false;
+    for (let i = 0; i < 12; i++) {
+      gunner.attackCooldown = 0;
+      stormEng.step(0.04);
+      if (stormEng.beams.some((b) => b.style === 'lightning')) sawLightning = true;
+    }
+    expect(sawLightning).toBe(true);
+
+    // 3. Berserker 3-Set: <75% HP rage aura + enemy kill erupts Molten Shockwave
+    const berserkEng = new GameEngine();
+    berserkEng.startNewGame('normal', 302, { mode: 'campaign', commanderId: 'vanguard' });
+    berserkEng.selectRelic('blood_oath', 'player');
+    berserkEng.selectRelic('guillotine_blade', 'player');
+    berserkEng.selectRelic('berserker_horn', 'player');
+    expect(berserkEng.player.mods.berserkerTier).toBe(3);
+    const slayer = berserkEng.spawnUnit('player', UNIT_BY_ID.knight);
+    slayer.x = 900;
+    slayer.hp = Math.round(slayer.maxHp * 0.5);
+    slayer.attackCooldown = 0;
+    const victim = berserkEng.spawnUnit('enemy', UNIT_BY_ID.clubman);
+    victim.x = 928;
+    victim.hp = 5;
+    const bystander = berserkEng.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    bystander.x = 960;
+    const byHp0 = bystander.hp;
+    berserkEng.step(0.05);
+    expect(bystander.hp).toBeLessThan(byHp0);
+
+    // 4. Bulwark 3-Set: Fortress fires automatic Astral Judgement Beam every 8s
+    const bulwarkEng = new GameEngine();
+    bulwarkEng.startNewGame('normal', 303, { mode: 'campaign', commanderId: 'aegis' });
+    bulwarkEng.selectRelic('immortal_bastion', 'player');
+    bulwarkEng.selectRelic('iron_maiden', 'player');
+    bulwarkEng.selectRelic('cryo_shard', 'player');
+    expect(bulwarkEng.player.mods.bulwarkTier).toBe(3);
+    const invader = bulwarkEng.spawnUnit('enemy', UNIT_BY_ID.dino_rider);
+    invader.x = 800;
+    invader.attackCooldown = 20;
+    bulwarkEng.player.bulwarkBeamTimer = 0.02;
+    bulwarkEng.step(0.05);
+    expect(bulwarkEng.beams.some((b) => b.style === 'chrono_beam')).toBe(true);
+
+    // 5. Imperial 3-Set: every 6th trained unit deploys a Twin Escort!
+    const impEng = new GameEngine();
+    impEng.startNewGame('normal', 304, { mode: 'campaign', commanderId: 'archon' });
+    impEng.selectRelic('golden_chalice', 'player');
+    impEng.selectRelic('warlord_signet', 'player');
+    impEng.selectRelic('starlight_bounty', 'player');
+    expect(impEng.player.mods.imperialTier).toBe(3);
+    impEng.player.gold = 5000;
+    for (let i = 0; i < 6; i++) {
+      impEng.enqueueUnit('player', 'clubman');
+      for (let s = 0; s < 35; s++) impEng.step(0.05);
+    }
+    expect(impEng.player.unitsSpawned).toBeGreaterThanOrEqual(7);
+
+    // 6. Interactive Battle Spoils (+35% manual tap bonus), Treasure Drone tap-shootdown, and Tactical Bounty clear
+    const gold0 = impEng.player.gold;
+    const sp = impEng.spawnSpoil(850, 'gold', 100, 0);
+    sp.y = 335;
+    sp.landed = true;
+    expect(impEng.collectSpoilsNear(850, 330, true)).toBe(1);
+    expect(impEng.player.gold - gold0).toBeGreaterThanOrEqual(135);
+    expect(impEng.player.spoilsTapped).toBe(1);
+
+    const drone = impEng.spawnTreasureDrone();
+    drone.x = 1000;
+    drone.y = 152;
+    drone.hp = 10;
+    expect(impEng.collectSpoilsNear(1000, 152, true)).toBeGreaterThanOrEqual(1);
+    expect(impEng.treasureDrone).toBeNull();
+    expect(impEng.player.dronesKilled).toBe(1);
+    expect(impEng.spoils.length).toBeGreaterThanOrEqual(3);
+
+    const bounty = impEng.spawnBattleBounty('kills');
+    expect(impEng.activeBounty).toBe(bounty);
+    const medalsBefore = impEng.player.liveMedalsEarned;
+    for (let k = 0; k < bounty.target; k++) {
+      const f = impEng.spawnUnit('enemy', UNIT_BY_ID.clubman);
+      f.x = 700;
+      f.hp = 1;
+      const a = impEng.spawnUnit('player', UNIT_BY_ID.chrono_sovereign);
+      a.x = 650;
+      a.attackCooldown = 0;
+      impEng.step(0.05);
+    }
+    expect(impEng.player.bountiesCleared).toBe(1);
+    expect(impEng.player.liveMedalsEarned).toBeGreaterThan(medalsBefore);
+    expect(impEng.activeBounty).toBeNull();
+
+    // 7. Expanded Achievements unlock cleanly in recordMatchResult
+    const mem = createMemoryStorage();
+    for (const r of RELICS) {
+      recordDiscoveredRelic(r.id, mem);
+    }
+    const res = recordMatchResult(
+      {
+        won: true,
+        difficulty: 'normal',
+        elapsedSec: 210,
+        eraReached: 8,
+        kills: 60,
+        bountiesCleared: 6,
+        dronesKilled: 4,
+        spoilsTapped: 22,
+        liveMedalsEarned: 8,
+        relicsCollected: ['thunder_core', 'prism_split', 'chrono_overclock'],
+      },
+      mem,
+    );
+    expect(res.records.unlockedAchievements).toEqual(
+      expect.arrayContaining([
+        'synergy_2',
+        'synergy_3',
+        'bounty_hunter_5',
+        'drone_hunter_3',
+        'spoil_collector_20',
+        'relic_collector_18',
+      ]),
+    );
   });
 });

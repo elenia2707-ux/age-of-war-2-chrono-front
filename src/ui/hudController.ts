@@ -1,7 +1,7 @@
 import { COMMANDERS } from '../data/commanders';
 import { getEra } from '../data/eras';
 import { DAILY_MUTATORS } from '../data/metaProgression';
-import { RELIC_BY_ID } from '../data/relics';
+import { RELIC_BY_ID, RELIC_SYNERGY_LIST } from '../data/relics';
 import type {
   AchievementDef,
   GameSnapshot,
@@ -68,6 +68,7 @@ export class HudController {
   private subLeftEl = document.getElementById('hud-sub-left')!;
   private modePillEl = document.getElementById('hud-mode-pill')!;
   private comboPillEl = document.getElementById('hud-combo-pill')!;
+  private bountyPillEl = document.getElementById('hud-bounty-pill');
   private bossBarEl = document.getElementById('hud-boss-bar')!;
   private bossNameEl = document.getElementById('hud-boss-name')!;
   private bossHpEl = document.getElementById('hud-boss-hp')!;
@@ -142,7 +143,7 @@ export class HudController {
   private cachedCards: CachedCardRef[] = [];
   private queueProgressEl: HTMLElement | null = null;
   private lastQueueSignature = '';
-  private lastRelicCount = -1;
+  private lastRelicSignature = '';
   private suppressUpgradeClickUntil = 0;
 
   // Dirty-check caches
@@ -166,6 +167,7 @@ export class HudController {
   private lastTurretSlots = -1;
   private lastUpgradeTotal = -1;
   private lastComboCount = -1;
+  private lastBountyText = '';
   private lastModeText = '';
   private lastBossUid = -1;
   private lastBossHp = -1;
@@ -234,6 +236,7 @@ export class HudController {
       this.bossBarEl.classList.add('hidden');
       this.modePillEl.classList.add('hidden');
       this.comboPillEl.classList.add('hidden');
+      this.bountyPillEl?.classList.add('hidden');
       this.sellHighlightMode = false;
       this.topHud.classList.remove('fever-mode');
       this.minimapShell.classList.remove('fever-mode');
@@ -301,7 +304,7 @@ export class HudController {
     this.cachedCards = [];
     this.queueProgressEl = null;
     this.lastQueueSignature = '';
-    this.lastRelicCount = -1;
+    this.lastRelicSignature = '';
     this.lastGold = -1;
     this.lastXp = -1;
     this.lastXpEra = -1;
@@ -322,6 +325,7 @@ export class HudController {
     this.lastTurretSlots = -1;
     this.lastUpgradeTotal = -1;
     this.lastComboCount = -1;
+    this.lastBountyText = '';
     this.lastModeText = '';
     this.lastBossUid = -1;
     this.lastBossHp = -1;
@@ -411,7 +415,7 @@ export class HudController {
       }
     }
 
-    // Mode / Wave & Kill Combo sub-pills
+    // Mode / Wave, Kill Combo & Live Tactical Bounty sub-pills
     const modeLabel =
       snapshot.mode === 'endless'
         ? `♾ WAVE ${snapshot.wave}`
@@ -438,6 +442,31 @@ export class HudController {
         if (grew) this.pulseClass(this.comboPillEl, 'tap-pop', 170);
       } else {
         this.comboPillEl.classList.add('hidden');
+      }
+    }
+
+    if (this.bountyPillEl) {
+      const b = snapshot.activeBounty;
+      const bountyLabel = b
+        ? `🎯 ${
+            b.kind === 'kills'
+              ? '처치'
+              : b.kind === 'combo'
+                ? '콤보'
+                : b.kind === 'rift_hold'
+                  ? '균열'
+                  : '정예'
+          } ${Math.min(b.target, Math.floor(b.progress))}/${b.target} · ${Math.ceil(b.remainingSec)}s`
+        : '';
+      if (bountyLabel !== this.lastBountyText) {
+        this.lastBountyText = bountyLabel;
+        if (bountyLabel && b) {
+          this.bountyPillEl.classList.remove('hidden');
+          this.bountyPillEl.title = `${b.title} (+${b.goldReward}G / +${b.xpReward}XP / +🏅${b.medalReward})`;
+          setTextIfChanged(this.bountyPillEl, bountyLabel);
+        } else {
+          this.bountyPillEl.classList.add('hidden');
+        }
       }
     }
 
@@ -749,6 +778,20 @@ export class HudController {
     };
     this.minimapShell.addEventListener('pointerup', stopMiniDrag);
     this.minimapShell.addEventListener('pointercancel', stopMiniDrag);
+
+    this.relicStripEl.addEventListener('pointerup', () => {
+      this.onUnlockAudio();
+      this.onUiTap?.();
+      const counts = this.engine.player.mods.synergyCounts;
+      const active = RELIC_SYNERGY_LIST.filter((s) => (counts[s.id] ?? 0) >= 2).map(
+        (s) => `${s.glyph}${s.shortName} ${(counts[s.id] ?? 0) >= 3 ? '3세트' : '2세트'}`,
+      );
+      const sub =
+        active.length > 0
+          ? `활성 공명: ${active.join(' · ')}`
+          : '동일 계열 유물 2개·3개 수집 시 세트 시너지가 발동합니다!';
+      this.showBanner(`보유 크로노 유물 (${this.engine.player.relics.length}종)`, sub, '#2dd4bf');
+    });
   }
 
   public setUpgradeCategory(cat: UpgradeCategory): void {
@@ -1098,8 +1141,9 @@ export class HudController {
 
   private updateRelicStrip(snapshot: GameSnapshot): void {
     const relics = snapshot.player.relics;
-    if (relics.length === this.lastRelicCount) return;
-    this.lastRelicCount = relics.length;
+    const signature = relics.join(',');
+    if (signature === this.lastRelicSignature) return;
+    this.lastRelicSignature = signature;
 
     if (relics.length === 0) {
       this.relicStripEl.classList.add('hidden');
@@ -1107,8 +1151,18 @@ export class HudController {
       return;
     }
 
-    this.relicStripEl.classList.remove('hidden');
-    this.relicStripEl.innerHTML = relics
+    const counts = snapshot.player.mods.synergyCounts;
+    const synergyBadges = RELIC_SYNERGY_LIST.filter((s) => (counts[s.id] ?? 0) >= 2)
+      .map((s) => {
+        const tier = (counts[s.id] ?? 0) >= 3 ? 3 : 2;
+        return `<span class="synergy-strip-pill tier-${tier}" style="--syn-color:${s.accentColor}" title="${s.name} ${tier}세트 활성!">${s.glyph}${tier}</span>`;
+      })
+      .join('');
+
+    const maxIcons = 4;
+    const shown = relics.slice(-maxIcons);
+    const hiddenCount = Math.max(0, relics.length - shown.length);
+    const relicChips = shown
       .map((id) => {
         const r = RELIC_BY_ID[id];
         if (!r) return '';
@@ -1118,6 +1172,13 @@ export class HudController {
         </span>`;
       })
       .join('');
+    const moreBadge =
+      hiddenCount > 0
+        ? `<span class="synergy-strip-pill" style="--syn-color:#94a3b8" title="총 ${relics.length}종 유물 보유 (터치하여 확인)">+${hiddenCount}</span>`
+        : '';
+
+    this.relicStripEl.classList.remove('hidden');
+    this.relicStripEl.innerHTML = synergyBadges + relicChips + moreBadge;
   }
 
   private updateQueueBar(snapshot: GameSnapshot): void {

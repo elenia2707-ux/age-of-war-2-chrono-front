@@ -1,7 +1,12 @@
 import { COMMANDERS, COMMANDER_LIST } from '../data/commanders';
 import { DIFFICULTIES } from '../data/difficulty';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID, getEra } from '../data/eras';
-import { RELIC_BY_ID, computeFactionCombatMods, rollRelicChoices } from '../data/relics';
+import {
+  RELIC_BY_ID,
+  RELIC_SYNERGIES,
+  computeFactionCombatMods,
+  rollRelicChoices,
+} from '../data/relics';
 import {
   FORTRESS_UPGRADE_REPAIR_RATIO,
   UPGRADE_BY_ID,
@@ -50,7 +55,10 @@ import {
 } from '../data/upgrades';
 import type {
   ActiveUltimate,
+  BattleBounty,
+  BattleSpoil,
   BeamEffect,
+  BountyKind,
   ChronoRiftKind,
   ChronoRiftZone,
   CommanderId,
@@ -68,9 +76,11 @@ import type {
   SanctuaryLevels,
   ScorchMark,
   SlashEffect,
+  SpoilKind,
   StartGameOptions,
   SupplyCrateEntity,
   Team,
+  TreasureDrone,
   TurretVisualKind,
   UnitDef,
   UnitEntity,
@@ -110,10 +120,15 @@ export class GameEngine {
   public autoSpawn = false;
   public elapsed = 0;
   public wave = 1;
+  public frontlineX = WORLD_WIDTH * 0.5;
+  public frontlineActive = false;
   public mutators: DailyMutatorId[] = [];
   public dailyDateKey: string | undefined;
   public pendingRelicDraft: RelicId[] = [];
   public activeRift: ChronoRiftZone | null = null;
+  public activeBounty: BattleBounty | null = null;
+  public treasureDrone: TreasureDrone | null = null;
+  public spoils: BattleSpoil[] = [];
 
   public player: FactionState;
   public enemy: FactionState;
@@ -137,9 +152,12 @@ export class GameEngine {
 
   private nextUid = 1;
   private rngState = 1337;
+  private dynamicEventsEnabled = false;
   private nextSupplyCrateAt = 24;
   private nextRiftAt = 28;
   private nextEliteAt = 42;
+  private nextBountyAt = 18;
+  private nextDroneAt = 34;
   private endlessWaveTimer = 0;
   private autoSpawnThinkTimer = 0;
   private firstBloodClaimed = false;
@@ -167,22 +185,30 @@ export class GameEngine {
     this.mutators = options?.mutators ? [...options.mutators] : [];
     this.dailyDateKey = options?.dailyDateKey;
     this.playerSanctuary = options?.sanctuary;
+    this.dynamicEventsEnabled = options !== undefined;
     this.status = 'playing';
     this.speed = 1;
     this.autoSpawn = false;
     this.elapsed = 0;
     this.wave = 1;
+    this.frontlineX = WORLD_WIDTH * 0.5;
+    this.frontlineActive = false;
     this.endlessWaveTimer = 0;
     this.autoSpawnThinkTimer = 0;
     this.firstBloodClaimed = false;
     this.enemyHalfBaseBossSpawned = false;
     this.pendingRelicDraft = [];
     this.activeRift = null;
+    this.activeBounty = null;
+    this.treasureDrone = null;
+    this.spoils = [];
     this.nextUid = 1;
     this.rngState = seed ?? ((Date.now() & 0x7fffffff) || 1337);
     this.nextSupplyCrateAt = 24;
     this.nextRiftAt = this.mutators.includes('rift_overdrive') ? 14 : 28;
     this.nextEliteAt = this.mode === 'endless' ? 24 : 42;
+    this.nextBountyAt = 16;
+    this.nextDroneAt = 32;
 
     const playerCommander = options?.commanderId ?? null;
     let enemyCommander: CommanderId | null = null;
@@ -320,6 +346,27 @@ export class GameEngine {
     return choices;
   }
 
+  public rerollRelicDraft(): RelicId[] {
+    if (this.pendingRelicDraft.length === 0 || this.player.relicRerolls <= 0) {
+      return this.pendingRelicDraft;
+    }
+    const luck = this.playerSanctuary?.starter_relic ?? 0;
+    const nextChoices = rollRelicChoices(
+      this.player.relics,
+      () => this.random(),
+      luck + 1,
+      3,
+      this.pendingRelicDraft,
+    );
+    if (nextChoices.length > 0) {
+      this.player.relicRerolls -= 1;
+      this.pendingRelicDraft = nextChoices;
+      this.callbacks.onSound?.('ui_tap');
+      this.callbacks.onRelicDraft?.(nextChoices);
+    }
+    return this.pendingRelicDraft;
+  }
+
   public selectRelic(relicId: RelicId, team: Team = 'player'): boolean {
     const def = RELIC_BY_ID[relicId];
     if (!def) return false;
@@ -373,7 +420,7 @@ export class GameEngine {
     }
     faction.ultimateMaxCooldown = nextUltMax;
 
-    // Update live allied units' maxHp & shields
+    // Update live allied units' maxHp, shields & Synergy visual flags!
     const armorMult = getArmorHpMult(faction.upgrades);
     const shieldRatio = getVanguardShieldRatio(faction.upgrades) + nextMods.shieldBonusRatio;
     const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
@@ -396,6 +443,9 @@ export class GameEngine {
           u.maxShield = Math.max(u.maxShield, nextMaxShield);
           u.shield = Math.min(u.maxShield, u.shield + sGain);
         }
+        u.imperialHalo = nextMods.imperialTier >= 2 && u.vetRank >= 1;
+        u.bulwarkHex = nextMods.bulwarkTier >= 2 && u.shield > 0.5;
+        u.berserkerAura = nextMods.berserkerTier >= 2 && u.hp / Math.max(1, u.maxHp) <= 0.75;
         u.upgradeFlash = 1;
       }
     }
@@ -404,10 +454,42 @@ export class GameEngine {
     faction.upgradeFlash = 1;
     this.spawnRing(baseX, GROUND_Y - 78, def.accentColor, 96);
     this.spawnFlashStar(baseX, GROUND_Y - 86, '#fef08a', 28);
+
+    // Check if picking this relic awakened a new 2-Set or 3-Set Relic Synergy!
+    const synDef = RELIC_SYNERGIES[def.synergy];
+    const prevSynCount = prevMods.synergyCounts[def.synergy] ?? 0;
+    const nextSynCount = nextMods.synergyCounts[def.synergy] ?? 0;
+    const unlockedTier =
+      nextSynCount >= 3 && prevSynCount < 3
+        ? 3
+        : nextSynCount >= 2 && prevSynCount < 2
+          ? 2
+          : 0;
+
     if (team === 'player') {
-      this.callbacks.onSound?.('relic_pick');
-      this.addPopup(baseX + 20, GROUND_Y - 152, `유물: ${def.shortName}!`, def.accentColor, 1.24, 'crit');
-      this.callbacks.onBanner?.(`크로노 유물 공명: ${def.name}`, def.effectText, def.accentColor);
+      if (unlockedTier > 0 && synDef) {
+        this.callbacks.onSound?.('synergy_unlock');
+        this.spawnRing(baseX, GROUND_Y - 64, synDef.accentColor, 126);
+        this.spawnGroundShockwave(baseX + 32, GROUND_Y + 2, synDef.accentColor, 118);
+        const tierDesc = unlockedTier === 3 ? synDef.threeSetDesc : synDef.twoSetDesc;
+        this.addPopup(
+          baseX + 28,
+          GROUND_Y - 166,
+          `${synDef.glyph} ${synDef.name} ${unlockedTier}세트!`,
+          synDef.accentColor,
+          1.32,
+          'crit',
+        );
+        this.callbacks.onBanner?.(
+          `${synDef.glyph} ${synDef.name} ${unlockedTier}세트 각성!`,
+          tierDesc,
+          synDef.accentColor,
+        );
+      } else {
+        this.callbacks.onSound?.('relic_pick');
+        this.addPopup(baseX + 20, GROUND_Y - 152, `유물: ${def.shortName}!`, def.accentColor, 1.24, 'crit');
+        this.callbacks.onBanner?.(`크로노 유물 공명: ${def.name}`, def.effectText, def.accentColor);
+      }
     }
     return true;
   }
@@ -1095,9 +1177,14 @@ export class GameEngine {
       autoSpawn: this.autoSpawn,
       elapsed: this.elapsed,
       wave: this.wave,
+      frontlineX: this.frontlineX,
+      frontlineActive: this.frontlineActive,
       mutators: this.mutators,
       pendingRelicDraft: this.pendingRelicDraft,
       activeRift: this.activeRift,
+      activeBounty: this.activeBounty,
+      treasureDrone: this.treasureDrone,
+      spoils: this.spoils,
       player: this.player,
       enemy: this.enemy,
       units: this.units,
@@ -1111,6 +1198,373 @@ export class GameEngine {
       ultimates: this.ultimates,
       eraTransition: this.eraTransition,
     };
+  }
+
+  public spawnSpoil(x: number, kind: SpoilKind, value: number, vy = -110): BattleSpoil {
+    if (this.spoils.length >= 16) {
+      // Auto-claim oldest spoil so battlefield never drops rewards or bloats array
+      this.claimSpoil(this.spoils[0], false);
+      this.spoils.shift();
+    }
+    const clampedX = Math.max(PLAYER_BASE_X + 60, Math.min(ENEMY_BASE_X - 60, x));
+    const spoil: BattleSpoil = {
+      uid: this.nextUid++,
+      kind,
+      x: clampedX,
+      y: GROUND_Y - 18,
+      vx: (this.random() - 0.5) * 95,
+      vy,
+      value: Math.max(1, Math.round(value)),
+      life: 9.0,
+      maxLife: 9.0,
+      landed: false,
+    };
+    this.spoils.push(spoil);
+    return spoil;
+  }
+
+  private claimSpoil(spoil: BattleSpoil, manualTap: boolean): void {
+    const mult = manualTap ? 1.35 : 1.0;
+    const val = Math.max(1, Math.round(spoil.value * mult));
+    if (spoil.kind === 'gold') {
+      this.player.gold += val;
+      this.addPopup(
+        spoil.x,
+        spoil.y - 18,
+        manualTap ? `터치! +${val.toLocaleString()}G` : `+${val.toLocaleString()}G`,
+        '#fde047',
+        manualTap ? 1.18 : 0.96,
+        'gold',
+      );
+      this.spawnBurst(spoil.x, spoil.y - 6, '#fde047', manualTap ? 8 : 4, 115);
+    } else if (spoil.kind === 'xp') {
+      this.player.xp += val;
+      this.player.totalXp += val;
+      this.addPopup(
+        spoil.x,
+        spoil.y - 20,
+        manualTap ? `터치! +${val.toLocaleString()}XP` : `+${val.toLocaleString()}XP`,
+        '#38bdf8',
+        manualTap ? 1.16 : 0.95,
+        'elemental',
+      );
+      this.spawnBurst(spoil.x, spoil.y - 6, '#38bdf8', manualTap ? 8 : 4, 115);
+    } else {
+      this.player.liveMedalsEarned += val;
+      this.addPopup(spoil.x, spoil.y - 24, `+🏅${val} 메달!`, '#facc15', 1.28, 'crit');
+      this.spawnRing(spoil.x, spoil.y - 8, '#fde047', 36);
+    }
+    if (manualTap) {
+      this.player.spoilsTapped += 1;
+      this.callbacks.onSound?.('spoil_pickup');
+    }
+  }
+
+  /**
+   * Collects battlefield spoils near (worldX, worldY) on finger/mouse tap (+35% manual bonus!),
+   * and also strikes an active Golden Treasure Drone if tapped directly!
+   */
+  public collectSpoilsNear(worldX: number, worldY: number, manualTap = true): number {
+    if (this.status !== 'playing') return 0;
+    let count = 0;
+    for (let i = this.spoils.length - 1; i >= 0; i--) {
+      const s = this.spoils[i];
+      if (Math.abs(s.x - worldX) <= 68 && Math.abs(s.y - worldY) <= 78) {
+        this.claimSpoil(s, manualTap);
+        this.spoils.splice(i, 1);
+        count++;
+      }
+    }
+    if (
+      manualTap &&
+      this.treasureDrone &&
+      Math.abs(this.treasureDrone.x - worldX) <= 62 &&
+      Math.abs(this.treasureDrone.y - worldY) <= 62
+    ) {
+      const tapDmg = Math.max(18, Math.round(this.treasureDrone.maxHp * 0.28));
+      this.damageTreasureDrone(tapDmg);
+      count++;
+    }
+    return count;
+  }
+
+  public spawnTreasureDrone(): TreasureDrone {
+    const era = getEra(this.player.eraIndex);
+    const fromLeft = this.random() < 0.5;
+    const maxHp = Math.round(70 + this.player.eraIndex * 110 + this.player.eraIndex * this.player.eraIndex * 38);
+    const goldReward = Math.round((era.units[2]?.cost ?? 45) * 2.1 * this.player.mods.crateRewardMult);
+    const xpReward = Math.round((era.evolveXp > 0 ? era.evolveXp * 0.16 : 5200) * this.player.mods.xpMult);
+    const drone: TreasureDrone = {
+      uid: this.nextUid++,
+      x: fromLeft ? PLAYER_BASE_X + 120 : ENEMY_BASE_X - 120,
+      y: GROUND_Y - 142,
+      vx: fromLeft ? 96 : -96,
+      hp: maxHp,
+      maxHp,
+      goldReward,
+      xpReward,
+      medalReward: 2,
+      hitFlash: 0,
+    };
+    this.treasureDrone = drone;
+    this.callbacks.onBanner?.(
+      '💰 황금 차원 수송기 출현!',
+      '사격·필살기 또는 직접 터치로 격추해 대량의 전리품과 메달을 회수하세요!',
+      '#fde047',
+    );
+    return drone;
+  }
+
+  public damageTreasureDrone(dmg: number): void {
+    const d = this.treasureDrone;
+    if (!d || d.hp <= 0) return;
+    const applied = Math.max(1, Math.round(dmg));
+    d.hp = Math.max(0, d.hp - applied);
+    d.hitFlash = 1;
+    this.spawnBurst(d.x, d.y, '#fde047', 6, 130);
+    this.addPopup(d.x, d.y - 26, `-${applied}`, '#fef08a', 1.05, 'crit');
+    this.callbacks.onSound?.('melee_metal');
+
+    if (d.hp <= 0) {
+      const dx = d.x;
+      const dy = d.y;
+      this.treasureDrone = null;
+      this.player.dronesKilled += 1;
+      this.spawnExplosion(dx, dy, 54, '#facc15');
+      this.spawnRing(dx, dy, '#fef08a', 76);
+      this.callbacks.onSound?.('crate_open');
+
+      // Shower glittering Gold, XP & Chrono Medal spoils onto the road!
+      const coinEach = Math.max(10, Math.round(d.goldReward / 3));
+      for (let i = 0; i < 3; i++) {
+        this.spawnSpoil(dx + (i - 1) * 26, 'gold', coinEach, -135 - i * 18);
+      }
+      this.spawnSpoil(dx - 14, 'xp', d.xpReward, -155);
+      this.spawnSpoil(dx + 14, 'medal', d.medalReward, -165);
+
+      if (this.activeBounty && this.activeBounty.kind === 'special_hunt') {
+        this.advanceBountyProgress(1);
+      }
+      this.callbacks.onBanner?.(
+        '💰 황금 수송기 격추 대박!',
+        `전리품 코인·크리스탈·크로노 메달(+🏅${d.medalReward}) 드롭! 터치 시 +35% 보너스!`,
+        '#fde047',
+      );
+    }
+  }
+
+  public spawnBattleBounty(customKind?: BountyKind): BattleBounty {
+    const kinds: BountyKind[] = this.activeRift
+      ? ['kills', 'combo', 'rift_hold', 'special_hunt']
+      : ['kills', 'combo', 'special_hunt'];
+    const kind = customKind ?? kinds[Math.floor(this.random() * kinds.length)];
+    const era = getEra(this.player.eraIndex);
+    const goldReward = Math.round((era.units[2]?.cost ?? 45) * 1.9);
+    const xpReward = Math.round(era.evolveXp > 0 ? era.evolveXp * 0.14 : 4600);
+
+    let title = '적 병력 섬멸';
+    let target = 7;
+    let durationSec = 26;
+    if (kind === 'combo') {
+      target = Math.max(6, Math.min(14, 6 + Math.floor(this.player.eraIndex * 0.6)));
+      title = `${target} 콤보 달성`;
+      durationSec = 26;
+    } else if (kind === 'rift_hold') {
+      target = 7;
+      title = '시공 균열 점령 7초';
+      durationSec = 22;
+    } else if (kind === 'special_hunt') {
+      target = 1;
+      title = '정예·보스·수송기 격파';
+      durationSec = 32;
+      if (!this.treasureDrone && !this.units.some((u) => u.team === 'enemy' && u.state !== 'dead' && u.eliteKind)) {
+        this.spawnTreasureDrone();
+      }
+    } else {
+      target = 7 + Math.min(5, Math.floor(this.player.eraIndex * 0.4));
+      title = `적 ${target}기 처치`;
+      durationSec = 26;
+    }
+
+    const bounty: BattleBounty = {
+      uid: this.nextUid++,
+      kind,
+      title,
+      progress: kind === 'combo' ? Math.min(target, this.player.comboCount) : 0,
+      target,
+      remainingSec: durationSec,
+      durationSec,
+      goldReward,
+      xpReward,
+      medalReward: 2,
+    };
+    this.activeBounty = bounty;
+    return bounty;
+  }
+
+  private advanceBountyProgress(amount: number): void {
+    const b = this.activeBounty;
+    if (!b) return;
+    b.progress = Math.min(b.target, b.progress + amount);
+    if (b.progress >= b.target) {
+      this.completeBattleBounty();
+    }
+  }
+
+  private completeBattleBounty(): void {
+    const b = this.activeBounty;
+    if (!b) return;
+    this.activeBounty = null;
+    this.nextBountyAt = this.elapsed + 36;
+
+    const gold = Math.round(b.goldReward * this.player.mods.killGoldMult);
+    const xp = Math.round(b.xpReward * this.player.mods.xpMult);
+    this.player.gold += gold;
+    this.player.xp += xp;
+    this.player.totalXp += xp;
+    this.player.liveMedalsEarned += b.medalReward;
+    this.player.bountiesCleared += 1;
+    // Grant a crisp 3.5s Mini-Fever surge on directive clear!
+    this.player.feverTimer = Math.max(this.player.feverTimer, 3.5);
+
+    this.spawnRing(this.frontlineX, GROUND_Y - 36, '#4ade80', 86);
+    this.callbacks.onSound?.('bounty_clear');
+    this.addPopup(
+      PLAYER_BASE_X + 42,
+      GROUND_Y - 156,
+      `🎯 지령 완수! +${gold.toLocaleString()}G · +🏅${b.medalReward}`,
+      '#4ade80',
+      1.26,
+      'heal',
+    );
+    this.callbacks.onBanner?.(
+      `🎯 긴급 지령 완수: ${b.title}!`,
+      `보상 +${gold.toLocaleString()}G · +${xp.toLocaleString()} XP · +🏅${b.medalReward} 메달 · 미니 피버 발동!`,
+      '#4ade80',
+    );
+  }
+
+  private updateDynamicBattleEvents(dt: number): void {
+    // 1. Live Tug-of-War Frontline Clash coordinate
+    let maxPlayerX = -Infinity;
+    let minEnemyX = Infinity;
+    for (let i = 0; i < this.units.length; i++) {
+      const u = this.units[i];
+      if (u.state === 'dead') continue;
+      if (u.team === 'player' && u.x > maxPlayerX) maxPlayerX = u.x;
+      if (u.team === 'enemy' && u.x < minEnemyX) minEnemyX = u.x;
+    }
+    if (maxPlayerX > -Infinity && minEnemyX < Infinity) {
+      const targetFront = (maxPlayerX + minEnemyX) * 0.5;
+      this.frontlineX += (targetFront - this.frontlineX) * Math.min(1, dt * 8);
+      this.frontlineActive = Math.abs(minEnemyX - maxPlayerX) <= 220;
+    } else if (maxPlayerX > -Infinity) {
+      this.frontlineX += (maxPlayerX - this.frontlineX) * Math.min(1, dt * 5);
+      this.frontlineActive = false;
+    } else if (minEnemyX < Infinity) {
+      this.frontlineX += (minEnemyX - this.frontlineX) * Math.min(1, dt * 5);
+      this.frontlineActive = false;
+    } else {
+      this.frontlineX += (WORLD_WIDTH * 0.5 - this.frontlineX) * Math.min(1, dt * 3);
+      this.frontlineActive = false;
+    }
+
+    // 2. Update physics & auto-collection of Battlefield Spoils (never lost if untapped!)
+    for (let i = this.spoils.length - 1; i >= 0; i--) {
+      const s = this.spoils[i];
+      s.life -= dt;
+      if (!s.landed) {
+        s.x = Math.max(PLAYER_BASE_X + 50, Math.min(ENEMY_BASE_X - 50, s.x + s.vx * dt));
+        s.vy += 380 * dt;
+        s.y += s.vy * dt;
+        if (s.y >= GROUND_Y - 6) {
+          s.y = GROUND_Y - 6;
+          s.vx = 0;
+          s.vy = 0;
+          s.landed = true;
+        }
+      } else {
+        // Allied unit walking past or timer <= 4.5s auto-claims at 1.0x so AFK play loses nothing!
+        let pickedByAlly = s.life <= 4.5;
+        if (!pickedByAlly) {
+          for (let uIdx = 0; uIdx < this.units.length; uIdx++) {
+            const u = this.units[uIdx];
+            if (u.team === 'player' && u.state !== 'dead' && Math.abs(u.x - s.x) <= 28) {
+              pickedByAlly = true;
+              break;
+            }
+          }
+        }
+        if (pickedByAlly || s.life <= 0) {
+          this.claimSpoil(s, false);
+          this.spoils.splice(i, 1);
+        }
+      }
+    }
+
+    // 3. Golden Treasure Drone movement & projectile hit check
+    if (this.dynamicEventsEnabled && !this.treasureDrone && this.elapsed >= this.nextDroneAt) {
+      this.spawnTreasureDrone();
+      this.nextDroneAt = this.elapsed + 48 + this.random() * 10;
+    }
+    if (this.treasureDrone) {
+      const d = this.treasureDrone;
+      if (d.hitFlash > 0) d.hitFlash = Math.max(0, d.hitFlash - dt * 6);
+      d.x += d.vx * dt;
+      d.y = GROUND_Y - 142 + Math.sin(this.elapsed * 4.2) * 7;
+      for (let pIdx = this.projectiles.length - 1; pIdx >= 0; pIdx--) {
+        const proj = this.projectiles[pIdx];
+        if (proj.team !== 'player') continue;
+        if (Math.abs(proj.x - d.x) <= 32 && Math.abs(proj.y - d.y) <= 68) {
+          this.projectiles.splice(pIdx, 1);
+          this.damageTreasureDrone(proj.damage);
+          if (!this.treasureDrone) break;
+        }
+      }
+      if (this.treasureDrone && (d.x < PLAYER_BASE_X + 40 || d.x > ENEMY_BASE_X - 40)) {
+        this.treasureDrone = null;
+      }
+    }
+
+    // 4. Live Tactical Bounty Directive progression
+    if (this.dynamicEventsEnabled && !this.activeBounty && this.elapsed >= this.nextBountyAt) {
+      this.spawnBattleBounty();
+      this.nextBountyAt = this.elapsed + 44;
+    }
+    if (this.activeBounty) {
+      const b = this.activeBounty;
+      b.remainingSec = Math.max(0, b.remainingSec - dt);
+      if (b.kind === 'combo') {
+        if (this.player.comboCount > b.progress) {
+          b.progress = Math.min(b.target, this.player.comboCount);
+        }
+        if (b.progress >= b.target) {
+          this.completeBattleBounty();
+          return;
+        }
+      } else if (b.kind === 'rift_hold' && this.activeRift) {
+        let hasAllyInRift = false;
+        for (let i = 0; i < this.units.length; i++) {
+          const u = this.units[i];
+          if (
+            u.team === 'player' &&
+            u.state !== 'dead' &&
+            Math.abs(u.x - this.activeRift.x) <= this.activeRift.radius
+          ) {
+            hasAllyInRift = true;
+            break;
+          }
+        }
+        if (hasAllyInRift) {
+          this.advanceBountyProgress(dt);
+          if (!this.activeBounty) return;
+        }
+      }
+      if (this.activeBounty && b.remainingSec <= 0) {
+        this.activeBounty = null;
+        this.nextBountyAt = this.elapsed + 26;
+      }
+    }
   }
 
   public spawnSupplyCrate(customX?: number): SupplyCrateEntity {
@@ -1241,6 +1695,7 @@ export class GameEngine {
     const aiStartBonus = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiStartingGoldBonus : 0;
     const sanctuaryGoldBonus = isPlayer ? (this.playerSanctuary?.starting_gold ?? 0) * 30 : 0;
     const turretLegacyLv = isPlayer ? (this.playerSanctuary?.turret_legacy ?? 0) : 0;
+    const starterRelicLv = isPlayer ? (this.playerSanctuary?.starter_relic ?? 0) : 0;
     const cmdMasteryLv = isPlayer ? (this.playerSanctuary?.command_mastery ?? 0) : 0;
     const cmdCdMult = Math.max(0.5, 1 - cmdMasteryLv * 0.035);
     const tacticalMax = commanderId
@@ -1252,9 +1707,12 @@ export class GameEngine {
       team,
       commanderId,
       relics: [],
+      relicRerolls: isPlayer ? (starterRelicLv >= 3 ? 2 : 1) : 0,
       mods,
       rewindUsed: false,
       lastStandUsed: false,
+      stormShotCounter: 0,
+      bulwarkBeamTimer: 4.0,
       eraIndex: 0,
       gold: STARTING_GOLD + aiStartBonus + sanctuaryGoldBonus,
       xp: 0,
@@ -1279,6 +1737,10 @@ export class GameEngine {
       bossKills: 0,
       eliteKills: 0,
       unitsSpawned: 0,
+      bountiesCleared: 0,
+      dronesKilled: 0,
+      spoilsTapped: 0,
+      liveMedalsEarned: 0,
       comboCount: 0,
       comboTimer: 0,
       maxCombo: 0,
@@ -1507,10 +1969,11 @@ export class GameEngine {
     this.updateTurrets(this.player, dt);
     this.updateTurrets(this.enemy, dt);
 
-    // 6. Projectiles, beams, ultimates
+    // 6. Projectiles, beams, ultimates & dynamic battlefield events (frontline, spoils, drone, bounty)
     this.updateProjectiles(dt);
     this.updateUltimates(dt);
     this.updateEffects(dt);
+    this.updateDynamicBattleEvents(dt);
 
     // 7. Win / Loss / Endless Wave Break resolution
     if (this.enemy.baseHp <= 0) {
@@ -1555,6 +2018,56 @@ export class GameEngine {
     if (f.mods.baseRegenPerSec > 0 && f.baseHp > 0 && f.baseHp < f.baseMaxHp) {
       f.baseHp = Math.min(f.baseMaxHp, f.baseHp + f.baseMaxHp * f.mods.baseRegenPerSec * dt);
     }
+    // Bulwark 3-Set Synergy: Fortress fires an automatic Astral Judgement Beam every 8s!
+    if (f.mods.bulwarkTier >= 3 && f.baseHp > 0) {
+      f.bulwarkBeamTimer -= dt;
+      if (f.bulwarkBeamTimer <= 0) {
+        const baseX = f.team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
+        const dir = f.team === 'player' ? 1 : -1;
+        let closestEnemy: UnitEntity | null = null;
+        let closestDist = 860;
+        for (let i = 0; i < this.units.length; i++) {
+          const u = this.units[i];
+          if (u.team === f.team || u.state === 'dead') continue;
+          const d = (u.x - baseX) * dir;
+          if (d >= -20 && d <= closestDist) {
+            closestDist = d;
+            closestEnemy = u;
+          }
+        }
+        if (closestEnemy) {
+          f.bulwarkBeamTimer = 8.0;
+          const era = getEra(f.eraIndex);
+          const beamDmg = Math.round(
+            (era.units[2]?.damage ?? 30) * 2.35 * getWeaponDamageMult(f.upgrades) * f.mods.damageMult,
+          );
+          const tx = closestEnemy.x;
+          const ty = GROUND_Y - closestEnemy.def.height * 0.65;
+          this.beams.push({
+            uid: this.nextUid++,
+            team: f.team,
+            style: 'chrono_beam',
+            x1: baseX + dir * 24,
+            y1: GROUND_Y - 148,
+            x2: tx,
+            y2: ty,
+            width: 9,
+            color: '#4ade80',
+            life: 0.38,
+            maxLife: 0.38,
+            seed: this.random() * 100,
+          });
+          this.spawnFlashStar(tx, ty, '#86efac', 26);
+          this.spawnRing(tx, GROUND_Y - 10, '#4ade80', 46);
+          this.applySplashDamage(tx, f.team, beamDmg, 54, true, true, dir * 32);
+          if (f.team === 'player') {
+            this.callbacks.onSound?.('laser');
+          }
+        } else {
+          f.bulwarkBeamTimer = 1.2;
+        }
+      }
+    }
     if (f.baseHitFlash > 0) {
       f.baseHitFlash = Math.max(0, f.baseHitFlash - dt * 5);
     }
@@ -1579,7 +2092,23 @@ export class GameEngine {
     head.remaining = Math.max(0, head.remaining - dt);
     if (head.remaining <= 0 && this.getActiveUnitCount(f.team) < this.getMaxUnitCap(f.team)) {
       f.queue.shift();
-      this.spawnUnit(f.team, UNIT_BY_ID[head.unitId]);
+      const unitDef = UNIT_BY_ID[head.unitId];
+      const spawned = this.spawnUnit(f.team, unitDef);
+      // Imperial 3-Set Synergy: every 6th trained unit deploys a free Twin Escort!
+      if (
+        f.mods.imperialTier >= 3 &&
+        f.unitsSpawned % 6 === 0 &&
+        this.getActiveUnitCount(f.team) < this.getMaxUnitCap(f.team)
+      ) {
+        const dir = f.team === 'player' ? 1 : -1;
+        const twin = this.spawnUnit(f.team, unitDef);
+        twin.x = spawned.x - dir * 18;
+        twin.upgradeFlash = 1;
+        if (f.team === 'player') {
+          this.addPopup(twin.x, GROUND_Y - 96, '👑 쌍둥이 호위 출격!', '#facc15', 1.16, 'crit');
+          this.spawnRing(twin.x, GROUND_Y - 24, '#facc15', 42);
+        }
+      }
     }
   }
 
@@ -1653,6 +2182,9 @@ export class GameEngine {
         (specialKind === 'boss' ? 1.42 : specialKind === 'elite' ? 1.24 : 1) * endlessEnemyScale,
       rewardMult: specialKind === 'boss' ? 4.5 : specialKind === 'elite' ? 2.4 : 1,
       slowTimer: 0,
+      imperialHalo: faction.mods.imperialTier >= 2 && initialVetRank >= 1,
+      bulwarkHex: faction.mods.bulwarkTier >= 2 && maxShield > 0,
+      berserkerAura: false,
     };
     this.units.push(unit);
     faction.unitsSpawned += 1;
@@ -1923,6 +2455,9 @@ export class GameEngine {
     const baseVetMult = getVeteranStatMult(attacker.vetRank, attackerFaction.upgrades);
     const vetDamageMult = 1 + (baseVetMult - 1) * attackerFaction.mods.vetStatBonusMult;
     const berserkDamageMult = getBerserkDamageMult(attackerFaction.upgrades, hpRatio);
+    const berserkerSynMult =
+      attackerFaction.mods.berserkerTier >= 2 && hpRatio <= 0.75 ? 1.16 : 1;
+    attacker.berserkerAura = attackerFaction.mods.berserkerTier >= 2 && hpRatio <= 0.75;
     const bloodOathMult =
       attackerFaction.mods.bloodOathLowHpBonus > 0 && hpRatio <= 0.5
         ? 1 + attackerFaction.mods.bloodOathLowHpBonus
@@ -1935,12 +2470,14 @@ export class GameEngine {
       (attacker.damageScale ?? 1) *
       vetDamageMult *
       berserkDamageMult *
+      berserkerSynMult *
       bloodOathMult *
       furyDmgMult *
       aiDmgMult *
       (isCrit ? critMult : 1);
     const rangeMult = getRangeMult(attackerFaction.upgrades);
-    const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
+    const projSpeedMult =
+      getProjectileSpeedMult(attackerFaction.upgrades) * attackerFaction.mods.projectileSpeedMult;
     const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
     const bonusSplashPx = attackerFaction.mods.splashBonusPx;
     const effUnitSplash =
@@ -1961,6 +2498,37 @@ export class GameEngine {
     const targetY = target
       ? GROUND_Y - target.def.height * 0.72 - (target.def.hoverHeight ?? 0)
       : GROUND_Y - 70;
+
+    // Storm 3-Set Synergy: every 5th ranged attack calls down an Orbital Sky Lightning Bolt!
+    if (isRangedUnit && attackerFaction.mods.stormTier >= 3 && target) {
+      attackerFaction.stormShotCounter += 1;
+      if (attackerFaction.stormShotCounter % 5 === 0) {
+        this.beams.push({
+          uid: this.nextUid++,
+          team: attacker.team,
+          style: 'lightning',
+          x1: target.x + (this.random() - 0.5) * 24,
+          y1: -24,
+          x2: target.x,
+          y2: targetY,
+          width: 7,
+          color: '#38bdf8',
+          life: 0.28,
+          maxLife: 0.28,
+          seed: this.random() * 100,
+        });
+        this.spawnFlashStar(target.x, targetY, '#67e8f9', 24);
+        this.applyDamageToUnit(
+          target,
+          Math.max(4, Math.round(rawDamage * 0.55)),
+          true,
+          false,
+          0,
+          attacker.team,
+          attacker,
+        );
+      }
+    }
 
     // Instant Railgun, Interstellar Graviton, Transcendent Chrono-Prism, or Industrial Tesla Arc piercing beam
     if (
@@ -2144,7 +2712,8 @@ export class GameEngine {
       return;
     }
 
-    // Ranged Projectile (+ Prism Split multishot relic!)
+    // Ranged Projectile (+ Prism Split multishot relic & Storm electrified plasma trail!)
+    const isElectrified = attackerFaction.mods.stormTier >= 2;
     if (def.projectile) {
       const speed = (def.projectileSpeed ?? 420) * projSpeedMult;
       const gravity = def.projectileArc ?? 200;
@@ -2169,6 +2738,7 @@ export class GameEngine {
         splashRadius: effUnitSplash,
         armorPierce: def.armorPierce,
         isCrit,
+        electrified: isElectrified,
         baseDamageMult: def.baseDamageMult,
         knockback: def.knockback,
         pierceRemaining: def.pierceCount,
@@ -2201,6 +2771,7 @@ export class GameEngine {
           splashRadius: effUnitSplash,
           armorPierce: def.armorPierce,
           isCrit,
+          electrified: isElectrified,
           baseDamageMult: def.baseDamageMult,
           knockback: def.knockback * 0.6,
           pierceRemaining: def.pierceCount,
@@ -2335,7 +2906,8 @@ export class GameEngine {
       getTurretAttackSpeedMult(faction.upgrades) *
       faction.mods.turretRateMult *
       (faction.tacticalBuffTimer > 0 ? 1.35 : 1);
-    const projSpeedMult = getProjectileSpeedMult(faction.upgrades);
+    const projSpeedMult =
+      getProjectileSpeedMult(faction.upgrades) * faction.mods.projectileSpeedMult;
     const splashMult = getSplashRadiusMult(faction.upgrades);
 
     for (let i = 0; i < faction.turretSlots; i++) {
@@ -2381,6 +2953,37 @@ export class GameEngine {
         def.splashRadius > 0
           ? (def.splashRadius + faction.mods.splashBonusPx) * splashMult
           : 0;
+
+      // Storm 3-Set Synergy: every 5th ranged/turret shot calls down Orbital Sky Lightning!
+      if (faction.mods.stormTier >= 3) {
+        faction.stormShotCounter += 1;
+        if (faction.stormShotCounter % 5 === 0) {
+          const lTargetY = GROUND_Y - bestTarget.def.height * 0.6;
+          this.beams.push({
+            uid: this.nextUid++,
+            team: faction.team,
+            style: 'lightning',
+            x1: bestTarget.x + (this.random() - 0.5) * 22,
+            y1: -24,
+            x2: bestTarget.x,
+            y2: lTargetY,
+            width: 7,
+            color: '#38bdf8',
+            life: 0.28,
+            maxLife: 0.28,
+            seed: this.random() * 100,
+          });
+          this.spawnFlashStar(bestTarget.x, lTargetY, '#67e8f9', 24);
+          this.applyDamageToUnit(
+            bestTarget,
+            Math.max(4, Math.round(scaledTurretDamage * 0.55)),
+            true,
+            false,
+            0,
+            faction.team,
+          );
+        }
+      }
 
       if (
         def.projectile === 'ion_beam' ||
@@ -2439,6 +3042,7 @@ export class GameEngine {
           splashRadius: effTurretSplash,
           armorPierce: def.armorPierce,
           isCrit: false,
+          electrified: faction.mods.stormTier >= 2,
           baseDamageMult: 1,
           knockback: def.splashRadius > 0 ? 55 : 18,
           pierceRemaining: 1,
@@ -2948,6 +3552,13 @@ export class GameEngine {
         );
       }
     }
+    if (
+      attackerTeam === 'player' &&
+      this.treasureDrone &&
+      Math.abs(this.treasureDrone.x - centerX) <= radius + 34
+    ) {
+      this.damageTreasureDrone(damage * 0.65);
+    }
   }
 
   private applyDamageToUnit(
@@ -3084,6 +3695,16 @@ export class GameEngine {
           shape: 'circle',
         });
       }
+    }
+
+    // Sync live Berserker / Bulwark visual aura flags on damaged victim
+    victim.berserkerAura =
+      victimFaction.mods.berserkerTier >= 2 && victim.hp > 0 && victim.hp / Math.max(1, victim.maxHp) <= 0.75;
+    victim.bulwarkHex = victimFaction.mods.bulwarkTier >= 2 && victim.shield > 0.5;
+
+    // Bulwark 2-Set Synergy: frost-thorn barrier chills any unit striking a Bulwark defender!
+    if (!isThornsReflect && victimFaction.mods.bulwarkTier >= 2 && attackerUnit && attackerUnit.state !== 'dead') {
+      attackerUnit.slowTimer = Math.max(attackerUnit.slowTimer ?? 0, 1.8);
     }
 
     // Thorns armor reflects melee strike damage back to the melee attacker!
@@ -3239,15 +3860,46 @@ export class GameEngine {
       if (victim.eliteKind === 'boss') {
         killer.bossKills += 1;
         if (attackerTeam === 'player') {
+          this.spawnSpoil(victim.x - 16, 'gold', Math.max(25, Math.round(rewardGold * 0.45)), -145);
+          this.spawnSpoil(victim.x + 16, 'xp', Math.max(40, Math.round(rewardXp * 0.45)), -155);
+          this.spawnSpoil(victim.x, 'medal', 2, -170);
           this.callbacks.onSound?.('fever');
           this.callbacks.onBanner?.(
             `${victim.eliteTitle ?? '수호군주'} 토벌 성공!`,
-            `현상금 +${rewardGold.toLocaleString()}G · +${rewardXp.toLocaleString()} XP 획득!`,
+            `현상금 +${rewardGold.toLocaleString()}G · +${rewardXp.toLocaleString()} XP + 전장 전리품 드롭!`,
             '#fde047',
           );
         }
       } else if (victim.eliteKind === 'elite') {
         killer.eliteKills += 1;
+        if (attackerTeam === 'player' && this.dynamicEventsEnabled) {
+          this.spawnSpoil(victim.x - 10, 'gold', Math.max(15, Math.round(rewardGold * 0.4)), -130);
+          this.spawnSpoil(victim.x + 10, 'xp', Math.max(25, Math.round(rewardXp * 0.4)), -140);
+        }
+      }
+
+      // Advance live Battlefield Bounty Directive on player kills
+      if (attackerTeam === 'player' && this.activeBounty) {
+        if (this.activeBounty.kind === 'kills') {
+          this.advanceBountyProgress(1);
+        } else if (this.activeBounty.kind === 'special_hunt' && isSpecialVictim) {
+          this.advanceBountyProgress(1);
+        }
+      }
+
+      // Berserker 3-Set Synergy: enemy death erupts a Molten Ground Shockwave!
+      if (killer.mods.berserkerTier >= 3) {
+        const moltenDmg = Math.max(6, Math.round(victim.maxHp * 0.16));
+        this.spawnGroundShockwave(victim.x, GROUND_Y + 2, '#fb923c', 68);
+        this.spawnRing(victim.x, GROUND_Y - 14, '#f97316', 54);
+        this.spawnScorch(victim.x, 42, '#f97316');
+        for (let mIdx = 0; mIdx < this.units.length; mIdx++) {
+          const foe = this.units[mIdx];
+          if (foe.team === attackerTeam || foe.state === 'dead' || foe.uid === victim.uid) continue;
+          if (Math.abs(foe.x - victim.x) <= 68) {
+            this.applyDamageToUnit(foe, moltenDmg, true, false, 0, attackerTeam, undefined, true);
+          }
+        }
       }
 
       // Combo audio & milestone popups for player
@@ -3290,6 +3942,7 @@ export class GameEngine {
         const nextRank = getVeteranRankForKills(attackerUnit.kills, killer.upgrades);
         if (nextRank > attackerUnit.vetRank) {
           attackerUnit.vetRank = nextRank;
+          attackerUnit.imperialHalo = killer.mods.imperialTier >= 2 && nextRank >= 1;
           const baseVet = getVeteranStatMult(nextRank, killer.upgrades);
           const vetHpMult = 1 + (baseVet - 1) * killer.mods.vetStatBonusMult;
           const statMult = attackerTeam === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;

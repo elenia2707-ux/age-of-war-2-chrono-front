@@ -37,6 +37,10 @@ export interface PlayerRecords {
   bestEndlessWave: number;
   bestCombo: number;
   totalBossKills: number;
+  totalBountiesCleared: number;
+  totalDronesKilled: number;
+  totalSpoilsTapped: number;
+  maxSynergyTier: number;
   dailyClearedDate: string | null;
 }
 
@@ -85,6 +89,10 @@ export function createDefaultRecords(): PlayerRecords {
     bestEndlessWave: 0,
     bestCombo: 0,
     totalBossKills: 0,
+    totalBountiesCleared: 0,
+    totalDronesKilled: 0,
+    totalSpoilsTapped: 0,
+    maxSynergyTier: 0,
     dailyClearedDate: null,
   };
 }
@@ -168,6 +176,22 @@ export function loadRecords(storage: Storage | null = getStorage()): PlayerRecor
       totalBossKills:
         typeof parsed.totalBossKills === 'number'
           ? Math.max(0, Math.floor(parsed.totalBossKills))
+          : 0,
+      totalBountiesCleared:
+        typeof parsed.totalBountiesCleared === 'number'
+          ? Math.max(0, Math.floor(parsed.totalBountiesCleared))
+          : 0,
+      totalDronesKilled:
+        typeof parsed.totalDronesKilled === 'number'
+          ? Math.max(0, Math.floor(parsed.totalDronesKilled))
+          : 0,
+      totalSpoilsTapped:
+        typeof parsed.totalSpoilsTapped === 'number'
+          ? Math.max(0, Math.floor(parsed.totalSpoilsTapped))
+          : 0,
+      maxSynergyTier:
+        typeof parsed.maxSynergyTier === 'number'
+          ? Math.max(0, Math.floor(parsed.maxSynergyTier))
           : 0,
       dailyClearedDate:
         typeof parsed.dailyClearedDate === 'string' ? parsed.dailyClearedDate : null,
@@ -307,6 +331,24 @@ function checkAchievements(
       case 'daily_clear':
         if (records.dailyClearedDate !== null) unlock(def);
         break;
+      case 'synergy_2':
+        if (records.maxSynergyTier >= 2) unlock(def);
+        break;
+      case 'synergy_3':
+        if (records.maxSynergyTier >= 3) unlock(def);
+        break;
+      case 'bounty_hunter_5':
+        if (records.totalBountiesCleared >= 5) unlock(def);
+        break;
+      case 'drone_hunter_3':
+        if (records.totalDronesKilled >= 3) unlock(def);
+        break;
+      case 'spoil_collector_20':
+        if (records.totalSpoilsTapped >= 20) unlock(def);
+        break;
+      case 'relic_collector_18':
+        if (records.discoveredRelics.length >= 18) unlock(def);
+        break;
     }
   }
 
@@ -334,6 +376,10 @@ export function recordMatchResult(
     waveReached?: number;
     maxCombo?: number;
     bossKills?: number;
+    bountiesCleared?: number;
+    dronesKilled?: number;
+    spoilsTapped?: number;
+    liveMedalsEarned?: number;
     baseHpRatio?: number;
     relicsCollected?: readonly RelicId[];
     dailyDateKey?: string;
@@ -344,6 +390,10 @@ export function recordMatchResult(
   const mode: GameMode = params.mode ?? 'campaign';
   const kills = Math.max(0, Math.floor(params.kills));
   const bossKills = Math.max(0, Math.floor(params.bossKills ?? 0));
+  const bountiesCleared = Math.max(0, Math.floor(params.bountiesCleared ?? 0));
+  const dronesKilled = Math.max(0, Math.floor(params.dronesKilled ?? 0));
+  const spoilsTapped = Math.max(0, Math.floor(params.spoilsTapped ?? 0));
+  const liveMedalsEarned = Math.max(0, Math.floor(params.liveMedalsEarned ?? 0));
   const maxCombo = Math.max(0, Math.floor(params.maxCombo ?? 0));
   const waveReached = Math.max(1, Math.floor(params.waveReached ?? 1));
   const clampedEra = Math.min(ERAS.length, Math.max(1, params.eraReached));
@@ -351,13 +401,26 @@ export function recordMatchResult(
   records.matchesPlayed += 1;
   records.totalKills += kills;
   records.totalBossKills += bossKills;
+  records.totalBountiesCleared += bountiesCleared;
+  records.totalDronesKilled += dronesKilled;
+  records.totalSpoilsTapped += spoilsTapped;
   records.bestCombo = Math.max(records.bestCombo, maxCombo);
   records.highestEraReached = Math.max(records.highestEraReached, clampedEra);
 
   if (params.relicsCollected) {
+    const synCounts: Record<string, number> = {};
     for (const r of params.relicsCollected) {
       if (!records.discoveredRelics.includes(r)) {
         records.discoveredRelics.push(r);
+      }
+      const def = RELIC_BY_ID[r];
+      if (def) {
+        synCounts[def.synergy] = (synCounts[def.synergy] ?? 0) + 1;
+        if (synCounts[def.synergy] >= 3) {
+          records.maxSynergyTier = Math.max(records.maxSynergyTier, 3);
+        } else if (synCounts[def.synergy] >= 2) {
+          records.maxSynergyTier = Math.max(records.maxSynergyTier, 2);
+        }
       }
     }
   }
@@ -387,7 +450,7 @@ export function recordMatchResult(
     }
   }
 
-  // Compute Chrono Medals earned from the battle performance
+  // Compute Chrono Medals earned from the battle performance (+ any live medals from drones/bounties!)
   const diffMult = DIFF_MEDAL_MULT[params.difficulty] ?? 1.0;
   const eraMedals = Math.max(2, Math.round(clampedEra * 2.2));
   const killMedals = Math.floor(kills / 12);
@@ -396,7 +459,8 @@ export function recordMatchResult(
   const winBonus = params.won ? 18 : mode === 'endless' && waveReached >= 3 ? 10 : 4;
   const runMedals =
     Math.max(3, Math.round((eraMedals + killMedals + bossMedals + waveMedals + winBonus) * diffMult)) +
-    dailyFirstClearBonus;
+    dailyFirstClearBonus +
+    liveMedalsEarned;
 
   records.chronoMedals += runMedals;
   records.totalMedalsEarned += runMedals;

@@ -54,6 +54,12 @@ export type DailyMutatorId =
 
 export type ChronoRiftKind = 'haste' | 'fury' | 'sanctuary';
 
+export type RelicSynergyId = 'storm' | 'berserker' | 'bulwark' | 'imperial';
+
+export type SpoilKind = 'gold' | 'xp' | 'medal';
+
+export type BountyKind = 'kills' | 'combo' | 'rift_hold' | 'special_hunt';
+
 export type ProjectileStyle =
   | 'stone'
   | 'totem_fire'
@@ -248,6 +254,9 @@ export type SoundCue =
   | 'tactical'
   | 'boss_spawn'
   | 'rift_open'
+  | 'spoil_pickup'
+  | 'synergy_unlock'
+  | 'bounty_clear'
   | 'achievement'
   | 'victory'
   | 'defeat';
@@ -399,11 +408,22 @@ export interface CommanderDef {
 export interface RelicDef {
   id: RelicId;
   rarity: RelicRarity;
+  synergy: RelicSynergyId;
   name: string;
   shortName: string;
   effectText: string;
   flavorText: string;
   accentColor: string;
+}
+
+export interface RelicSynergyDef {
+  id: RelicSynergyId;
+  name: string;
+  shortName: string;
+  glyph: string;
+  accentColor: string;
+  twoSetDesc: string;
+  threeSetDesc: string;
 }
 
 export interface SanctuaryUpgradeDef {
@@ -444,7 +464,7 @@ export interface ChronoRiftZone {
   accentColor: string;
 }
 
-/** O(1) precomputed combined faction modifiers from Relics + Commander + Sanctuary + Daily Mutators */
+/** O(1) precomputed combined faction modifiers from Relics + Synergies + Commander + Sanctuary + Daily Mutators */
 export interface FactionCombatMods {
   damageMult: number;
   attackSpeedMult: number;
@@ -464,6 +484,7 @@ export interface FactionCombatMods {
   ultCooldownMult: number;
   ultXpCostMult: number;
   crateRewardMult: number;
+  projectileSpeedMult: number;
   shieldBonusRatio: number;
   lifestealBonus: number;
   regenBonusPerSec: number;
@@ -482,6 +503,11 @@ export interface FactionCombatMods {
   hasRewindHourglass: boolean;
   bloodOathLowHpBonus: number;
   bountyBossMult: number;
+  synergyCounts: Record<RelicSynergyId, number>;
+  stormTier: 0 | 2 | 3;
+  berserkerTier: 0 | 2 | 3;
+  bulwarkTier: 0 | 2 | 3;
+  imperialTier: 0 | 2 | 3;
 }
 
 export interface StartGameOptions {
@@ -496,9 +522,12 @@ export interface FactionState {
   team: Team;
   commanderId: CommanderId | null;
   relics: RelicId[];
+  relicRerolls: number;
   mods: FactionCombatMods;
   rewindUsed: boolean;
   lastStandUsed: boolean;
+  stormShotCounter: number;
+  bulwarkBeamTimer: number;
   eraIndex: number;
   gold: number;
   xp: number;
@@ -523,6 +552,10 @@ export interface FactionState {
   bossKills: number;
   eliteKills: number;
   unitsSpawned: number;
+  bountiesCleared: number;
+  dronesKilled: number;
+  spoilsTapped: number;
+  liveMedalsEarned: number;
   /** Kill combo streak (decays after 4.2s without kills) */
   comboCount: number;
   comboTimer: number;
@@ -564,6 +597,10 @@ export interface UnitEntity {
   damageScale?: number;
   rewardMult?: number;
   slowTimer?: number;
+  /** Active Relic Resonance visual flags for zero-lookup 60fps rendering */
+  berserkerAura?: boolean;
+  imperialHalo?: boolean;
+  bulwarkHex?: boolean;
 }
 
 export interface SupplyCrateEntity {
@@ -596,6 +633,7 @@ export interface ProjectileEntity {
   splashRadius: number;
   armorPierce: boolean;
   isCrit: boolean;
+  electrified?: boolean;
   baseDamageMult: number;
   knockback: number;
   pierceRemaining: number;
@@ -716,6 +754,45 @@ export interface ActiveUltimate {
   }[];
 }
 
+export interface BattleSpoil {
+  uid: number;
+  kind: SpoilKind;
+  x: number;
+  y: number;
+  vx: number;
+  vy: number;
+  value: number;
+  life: number;
+  maxLife: number;
+  landed: boolean;
+}
+
+export interface TreasureDrone {
+  uid: number;
+  x: number;
+  y: number;
+  vx: number;
+  hp: number;
+  maxHp: number;
+  goldReward: number;
+  xpReward: number;
+  medalReward: number;
+  hitFlash: number;
+}
+
+export interface BattleBounty {
+  uid: number;
+  kind: BountyKind;
+  title: string;
+  progress: number;
+  target: number;
+  remainingSec: number;
+  durationSec: number;
+  goldReward: number;
+  xpReward: number;
+  medalReward: number;
+}
+
 export interface EngineCallbacks {
   onSound?: (cue: SoundCue) => void;
   onComboSound?: (comboCount: number) => void;
@@ -732,9 +809,14 @@ export interface GameSnapshot {
   autoSpawn: boolean;
   elapsed: number;
   wave: number;
+  frontlineX: number;
+  frontlineActive: boolean;
   mutators: DailyMutatorId[];
   pendingRelicDraft: RelicId[];
   activeRift: ChronoRiftZone | null;
+  activeBounty: BattleBounty | null;
+  treasureDrone: TreasureDrone | null;
+  spoils: BattleSpoil[];
   player: FactionState;
   enemy: FactionState;
   units: UnitEntity[];

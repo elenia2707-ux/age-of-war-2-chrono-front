@@ -8,7 +8,7 @@ import {
   getSanctuaryCost,
   SANCTUARY_UPGRADES,
 } from '../data/metaProgression';
-import { RELIC_BY_ID, RELICS } from '../data/relics';
+import { RELIC_BY_ID, RELIC_SYNERGIES, RELICS } from '../data/relics';
 import type {
   CommanderId,
   DifficultyId,
@@ -79,6 +79,7 @@ export class OverlayController {
   private codexNextBtn = document.getElementById('btn-codex-next') as HTMLButtonElement;
 
   private relicDraftCardsEl = document.getElementById('relic-draft-cards')!;
+  private relicRerollBtn = document.getElementById('btn-relic-reroll') as HTMLButtonElement | null;
 
   private resultModal = document.getElementById('result-modal');
   private resultConfetti = document.getElementById('result-confetti');
@@ -91,6 +92,8 @@ export class OverlayController {
   private onUiTap?: () => void;
   private onUpgradeSound?: () => void;
   private onSelectRelic?: (relicId: RelicId) => void;
+  private onRerollRelic?: () => boolean;
+  private getDraftContext?: () => { ownedRelics: RelicId[]; rerollsLeft: number };
 
   constructor(callbacks: {
     onStart: (launch: StartLaunchConfig) => void;
@@ -98,12 +101,16 @@ export class OverlayController {
     onRestart: () => void;
     onReturnTitle: () => void;
     onSelectRelic: (relicId: RelicId) => void;
+    onRerollRelic?: () => boolean;
+    getDraftContext?: () => { ownedRelics: RelicId[]; rerollsLeft: number };
     onUiTap?: () => void;
     onUpgradeSound?: () => void;
   }) {
     this.onUiTap = callbacks.onUiTap;
     this.onUpgradeSound = callbacks.onUpgradeSound;
     this.onSelectRelic = callbacks.onSelectRelic;
+    this.onRerollRelic = callbacks.onRerollRelic;
+    this.getDraftContext = callbacks.getDraftContext;
 
     const initial = loadRecords();
     this.selectedCommander = initial.selectedCommander;
@@ -112,6 +119,14 @@ export class OverlayController {
     this.buildModeButtons();
     this.buildDifficultyButtons();
     this.bindMetaModals();
+
+    if (this.relicRerollBtn) {
+      bindButtonTap(this.relicRerollBtn, () => {
+        if (this.onRerollRelic?.()) {
+          this.onUiTap?.();
+        }
+      });
+    }
 
     bindButtonTap(document.getElementById('btn-start-game') as HTMLButtonElement, () => {
       const daily = getDailyChallengeInfo();
@@ -174,28 +189,54 @@ export class OverlayController {
 
   public showRelicDraft(choices: RelicId[]): void {
     if (choices.length === 0) return;
+    const wasOpen = this.isRelicDraftOpen();
     this.relicDraftCardsEl.innerHTML = '';
+
+    const ctx = this.getDraftContext?.() ?? { ownedRelics: [], rerollsLeft: 0 };
+    if (this.relicRerollBtn) {
+      this.relicRerollBtn.textContent =
+        ctx.rerollsLeft > 0 ? `🎲 재추첨 (${ctx.rerollsLeft})` : '🎲 재추첨 소진';
+      this.relicRerollBtn.disabled = ctx.rerollsLeft <= 0;
+    }
 
     for (const id of choices) {
       const def = RELIC_BY_ID[id];
       if (!def) continue;
+      const syn = RELIC_SYNERGIES[def.synergy];
+      let currentSynCount = 0;
+      for (const ownedId of ctx.ownedRelics) {
+        if (RELIC_BY_ID[ownedId]?.synergy === def.synergy) currentSynCount++;
+      }
+      const nextSynCount = currentSynCount + 1;
+      const unlocksSet = nextSynCount === 2 || nextSynCount === 3;
+      const synLabel =
+        nextSynCount >= 3
+          ? `${syn.glyph} ${syn.shortName} 3세트!`
+          : nextSynCount === 2
+            ? `${syn.glyph} ${syn.shortName} 2세트!`
+            : `${syn.glyph} ${syn.shortName} ${nextSynCount}/2`;
+      const synTip = nextSynCount >= 3 ? syn.threeSetDesc : syn.twoSetDesc;
+
       const card = document.createElement('button');
       card.type = 'button';
-      card.className = `relic-draft-card rarity-${def.rarity}`;
+      card.className = `relic-draft-card rarity-${def.rarity}${unlocksSet ? ' synergy-ready' : ''}`;
       card.dataset.relicId = def.id;
       card.style.setProperty('--relic-accent', def.accentColor);
       const rarityLabel =
-        def.rarity === 'mythic' ? 'MYTHIC · 신화' : def.rarity === 'epic' ? 'EPIC · 영웅' : 'RARE · 희귀';
+        def.rarity === 'mythic' ? '신화' : def.rarity === 'epic' ? '영웅' : '희귀';
       const iconUrl = getRelicIconUrl(def.id);
       card.innerHTML = `
-        <span class="relic-rarity-pill">${rarityLabel}</span>
+        <div class="relic-card-badges">
+          <span class="relic-rarity-pill">${rarityLabel}</span>
+          <span class="relic-synergy-pill${unlocksSet ? ' active' : ''}" style="--syn-color:${syn.accentColor}" title="${synTip}">${synLabel}</span>
+        </div>
         <div class="relic-icon-frame">
           ${iconUrl ? `<img src="${iconUrl}" alt="${def.name}" draggable="false" />` : ''}
         </div>
         <strong class="relic-card-title">${def.name}</strong>
         <p class="relic-card-effect">${def.effectText}</p>
-        <span class="relic-card-flavor">${def.flavorText}</span>
-        <span class="relic-pick-cta">선택 공명</span>
+        <span class="relic-card-flavor">${unlocksSet ? `시너지 각성: ${synTip}` : def.flavorText}</span>
+        <span class="relic-pick-cta">${unlocksSet ? '✨ 시너지 각성!' : '선택 공명'}</span>
       `;
       bindButtonTap(card, () => {
         this.relicOverlay.classList.add('hidden');
@@ -205,7 +246,9 @@ export class OverlayController {
     }
 
     this.relicOverlay.classList.remove('hidden');
-    this.replayModalEnter(this.relicOverlay);
+    if (!wasOpen) {
+      this.replayModalEnter(this.relicOverlay);
+    }
   }
 
   public showPause(): void {
@@ -591,13 +634,14 @@ export class OverlayController {
         .map((r) => {
           const seen = rec.discoveredRelics.includes(r.id);
           const icon = getRelicIconUrl(r.id);
+          const syn = RELIC_SYNERGIES[r.synergy];
           return `
             <div class="codex-item relic-item rarity-${r.rarity}${seen ? ' unlocked' : ''}">
               <div class="codex-relic-row">
                 ${icon ? `<img src="${icon}" alt="${r.name}" draggable="false" />` : ''}
                 <div>
                   <strong>${r.name}</strong>
-                  <small class="rarity-tag">${r.rarity.toUpperCase()} ${seen ? '· 발견됨' : ''}</small>
+                  <small class="rarity-tag">${syn.glyph} ${syn.shortName} · ${r.rarity.toUpperCase()}${seen ? ' · 발견됨' : ''}</small>
                 </div>
               </div>
               <p>${r.effectText}</p>
