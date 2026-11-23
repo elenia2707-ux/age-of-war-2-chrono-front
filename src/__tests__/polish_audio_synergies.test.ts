@@ -249,10 +249,16 @@ describe('Web Audio SoundEngine Quality & Master Bus', () => {
       'ultimate',
       'hit_base',
       'ui_tap',
+      'combo',
+      'relic_pick',
+      'tactical',
+      'boss_spawn',
+      'rift_open',
+      'achievement',
       'victory',
       'defeat',
     ];
-    expect(allCues).toHaveLength(26);
+    expect(allCues).toHaveLength(32);
 
     for (const cue of allCues) {
       createdCtx!.flushEndedVoices();
@@ -262,6 +268,19 @@ describe('Web Audio SoundEngine Quality & Master Bus', () => {
       const after = createdCtx!.oscCount + createdCtx!.noiseCount;
       expect(after, `SoundCue '${cue}' failed to schedule any Web Audio nodes`).toBeGreaterThan(before);
     }
+
+    // Combo pentatonic scale & procedural battle pulse schedule cleanly
+    createdCtx!.flushEndedVoices();
+    createdCtx!.currentTime += 1.0;
+    const comboBefore = createdCtx!.oscCount;
+    sound.playCombo(12);
+    expect(createdCtx!.oscCount).toBeGreaterThan(comboBefore);
+
+    createdCtx!.flushEndedVoices();
+    createdCtx!.currentTime += 1.0;
+    const pulseBefore = createdCtx!.oscCount;
+    sound.tickBattlePulse({ playing: true, fever: true, bossAlive: false, eraIndex: 10 });
+    expect(createdCtx!.oscCount).toBeGreaterThan(pulseBefore);
 
     const allUltimates: UltimateKind[] = ERAS.map((e) => e.ultimate.kind);
     expect(allUltimates).toHaveLength(12);

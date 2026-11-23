@@ -22,6 +22,7 @@ import {
 import {
   renderActiveUltimates,
   renderBeams,
+  renderChronoRift,
   renderParticles,
   renderPopups,
   renderProjectiles,
@@ -168,7 +169,7 @@ export class GameRenderer {
       this.lowDetail,
     );
 
-    // 2. Ultimate Sky Atmosphere & Chrono Fever Golden Edge Glint (zero gradient alloc!)
+    // 2. Ultimate Sky Atmosphere & Chrono Fever / Tactical Aura Rim (zero gradient alloc!)
     renderUltimateAtmosphere(ctx, snapshot.ultimates, viewportW);
     if (snapshot.player.feverTimer > 0) {
       const fPulse = 0.72 + Math.sin(wallTime * 9) * 0.28;
@@ -189,14 +190,21 @@ export class GameRenderer {
         ctx.lineTo(sx + 66, sy);
       }
       ctx.stroke();
+    } else if (snapshot.player.tacticalBuffTimer > 0) {
+      ctx.fillStyle = 'rgba(56, 189, 248, 0.09)';
+      ctx.fillRect(0, 0, viewportW, 48);
+    } else if (snapshot.player.aegisProtectedTimer > 0) {
+      ctx.fillStyle = 'rgba(74, 222, 128, 0.09)';
+      ctx.fillRect(0, 0, viewportW, 48);
     }
 
     // 3. World Space Entities (smooth steady camera — zero screen shake)
     ctx.save();
     ctx.translate(-camera.x, 0);
 
-    // Persistent crater scorch marks on the road
+    // Persistent crater scorch marks & active midfield Chrono Rift zone on the road
     renderScorchMarks(ctx, snapshot.scorchMarks, viewMinX, viewMaxX);
+    renderChronoRift(ctx, snapshot.activeRift, wallTime, viewMinX, viewMaxX);
 
     // Monumental Cartoon Fortresses & Rotating Turrets (culled when off-screen!)
     if (PLAYER_BASE_X + 240 >= camera.x && PLAYER_BASE_X - 240 <= camera.x + viewportW) {
@@ -371,22 +379,49 @@ export function renderMinimap(
   const pX = PLAYER_BASE_X * invWorldW;
   const eX = ENEMY_BASE_X * invWorldW;
 
+  // Active Chrono Rift zone highlight band on minimap
+  if (snapshot.activeRift) {
+    const rx = (snapshot.activeRift.x - snapshot.activeRift.radius) * invWorldW;
+    const rw = snapshot.activeRift.radius * 2 * invWorldW;
+    ctx.fillStyle = snapshot.activeRift.accentColor;
+    ctx.globalAlpha = 0.36;
+    ctx.fillRect(rx, 2, rw, groundLine - 1);
+    ctx.globalAlpha = 1;
+  }
+
   // Player & Enemy Fortress blocks
   ctx.fillStyle = '#3b82f6';
   ctx.fillRect(Math.max(2, pX - 5), groundLine - 11, 10, 11);
   ctx.fillStyle = '#ef4444';
   ctx.fillRect(Math.min(w - 12, eX - 5), groundLine - 11, 10, 11);
 
-  // Live Units as clean team dots
+  // Live Units as clean team dots (+ larger Boss/Elite pips)
   for (let i = 0; i < snapshot.units.length; i++) {
     const u = snapshot.units[i];
     if (u.state === 'dead') continue;
     const ux = u.x * invWorldW;
-    ctx.fillStyle = u.team === 'player' ? '#60a5fa' : '#f87171';
-    const r = u.def.role === 'heavy' || u.def.role === 'siege' ? 2.6 : 1.8;
-    ctx.beginPath();
-    ctx.arc(ux, groundLine - r - 1, r, 0, Math.PI * 2);
-    ctx.fill();
+    if (u.eliteKind === 'boss') {
+      ctx.fillStyle = '#fde047';
+      ctx.beginPath();
+      ctx.arc(ux, groundLine - 5, 4.2, 0, Math.PI * 2);
+      ctx.fill();
+      ctx.fillStyle = '#e11d48';
+      ctx.beginPath();
+      ctx.arc(ux, groundLine - 5, 2.8, 0, Math.PI * 2);
+      ctx.fill();
+    } else {
+      ctx.fillStyle =
+        u.eliteKind === 'elite'
+          ? '#c084fc'
+          : u.team === 'player'
+            ? '#60a5fa'
+            : '#f87171';
+      const r =
+        u.eliteKind === 'elite' || u.def.role === 'heavy' || u.def.role === 'siege' ? 2.7 : 1.8;
+      ctx.beginPath();
+      ctx.arc(ux, groundLine - r - 1, r, 0, Math.PI * 2);
+      ctx.fill();
+    }
   }
 
   // Active Chrono Supply Crate golden diamond markers

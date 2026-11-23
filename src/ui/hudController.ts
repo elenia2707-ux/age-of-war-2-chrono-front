@@ -1,5 +1,9 @@
+import { COMMANDERS } from '../data/commanders';
 import { getEra } from '../data/eras';
+import { DAILY_MUTATORS } from '../data/metaProgression';
+import { RELIC_BY_ID } from '../data/relics';
 import type {
+  AchievementDef,
   GameSnapshot,
   TurretVisualKind,
   UnitVisualKind,
@@ -15,14 +19,17 @@ import {
 import type { BattleCamera } from '../game/camera';
 import { WORLD_WIDTH } from '../game/constants';
 import type { GameEngine } from '../game/engine';
-import { getTurretIconUrl, getUnitIconUrl, getUpgradeIconUrl } from '../render/iconRenderer';
+import {
+  getRelicIconUrl,
+  getTurretIconUrl,
+  getUnitIconUrl,
+  getUpgradeIconUrl,
+} from '../render/iconRenderer';
 import { renderMinimap } from '../render/renderer';
 import { formatDuration } from '../storage/records';
 import { bindButtonTap } from './tap';
 
 export type DockTab = 'units' | 'turrets' | 'upgrades';
-
-const FEVER_KILLS_TARGET = 10;
 
 interface CachedCardRef {
   btn: HTMLButtonElement;
@@ -58,7 +65,24 @@ export class HudController {
 
   private topHud = document.getElementById('top-hud')!;
   private bottomHud = document.getElementById('bottom-hud')!;
+  private subLeftEl = document.getElementById('hud-sub-left')!;
+  private modePillEl = document.getElementById('hud-mode-pill')!;
+  private comboPillEl = document.getElementById('hud-combo-pill')!;
+  private bossBarEl = document.getElementById('hud-boss-bar')!;
+  private bossNameEl = document.getElementById('hud-boss-name')!;
+  private bossHpEl = document.getElementById('hud-boss-hp')!;
+  private bossFillEl = document.getElementById('hud-boss-fill')!;
+
+  private achToastEl = document.getElementById('achievement-toast')!;
+  private achToastNameEl = document.getElementById('ach-toast-name')!;
+  private achToastRewardEl = document.getElementById('ach-toast-reward')!;
+  private achToastQueue: AchievementDef[] = [];
+  private achToastTimer: number | null = null;
+
+  private dockFloatRow = document.getElementById('dock-float-row')!;
   private queueBar = document.getElementById('queue-bar')!;
+  private relicStripEl = document.getElementById('relic-strip')!;
+
   private goldEl = document.getElementById('hud-gold')!;
   private xpEl = document.getElementById('hud-xp')!;
   private eraBadgeEl = document.getElementById('hud-era-badge')!;
@@ -71,6 +95,8 @@ export class HudController {
   private minimapShell = document.getElementById('minimap-shell')!;
   private feverBarEl = document.getElementById('hud-fever-bar');
 
+  private autoBtn = document.getElementById('btn-auto') as HTMLButtonElement;
+  private autoLabelEl = document.getElementById('auto-label')!;
   private speedBtn = document.getElementById('btn-speed') as HTMLButtonElement;
   private speedLabelEl = document.getElementById('speed-label')!;
   private muteBtn = document.getElementById('btn-mute') as HTMLButtonElement;
@@ -86,6 +112,12 @@ export class HudController {
   private turretSlotCountEl = document.getElementById('turret-slot-count')!;
   private upgradeLevelTotalEl = document.getElementById('upgrade-level-total')!;
   private actionCardsEl = document.getElementById('action-cards')!;
+
+  private tacticalBtn = document.getElementById('btn-tactical') as HTMLButtonElement;
+  private tacticalFill = document.getElementById('tactical-fill')!;
+  private tacticalKicker = document.getElementById('tactical-kicker')!;
+  private tacticalLabel = document.getElementById('tactical-label')!;
+  private tacticalSub = document.getElementById('tactical-sub')!;
 
   private evolveBtn = document.getElementById('btn-evolve') as HTMLButtonElement;
   private evolveFill = document.getElementById('evolve-fill')!;
@@ -110,9 +142,10 @@ export class HudController {
   private cachedCards: CachedCardRef[] = [];
   private queueProgressEl: HTMLElement | null = null;
   private lastQueueSignature = '';
+  private lastRelicCount = -1;
   private suppressUpgradeClickUntil = 0;
 
-  // Dirty-check caches (prevents redundant 60Hz DOM/layout writes & toLocaleString allocs on iOS WebKit!)
+  // Dirty-check caches
   private lastGold = -1;
   private lastXp = -1;
   private lastXpEra = -1;
@@ -121,15 +154,21 @@ export class HudController {
   private lastEnemyHp = -1;
   private lastPlayerPct = '';
   private lastEnemyPct = '';
+  private lastTacticalPct = '';
   private lastEvolvePct = '';
   private lastUltPct = '';
   private lastFeverPct = '';
   private lastFeverActive: boolean | null = null;
   private lastQueuePct = '';
   private lastSpeed = -1;
+  private lastAuto: boolean | null = null;
   private lastInstalledTurrets = -1;
   private lastTurretSlots = -1;
   private lastUpgradeTotal = -1;
+  private lastComboCount = -1;
+  private lastModeText = '';
+  private lastBossUid = -1;
+  private lastBossHp = -1;
 
   // Minimap throttle state (~20Hz idle, instantaneous on camera drag/era change)
   private hudFrameTick = 0;
@@ -145,6 +184,7 @@ export class HudController {
   private onTogglePause: () => void;
   private onUnlockAudio: () => void;
   private onUiTap?: () => void;
+  private onUnitEnqueued?: (unitId: UnitVisualKind) => void;
 
   constructor(params: {
     engine: GameEngine;
@@ -153,6 +193,7 @@ export class HudController {
     onTogglePause: () => void;
     onUnlockAudio: () => void;
     onUiTap?: () => void;
+    onUnitEnqueued?: (unitId: UnitVisualKind) => void;
   }) {
     this.engine = params.engine;
     this.camera = params.camera;
@@ -160,6 +201,7 @@ export class HudController {
     this.onTogglePause = params.onTogglePause;
     this.onUnlockAudio = params.onUnlockAudio;
     this.onUiTap = params.onUiTap;
+    this.onUnitEnqueued = params.onUnitEnqueued;
 
     this.bindEvents();
   }
@@ -184,8 +226,14 @@ export class HudController {
   public setVisible(visible: boolean): void {
     this.topHud.classList.toggle('hidden', !visible);
     this.bottomHud.classList.toggle('hidden', !visible);
+    this.subLeftEl.classList.toggle('hidden', !visible);
+    this.dockFloatRow.classList.toggle('hidden', !visible);
     if (!visible) {
       this.queueBar.classList.add('hidden');
+      this.relicStripEl.classList.add('hidden');
+      this.bossBarEl.classList.add('hidden');
+      this.modePillEl.classList.add('hidden');
+      this.comboPillEl.classList.add('hidden');
       this.sellHighlightMode = false;
       this.topHud.classList.remove('fever-mode');
       this.minimapShell.classList.remove('fever-mode');
@@ -216,6 +264,33 @@ export class HudController {
       this.bannerEl.classList.add('hidden');
       this.bannerEl.classList.remove('banner-enter');
       this.bannerTimer = null;
+    }, 2600);
+  }
+
+  public showAchievementToast(def: AchievementDef): void {
+    this.achToastQueue.push(def);
+    if (this.achToastTimer === null) {
+      this.flushNextToast();
+    }
+  }
+
+  private flushNextToast(): void {
+    const next = this.achToastQueue.shift();
+    if (!next) {
+      this.achToastTimer = null;
+      this.achToastEl.classList.add('hidden');
+      return;
+    }
+    this.achToastNameEl.textContent = next.name;
+    this.achToastRewardEl.textContent = `+🏅${next.medalReward}`;
+    this.achToastEl.style.borderColor = next.accentColor;
+    this.achToastEl.classList.remove('hidden', 'toast-enter');
+    requestAnimationFrame(() => {
+      this.achToastEl.classList.add('toast-enter');
+    });
+    this.achToastTimer = window.setTimeout(() => {
+      this.achToastEl.classList.add('hidden');
+      this.flushNextToast();
     }, 2800);
   }
 
@@ -226,6 +301,7 @@ export class HudController {
     this.cachedCards = [];
     this.queueProgressEl = null;
     this.lastQueueSignature = '';
+    this.lastRelicCount = -1;
     this.lastGold = -1;
     this.lastXp = -1;
     this.lastXpEra = -1;
@@ -234,15 +310,21 @@ export class HudController {
     this.lastEnemyHp = -1;
     this.lastPlayerPct = '';
     this.lastEnemyPct = '';
+    this.lastTacticalPct = '';
     this.lastEvolvePct = '';
     this.lastUltPct = '';
     this.lastFeverPct = '';
     this.lastFeverActive = null;
     this.lastQueuePct = '';
     this.lastSpeed = -1;
+    this.lastAuto = null;
     this.lastInstalledTurrets = -1;
     this.lastTurretSlots = -1;
     this.lastUpgradeTotal = -1;
+    this.lastComboCount = -1;
+    this.lastModeText = '';
+    this.lastBossUid = -1;
+    this.lastBossHp = -1;
     this.lastMinimapEra = -1;
   }
 
@@ -252,7 +334,7 @@ export class HudController {
     const era = getEra(p.eraIndex);
     this.hudFrameTick++;
 
-    // Top stats (dirty-checked integers prevent 60Hz toLocaleString() & text-node churn!)
+    // Top stats (dirty-checked integers)
     const goldInt = Math.floor(p.gold);
     if (goldInt !== this.lastGold) {
       this.lastGold = goldInt;
@@ -305,6 +387,7 @@ export class HudController {
 
     // Chrono Fever live gauge & active golden HUD state
     const feverActive = p.feverTimer > 0;
+    const feverTarget = p.mods.feverKillsTarget;
     if (feverActive !== this.lastFeverActive) {
       this.lastFeverActive = feverActive;
       this.timerEl.classList.toggle('fever-active', feverActive);
@@ -320,7 +403,7 @@ export class HudController {
     if (this.feverBarEl) {
       const feverFrac = feverActive
         ? Math.max(0, Math.min(1, p.feverTimer / Math.max(1, p.feverDuration)))
-        : Math.max(0, Math.min(1, p.feverKills / FEVER_KILLS_TARGET));
+        : Math.max(0, Math.min(1, p.feverKills / Math.max(1, feverTarget)));
       const feverPct = `${(feverFrac * 100).toFixed(1)}%`;
       if (feverPct !== this.lastFeverPct) {
         this.lastFeverPct = feverPct;
@@ -328,14 +411,80 @@ export class HudController {
       }
     }
 
-    // Speed visual
+    // Mode / Wave & Kill Combo sub-pills
+    const modeLabel =
+      snapshot.mode === 'endless'
+        ? `♾ WAVE ${snapshot.wave}`
+        : snapshot.mode === 'daily' && snapshot.mutators.length > 0
+          ? `⚡ ${snapshot.mutators.map((m) => DAILY_MUTATORS[m]?.shortName ?? m).join(' · ')}`
+          : '';
+    if (modeLabel !== this.lastModeText) {
+      this.lastModeText = modeLabel;
+      if (modeLabel) {
+        this.modePillEl.classList.remove('hidden');
+        setTextIfChanged(this.modePillEl, modeLabel);
+      } else {
+        this.modePillEl.classList.add('hidden');
+      }
+    }
+
+    if (p.comboCount !== this.lastComboCount) {
+      const grew = p.comboCount > this.lastComboCount && p.comboCount >= 2;
+      this.lastComboCount = p.comboCount;
+      if (p.comboCount >= 2) {
+        const bonusPct = Math.min(50, Math.round((p.comboCount - 1) * 2.5));
+        this.comboPillEl.classList.remove('hidden');
+        setTextIfChanged(this.comboPillEl, `🔥 ${p.comboCount} COMBO +${bonusPct}%`);
+        if (grew) this.pulseClass(this.comboPillEl, 'tap-pop', 170);
+      } else {
+        this.comboPillEl.classList.add('hidden');
+      }
+    }
+
+    // Live Enemy Boss HP Bar
+    let liveBoss = null as (typeof snapshot.units)[number] | null;
+    for (let i = 0; i < snapshot.units.length; i++) {
+      const u = snapshot.units[i];
+      if (u.team === 'enemy' && u.state !== 'dead' && u.eliteKind === 'boss') {
+        liveBoss = u;
+        break;
+      }
+    }
+    if (liveBoss) {
+      if (this.lastBossUid !== liveBoss.uid) {
+        this.lastBossUid = liveBoss.uid;
+        this.bossBarEl.classList.remove('hidden');
+        setTextIfChanged(
+          this.bossNameEl,
+          `♛ ${liveBoss.eliteTitle ?? '수호군주'} · ${liveBoss.def.name}`,
+        );
+      }
+      const bHp = Math.ceil(liveBoss.hp);
+      if (bHp !== this.lastBossHp) {
+        this.lastBossHp = bHp;
+        setTextIfChanged(this.bossHpEl, `${bHp.toLocaleString()}/${liveBoss.maxHp.toLocaleString()}`);
+        this.bossFillEl.style.width = `${Math.max(0, Math.min(100, (liveBoss.hp / liveBoss.maxHp) * 100)).toFixed(1)}%`;
+      }
+    } else if (this.lastBossUid !== -1) {
+      this.lastBossUid = -1;
+      this.lastBossHp = -1;
+      this.bossBarEl.classList.add('hidden');
+    }
+
+    // Auto-Spawn & Speed visuals
+    if (snapshot.autoSpawn !== this.lastAuto) {
+      this.lastAuto = snapshot.autoSpawn;
+      this.autoBtn.classList.toggle('active', snapshot.autoSpawn);
+      setTextIfChanged(this.autoLabelEl, snapshot.autoSpawn ? '자동ON' : '자동');
+    }
     if (snapshot.speed !== this.lastSpeed) {
       this.lastSpeed = snapshot.speed;
       setTextIfChanged(this.speedLabelEl, `${snapshot.speed}x`);
-      this.speedBtn.classList.toggle('active', snapshot.speed === 2);
+      this.speedBtn.classList.toggle('active', snapshot.speed >= 2);
+      this.speedBtn.classList.toggle('turbo', snapshot.speed === 3);
     }
 
-    // Turret slot count badge & total upgrade level badge (across all 24 upgrades!)
+    // Turret slot count badge & total upgrade level badge
     let installedCount = 0;
     for (let i = 0; i < p.turrets.length; i++) {
       if (p.turrets[i] !== null) installedCount++;
@@ -363,11 +512,38 @@ export class HudController {
       this.renderedUpgradeCategory = this.upgradeCategory;
     }
 
-    // Update affordability & badges on cached card DOM references (zero querySelector!)
+    // Update affordability & badges on cached card DOM references
     this.updateActionCardStates(snapshot);
 
-    // Update production queue floating bar
+    // Update production queue floating bar & collected Relic strip
     this.updateQueueBar(snapshot);
+    this.updateRelicStrip(snapshot);
+
+    // Update Commander Tactical Skill button
+    if (p.commanderId && COMMANDERS[p.commanderId]) {
+      const cmd = COMMANDERS[p.commanderId];
+      this.tacticalBtn.classList.remove('hidden');
+      this.tacticalBtn.style.setProperty('--cmd-accent', cmd.accentColor);
+      const tacReady = p.tacticalCooldown <= 0;
+      const tacFrac = tacReady
+        ? 1
+        : Math.max(0, 1 - p.tacticalCooldown / Math.max(1, p.tacticalMaxCooldown));
+      setTextIfChanged(this.tacticalKicker, '전술 스킬');
+      setTextIfChanged(this.tacticalLabel, cmd.skillShort);
+      setTextIfChanged(
+        this.tacticalSub,
+        tacReady ? 'READY!' : `${Math.ceil(p.tacticalCooldown)}s`,
+      );
+      const tacPct = `${(tacFrac * 100).toFixed(1)}%`;
+      if (tacPct !== this.lastTacticalPct) {
+        this.lastTacticalPct = tacPct;
+        this.tacticalFill.style.height = tacPct;
+      }
+      this.tacticalBtn.classList.toggle('ready', tacReady);
+      this.tacticalBtn.disabled = !tacReady;
+    } else {
+      this.tacticalBtn.classList.add('hidden');
+    }
 
     // Update Evolve power button
     if (era.evolveXp > 0) {
@@ -396,7 +572,7 @@ export class HudController {
       this.evolveBtn.disabled = true;
     }
 
-    // Update Ultimate power button (requires BOTH cooldown == 0 AND spendable XP >= ultXpCost!)
+    // Update Ultimate power button
     const ultXpCost = this.engine.getUltimateXpCost('player');
     const ultXpTag =
       ultXpCost >= 10000
@@ -436,13 +612,24 @@ export class HudController {
   }
 
   private bindEvents(): void {
+    bindButtonTap(this.autoBtn, () => {
+      this.onUnlockAudio();
+      this.onUiTap?.();
+      const auto = this.engine.toggleAutoSpawn();
+      this.lastAuto = auto;
+      this.autoBtn.classList.toggle('active', auto);
+      setTextIfChanged(this.autoLabelEl, auto ? '자동ON' : '자동');
+      this.pulseClass(this.autoBtn, 'tap-pop', 180);
+    });
+
     bindButtonTap(this.speedBtn, () => {
       this.onUnlockAudio();
       this.onUiTap?.();
       const nextSpeed = this.engine.toggleSpeed();
       this.lastSpeed = nextSpeed;
       setTextIfChanged(this.speedLabelEl, `${nextSpeed}x`);
-      this.speedBtn.classList.toggle('active', nextSpeed === 2);
+      this.speedBtn.classList.toggle('active', nextSpeed >= 2);
+      this.speedBtn.classList.toggle('turbo', nextSpeed === 3);
       this.pulseClass(this.speedBtn, 'tap-pop', 180);
     });
 
@@ -515,6 +702,13 @@ export class HudController {
     });
     this.actionCardsEl.addEventListener('pointercancel', () => {
       swipeTracking = false;
+    });
+
+    bindButtonTap(this.tacticalBtn, () => {
+      this.onUnlockAudio();
+      if (this.engine.triggerTacticalSkill('player')) {
+        this.pulseClass(this.tacticalBtn, 'bought-flash', 420);
+      }
     });
 
     bindButtonTap(this.evolveBtn, () => {
@@ -604,6 +798,7 @@ export class HudController {
           this.onUnlockAudio();
           if (this.engine.enqueueUnit('player', unit.id as UnitVisualKind)) {
             this.onUiTap?.();
+            this.onUnitEnqueued?.(unit.id as UnitVisualKind);
             this.pulseClass(btn, 'tap-pop', 190);
           }
         });
@@ -672,7 +867,6 @@ export class HudController {
     // Turrets Tab (4 cards: Expand Slot, Turret 1, Turret 2, Sell Turret)
     this.actionCardsEl.dataset.cols = '4';
 
-    // 1. Expand Slot Card
     const expandBtn = document.createElement('button');
     expandBtn.type = 'button';
     expandBtn.tabIndex = -1;
@@ -705,7 +899,6 @@ export class HudController {
       refundEl: null,
     });
 
-    // 2 & 3. Era Turrets
     for (const turret of era.turrets) {
       const btn = document.createElement('button');
       btn.type = 'button';
@@ -742,7 +935,6 @@ export class HudController {
       });
     }
 
-    // 4. Sell Turret Card
     const sellBtn = document.createElement('button');
     sellBtn.type = 'button';
     sellBtn.tabIndex = -1;
@@ -767,7 +959,6 @@ export class HudController {
         this.sellHighlightMode = false;
         this.pulseClass(sellBtn, 'tap-pop', 200);
       } else {
-        // First tap focuses base & highlights turrets; tap a turret on base OR tap Sell again to sell oldest
         this.sellHighlightMode = true;
         this.onUiTap?.();
         this.camera.jumpToWorldX(220);
@@ -905,6 +1096,30 @@ export class HudController {
     }
   }
 
+  private updateRelicStrip(snapshot: GameSnapshot): void {
+    const relics = snapshot.player.relics;
+    if (relics.length === this.lastRelicCount) return;
+    this.lastRelicCount = relics.length;
+
+    if (relics.length === 0) {
+      this.relicStripEl.classList.add('hidden');
+      this.relicStripEl.innerHTML = '';
+      return;
+    }
+
+    this.relicStripEl.classList.remove('hidden');
+    this.relicStripEl.innerHTML = relics
+      .map((id) => {
+        const r = RELIC_BY_ID[id];
+        if (!r) return '';
+        const icon = getRelicIconUrl(id);
+        return `<span class="relic-chip rarity-${r.rarity}" title="${r.name}: ${r.effectText}">
+          ${icon ? `<img src="${icon}" alt="${r.shortName}" draggable="false" />` : r.shortName}
+        </span>`;
+      })
+      .join('');
+  }
+
   private updateQueueBar(snapshot: GameSnapshot): void {
     const queue = snapshot.player.queue;
     if (queue.length === 0) {
@@ -953,7 +1168,6 @@ export class HudController {
       });
     }
 
-    // Update live training progress bar on first slot (dirty-checked cached element!)
     const head = queue[0];
     if (head && this.queueProgressEl) {
       const pct = `${Math.max(0, Math.min(100, (1 - head.remaining / head.trainTime) * 100)).toFixed(1)}%`;

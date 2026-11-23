@@ -1,6 +1,7 @@
 import type {
   ActiveUltimate,
   BeamEffect,
+  ChronoRiftZone,
   DamagePopup,
   ParticleEntity,
   ProjectileEntity,
@@ -2171,3 +2172,106 @@ export function renderSupplyCrates(
     ctx.restore();
   }
 }
+
+/**
+ * Render active Midfield Chrono Rift Anomaly Zone on the road (zero gradients, zero clips).
+ */
+export function renderChronoRift(
+  ctx: CanvasRenderingContext2D,
+  rift: ChronoRiftZone | null,
+  wallTime: number,
+  viewMinX: number,
+  viewMaxX: number,
+): void {
+  if (!rift) return;
+  if (rift.x + rift.radius < viewMinX || rift.x - rift.radius > viewMaxX) return;
+
+  const fadeIn = Math.min(1, (rift.maxLife - rift.life + 0.25) * 2.5);
+  const fadeOut = Math.min(1, rift.life * 0.9);
+  const alpha = Math.max(0, Math.min(1, fadeIn * fadeOut));
+  if (alpha <= 0.02) return;
+
+  const pulse = 0.78 + Math.sin(wallTime * 5.2) * 0.22;
+  const rx = rift.radius;
+  const ry = 18;
+  const cy = GROUND_Y + 2;
+
+  const fillRgba =
+    rift.kind === 'haste'
+      ? 'rgba(56, 189, 248, 0.16)'
+      : rift.kind === 'fury'
+        ? 'rgba(251, 146, 60, 0.16)'
+        : 'rgba(74, 222, 128, 0.16)';
+  const coreRgba =
+    rift.kind === 'haste'
+      ? 'rgba(125, 211, 252, 0.22)'
+      : rift.kind === 'fury'
+        ? 'rgba(254, 215, 170, 0.22)'
+        : 'rgba(187, 247, 208, 0.22)';
+
+  ctx.save();
+  ctx.globalAlpha = alpha;
+
+  // 1. Vertical translucent dimensional light veil columns at left/center/right
+  ctx.fillStyle = fillRgba;
+  ctx.fillRect(rift.x - rx * 0.86, cy - 92, rx * 1.72, 92);
+  ctx.fillStyle = coreRgba;
+  ctx.fillRect(rift.x - rx * 0.42, cy - 118, rx * 0.84, 118);
+
+  // 2. Ground dimensional rune ellipses
+  ctx.fillStyle = fillRgba;
+  ctx.beginPath();
+  ctx.ellipse(rift.x, cy, rx, ry, 0, 0, Math.PI * 2);
+  ctx.fill();
+
+  ctx.strokeStyle = rift.accentColor;
+  ctx.lineWidth = 3.0;
+  ctx.beginPath();
+  ctx.ellipse(rift.x, cy, rx * (0.96 + pulse * 0.04), ry, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  ctx.strokeStyle = '#fef9c3';
+  ctx.lineWidth = 1.8;
+  ctx.beginPath();
+  ctx.ellipse(rift.x, cy, rx * 0.62, ry * 0.66, 0, 0, Math.PI * 2);
+  ctx.stroke();
+
+  // 3. Boundary pylons at left & right edges of the zone
+  for (const side of [-1, 1] as const) {
+    const px = rift.x + side * rx;
+    drawEnergyOrb(ctx, px, cy - 8, 5.5 * pulse, rift.accentColor, '#ffffff');
+  }
+
+  // 4. Rising arcane motes inside the rift
+  ctx.fillStyle = rift.accentColor;
+  for (let i = 0; i < 7; i++) {
+    const prog = (wallTime * (0.55 + (i % 3) * 0.14) + i * 0.19) % 1;
+    const mx = rift.x + Math.sin(i * 2.1 + wallTime * 1.6) * (rx * 0.74);
+    const my = cy - 6 - prog * 105;
+    const r = (1 - prog * 0.5) * 3.0;
+    ctx.beginPath();
+    ctx.arc(mx, my, r, 0, Math.PI * 2);
+    ctx.fill();
+  }
+
+  // 5. Crisp roadbed Rift pill badge (below unit feet so tall silhouettes never cover it!)
+  const tagY = cy + 15;
+  const tagText = `${rift.name} · ${Math.ceil(rift.life)}s`;
+  ctx.font = '900 10.5px system-ui, sans-serif';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  const pillW = Math.max(118, tagText.length * 9.2 + 16);
+  const pillH = 17;
+  ctx.fillStyle = 'rgba(9, 13, 22, 0.88)';
+  ctx.strokeStyle = rift.accentColor;
+  ctx.lineWidth = 1.6;
+  ctx.beginPath();
+  ctx.roundRect(rift.x - pillW * 0.5, tagY - pillH * 0.5, pillW, pillH, 6);
+  ctx.fill();
+  ctx.stroke();
+  ctx.fillStyle = '#fef9c3';
+  ctx.fillText(tagText, rift.x, tagY + 0.5);
+
+  ctx.restore();
+}
+

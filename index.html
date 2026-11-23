@@ -13,7 +13,7 @@
     <meta name="theme-color" content="#11161f" />
     <meta
       name="description"
-      content="원시 시대부터 초월 문명까지 12단계 진화·48종 병력·6단계 AI 난이도 2D 횡스크롤 전략 디펜스 웹 게임 — 아이폰 사파리 및 PWA 최적화"
+      content="원시 시대부터 초월 문명까지 12단계 진화·48종 병력·크로노 유물·사령관 전술·무한 웨이브 2D 횡스크롤 전략 디펜스 웹 게임 — 아이폰 사파리 및 PWA 최적화"
     />
     <title>전쟁시대 2: 크로노 프론트 — 12시대 전략 디펜스</title>
     <link rel="manifest" href="./manifest.webmanifest" />
@@ -61,6 +61,9 @@
         </div>
 
         <div class="top-right glass-panel">
+          <button id="btn-auto" class="icon-btn auto-btn" type="button" aria-label="자동 생산 보조 전환">
+            <span id="auto-label">자동</span>
+          </button>
           <button id="btn-speed" class="icon-btn speed-btn" type="button" aria-label="배속 전환">
             <span id="speed-label">1x</span>
           </button>
@@ -85,14 +88,40 @@
         </div>
       </header>
 
+      <!-- SUB-HUD LIVE STATUS PILLS (MODE/WAVE, COMBO, BOSS BAR) -->
+      <div id="hud-sub-left" class="hud-sub-left hidden" aria-live="off">
+        <div id="hud-mode-pill" class="sub-pill mode-pill hidden"></div>
+        <div id="hud-combo-pill" class="sub-pill combo-pill hidden"></div>
+      </div>
+
+      <div id="hud-boss-bar" class="hud-boss-bar hidden" aria-label="보스 체력">
+        <div class="boss-bar-top">
+          <span id="hud-boss-name">♛ 시대 수호군주</span>
+          <span id="hud-boss-hp" class="num">0</span>
+        </div>
+        <div class="boss-bar-track">
+          <div id="hud-boss-fill" class="boss-bar-fill"></div>
+        </div>
+      </div>
+
+      <!-- ACHIEVEMENT UNLOCK TOAST -->
+      <div id="achievement-toast" class="achievement-toast hidden" role="status" aria-live="polite">
+        <span class="ach-toast-kicker">🏆 업적 달성!</span>
+        <strong id="ach-toast-name"></strong>
+        <span id="ach-toast-reward" class="num"></span>
+      </div>
+
       <!-- CINEMATIC EVENT BANNER -->
       <div id="event-banner" class="event-banner hidden" role="status" aria-live="polite">
         <div id="event-banner-title" class="banner-title"></div>
         <div id="event-banner-sub" class="banner-sub"></div>
       </div>
 
-      <!-- FLOATING PRODUCTION QUEUE -->
-      <div id="queue-bar" class="queue-bar hidden" aria-label="유닛 생산 대기열"></div>
+      <!-- FLOATING PRODUCTION QUEUE & COLLECTED RELIC STRIP -->
+      <div id="dock-float-row" class="dock-float-row hidden">
+        <div id="queue-bar" class="queue-bar hidden" aria-label="유닛 생산 대기열"></div>
+        <div id="relic-strip" class="relic-strip hidden" aria-label="보유 크로노 유물"></div>
+      </div>
 
       <!-- BOTTOM THUMB DOCK -->
       <footer id="bottom-hud" class="hud-layer hidden" aria-label="하단 명령 조작부">
@@ -152,6 +181,15 @@
         </div>
 
         <div class="dock-right">
+          <button id="btn-tactical" class="power-btn tactical-btn" type="button">
+            <div class="power-fill" id="tactical-fill"></div>
+            <div class="power-content">
+              <span class="power-kicker" id="tactical-kicker">전술 스킬</span>
+              <strong class="power-label" id="tactical-label">돌격 함성</strong>
+              <span class="power-sub num" id="tactical-sub">READY!</span>
+            </div>
+          </button>
+
           <button id="btn-evolve" class="power-btn evolve-btn" type="button">
             <div class="power-fill" id="evolve-fill"></div>
             <div class="power-content">
@@ -176,37 +214,97 @@
       <section id="overlay-title" class="overlay-backdrop" aria-label="시작 화면">
         <div class="title-modal glass-modal">
           <div class="title-left">
-            <span class="title-eyebrow">AGE OF WAR II · 12-ERA CARTOON STRATEGY</span>
+            <div class="title-top-row">
+              <span class="title-eyebrow">AGE OF WAR II · CHRONO FRONT</span>
+              <span id="title-medal-badge" class="medal-pill num">🏅 0 메달</span>
+            </div>
             <h1>전쟁시대 2: 크로노 프론트</h1>
-            <p class="title-desc">
-              원시 시대부터 초월 문명까지 12시대·48종 병력을 지휘하고, 24종 골드 강화와 6단계 AI 난이도에 도전하는 횡스크롤 전략 디펜스
-            </p>
-            <div class="era-strip" aria-label="12시대 진화 단계">
-              <span>I 원시</span>
-              <span>II 이집트</span>
-              <span>III 고대</span>
-              <span class="era-new-ancient">IV 동방</span>
-              <span>V 중세</span>
-              <span>VI 화약</span>
-              <span>VII 산업</span>
-              <span>VIII 대전</span>
-              <span>IX 현대</span>
-              <span>X 미래</span>
-              <span>XI 성간</span>
-              <span class="era-new-future">XII 초월</span>
+            <div class="commander-section">
+              <div class="section-mini-label">출전 사령관 선택 (고유 패시브 + 전술 스킬)</div>
+              <div id="commander-selector" class="commander-list" role="radiogroup" aria-label="사령관 선택"></div>
+              <div id="commander-desc" class="commander-desc"></div>
             </div>
             <div class="records-box" id="title-records"></div>
+            <div class="meta-btn-row">
+              <button id="btn-open-sanctuary" class="meta-nav-btn sanctuary-nav" type="button">
+                🏛 시공 성소 <small id="sanctuary-lv-badge" class="num">Lv.0</small>
+              </button>
+              <button id="btn-open-codex" class="meta-nav-btn codex-nav" type="button">
+                📜 업적·도감 <small id="codex-count-badge" class="num">0/24</small>
+              </button>
+            </div>
           </div>
 
           <div class="title-right">
-            <div class="diff-heading">AI 난이도 선택 (6단계)</div>
+            <div class="mode-switch-bar" id="mode-selector" role="radiogroup" aria-label="전투 모드 선택">
+              <button type="button" class="game-mode-btn selected" data-mode="campaign">⚔ 정복전</button>
+              <button type="button" class="game-mode-btn" data-mode="endless">♾ 무한 웨이브</button>
+              <button type="button" class="game-mode-btn" data-mode="daily">⚡ 일일 챌린지</button>
+            </div>
+            <div class="diff-heading" id="diff-heading-label">AI 난이도 선택 (6단계)</div>
             <div id="difficulty-selector" class="diff-list" role="radiogroup" aria-label="난이도"></div>
             <div id="difficulty-desc" class="diff-desc"></div>
             <button id="btn-start-game" class="primary-cta" type="button">전투 시작</button>
             <div class="controls-hint">
-              화면 좌우 드래그 · 상단 미니맵 터치 이동 · 하단 엄지 조작
+              좌우 드래그 · 미니맵 이동 · 전술/진화/필살 &amp; 유물 드래프트
             </div>
           </div>
+        </div>
+      </section>
+
+      <!-- CHRONO SANCTUARY META-UPGRADE MODAL -->
+      <section id="overlay-sanctuary" class="overlay-backdrop hidden" aria-label="시공 성소 영구 강화">
+        <div class="sanctuary-modal glass-modal">
+          <div class="submodal-header">
+            <div>
+              <h2>🏛 시공 성소</h2>
+              <span class="submodal-caption">전투에서 획득한 크로노 메달로 전군을 영구 강화합니다</span>
+            </div>
+            <div class="submodal-header-right">
+              <span id="sanctuary-medals" class="medal-pill num">🏅 0</span>
+              <button id="btn-sanctuary-reset" class="mini-action-btn" type="button">환급 초기화</button>
+              <button id="btn-sanctuary-close" class="mini-close-btn" type="button">닫기</button>
+            </div>
+          </div>
+          <div id="sanctuary-grid" class="sanctuary-grid"></div>
+        </div>
+      </section>
+
+      <!-- ACHIEVEMENTS & CODEX ENCYCLOPEDIA MODAL -->
+      <section id="overlay-codex" class="overlay-backdrop hidden" aria-label="업적 및 백과도감">
+        <div class="codex-modal glass-modal">
+          <div class="submodal-header">
+            <div class="codex-tabs" role="tablist">
+              <button id="codex-tab-ach" class="codex-tab active" type="button" data-codex-tab="ach">
+                🏆 업적
+              </button>
+              <button id="codex-tab-relics" class="codex-tab" type="button" data-codex-tab="relics">
+                💎 유물 도감
+              </button>
+              <button id="codex-tab-units" class="codex-tab" type="button" data-codex-tab="units">
+                ⚔ 병종 도감
+              </button>
+            </div>
+            <div class="submodal-header-right">
+              <button id="btn-codex-prev" class="mini-action-btn" type="button" aria-label="이전 페이지">◀</button>
+              <span id="codex-page-label" class="codex-page-label num">1 / 3</span>
+              <button id="btn-codex-next" class="mini-action-btn" type="button" aria-label="다음 페이지">▶</button>
+              <button id="btn-codex-close" class="mini-close-btn" type="button">닫기</button>
+            </div>
+          </div>
+          <div id="codex-grid" class="codex-grid"></div>
+        </div>
+      </section>
+
+      <!-- IN-RUN CHRONO RELIC DRAFT OVERLAY -->
+      <section id="overlay-relic" class="overlay-backdrop hidden" aria-label="크로노 유물 선택">
+        <div class="relic-modal glass-modal">
+          <div class="relic-header">
+            <span class="relic-eyebrow">CHRONO RELIC RESONANCE</span>
+            <h2>✨ 크로노 유물 선택</h2>
+            <p>전군에 영구 부여할 고대 시공 유물 1종을 선택하세요</p>
+          </div>
+          <div id="relic-draft-cards" class="relic-draft-cards"></div>
         </div>
       </section>
 
@@ -234,6 +332,7 @@
           <h2 id="result-title">승리!</h2>
           <p id="result-subtitle" class="modal-sub"></p>
           <div id="result-stats" class="result-stats"></div>
+          <div id="result-relics" class="result-relics hidden"></div>
           <div class="modal-actions row-actions">
             <button id="btn-result-retry" class="primary-cta" type="button">다시 도전</button>
             <button id="btn-result-title" class="secondary-cta" type="button">타이틀 화면</button>

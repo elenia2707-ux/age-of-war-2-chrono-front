@@ -17,10 +17,18 @@ const HIGH_PRIORITY_CUES = new Set<SoundCue>([
   'upgrade',
   'promote',
   'crate_open',
+  'relic_pick',
+  'tactical',
+  'boss_spawn',
+  'rift_open',
+  'achievement',
   'ui_tap',
 ]);
 
 const MAX_CONCURRENT_VOICES = 18;
+const COMBO_PENTATONIC = [
+  523.25, 587.33, 659.25, 783.99, 880.0, 1046.5, 1174.66, 1318.51, 1567.98, 1760.0,
+];
 
 export class SoundEngine {
   private ctx: AudioContext | null = null;
@@ -33,6 +41,8 @@ export class SoundEngine {
   private activeVoices = 0;
   private lastCueTime = new Map<SoundCue, number>();
   private lastUltimateTime = -1000;
+  private nextPulseTime = 0;
+  private pulseBeatIndex = 0;
 
   constructor(initialMuted = false) {
     this.muted = initialMuted;
@@ -151,6 +161,66 @@ export class SoundEngine {
 
   private jitter(spread = 0.05): number {
     return 1 + (Math.random() * 2 - 1) * spread;
+  }
+
+  /** Rising pentatonic kill-combo chime for addictive streak feedback */
+  public playCombo(comboCount: number): void {
+    if (this.muted || !this.ctx || this.ctx.state !== 'running') return;
+    if (this.activeVoices >= MAX_CONCURRENT_VOICES) return;
+
+    const nowMs = this.ctx.currentTime * 1000;
+    const prev = this.lastCueTime.get('combo') ?? -1000;
+    if (nowMs - prev < 55) return;
+    this.lastCueTime.set('combo', nowMs);
+
+    const idx = Math.min(COMBO_PENTATONIC.length - 1, Math.max(0, comboCount - 3));
+    const freq = COMBO_PENTATONIC[idx];
+    const t = this.ctx.currentTime;
+    this.playTone(t, 'triangle', freq, freq * 1.015, 0.095, 0.075, 0.003);
+    if (comboCount >= 10) {
+      this.playTone(t + 0.03, 'sine', freq * 1.5, freq * 1.52, 0.11, 0.055, 0.003);
+    }
+  }
+
+  /** Subtle low-mix procedural battle pulse driven by rAF (zero timers, zero voice starvation) */
+  public tickBattlePulse(params: {
+    playing: boolean;
+    fever: boolean;
+    bossAlive: boolean;
+    eraIndex: number;
+  }): void {
+    if (!params.playing || this.muted || !this.ctx || this.ctx.state !== 'running') return;
+    if (this.activeVoices > 10) return;
+
+    const now = this.ctx.currentTime;
+    if (this.nextPulseTime < now - 0.5) {
+      this.nextPulseTime = now + 0.015;
+    }
+    if (this.nextPulseTime > now + 0.06) return;
+
+    const interval = params.fever ? 0.32 : params.bossAlive ? 0.38 : 0.48;
+    const t = Math.max(now + 0.005, this.nextPulseTime);
+    this.nextPulseTime = t + interval;
+    const beat = this.pulseBeatIndex++ & 3;
+
+    // Era-adaptive low war-drum / synth bass pulse
+    const rootNotes = params.bossAlive
+      ? [65.41, 65.41, 77.78, 73.42]
+      : params.fever
+        ? [87.31, 98.0, 110.0, 130.81]
+        : [73.42, 73.42, 87.31, 82.41];
+    const root = rootNotes[beat];
+
+    if (params.eraIndex >= 8) {
+      // Sci-fi / Chrono pulse bass
+      this.playTone(t, 'triangle', root * 2, root, 0.16, 0.034, 0.008);
+    } else {
+      // Warm war-drum pulse
+      this.playTone(t, 'sine', beat === 0 ? root * 1.45 : root * 1.2, root * 0.72, 0.15, 0.038, 0.005);
+    }
+    if (beat === 2 && (params.fever || params.bossAlive)) {
+      this.playNoise(t, 0.045, 2200, 'highpass', 0.02, 1.0, false);
+    }
   }
 
   public play(cue: SoundCue): void {
@@ -305,6 +375,47 @@ export class SoundEngine {
         this.playTone(t, 'sawtooth', 587.33, 587.33, 0.09, 0.07, 0.005);
         this.playTone(t + 0.075, 'triangle', 880, 886, 0.22, 0.11, 0.005);
         this.playTone(t + 0.075, 'sine', 1174.66, 1180, 0.2, 0.07, 0.005);
+        break;
+
+      case 'combo':
+        // Bright pentatonic combo chime
+        this.playTone(t, 'triangle', 783.99 * j, 1046.5 * j, 0.09, 0.085, 0.003);
+        this.playTone(t + 0.03, 'sine', 1318.5 * j, 1567.98 * j, 0.08, 0.06, 0.003);
+        break;
+
+      case 'relic_pick':
+        // Mystical Chrono Relic resonance chord + crystalline shimmer
+        this.playChord(t, [587.33, 880.0, 1174.66, 1479.98], 0.48, 0.16);
+        this.playTone(t + 0.08, 'sine', 1760, 2349.32, 0.35, 0.09, 0.01);
+        break;
+
+      case 'tactical':
+        // Commander tactical horn + energetic command sweep
+        this.playTone(t, 'sawtooth', 293.66, 440.0, 0.18, 0.11, 0.008);
+        this.playTone(t + 0.07, 'triangle', 587.33, 880.0, 0.24, 0.12, 0.006);
+        this.playNoise(t, 0.1, 1800, 'bandpass', 0.08, 1.5, false);
+        break;
+
+      case 'boss_spawn':
+        // Ominous Warlord Boss war-horn + deep sub tremor
+        this.playTone(t, 'sawtooth', 146.83, 110.0, 0.58, 0.16, 0.025);
+        this.playTone(t, 'sawtooth', 220.0, 164.81, 0.54, 0.11, 0.025);
+        this.playTone(t + 0.04, 'sine', 82.41, 36.71, 0.62, 0.22, 0.015);
+        this.playNoise(t, 0.45, 360, 'lowpass', 0.18, 1.0, true);
+        break;
+
+      case 'rift_open':
+        // Ethereal dimensional Chrono Rift opening shimmer
+        this.playTone(t, 'sine', 330, 990, 0.36, 0.1, 0.015);
+        this.playTone(t + 0.05, 'triangle', 495, 1485, 0.34, 0.08, 0.015);
+        this.playNoise(t, 0.28, 2200, 'bandpass', 0.08, 2.2, false);
+        break;
+
+      case 'achievement':
+        // Sparkling royal achievement medal fanfare
+        this.playTone(t, 'triangle', 659.25, 662, 0.11, 0.1, 0.004);
+        this.playTone(t + 0.08, 'triangle', 880.0, 884, 0.12, 0.1, 0.004);
+        this.playChord(t + 0.16, [659.25, 987.77, 1318.51, 1975.53], 0.52, 0.17);
         break;
 
       case 'evolve':
@@ -473,7 +584,13 @@ export class SoundEngine {
       case 'ultimate':
       case 'victory':
       case 'defeat':
+      case 'boss_spawn':
+      case 'relic_pick':
+      case 'achievement':
         return 110;
+      case 'tactical':
+      case 'rift_open':
+        return 90;
       case 'explosion':
       case 'cannon':
       case 'hit_base':
@@ -482,6 +599,7 @@ export class SoundEngine {
       case 'shield_break':
       case 'promote':
       case 'upgrade':
+      case 'combo':
         return 65;
       case 'ui_tap':
         return 35;

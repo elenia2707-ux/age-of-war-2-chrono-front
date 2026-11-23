@@ -7,6 +7,8 @@
  * `click` fallback guarantees 1-tap activation on touch, mouse, and keyboard without
  * ever double-firing.
  */
+let globalGhostClickGuardUntil = 0;
+
 export function bindButtonTap(
   btn: HTMLButtonElement,
   onTap: () => void,
@@ -47,7 +49,10 @@ export function bindButtonTap(
       ev.clientY <= rect.bottom + pad;
     if (!inside) return;
 
-    suppressClickUntil = performance.now() + 450;
+    const now = performance.now();
+    suppressClickUntil = now + 450;
+    globalGhostClickGuardUntil = now + 360;
+    ev.stopPropagation();
     onTap();
   });
 
@@ -56,9 +61,15 @@ export function bindButtonTap(
   });
 
   // Fallback for keyboard activation, screen readers, or synthetic element.click()
-  btn.addEventListener('click', () => {
+  btn.addEventListener('click', (ev) => {
     if (btn.disabled) return;
-    if (performance.now() < suppressClickUntil) return;
+    const now = performance.now();
+    if (now < suppressClickUntil) return;
+    if (ev.isTrusted && ev.detail > 0 && now < globalGhostClickGuardUntil) {
+      ev.preventDefault();
+      ev.stopPropagation();
+      return;
+    }
     onTap();
   });
 }

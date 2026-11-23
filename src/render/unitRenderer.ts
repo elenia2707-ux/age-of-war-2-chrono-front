@@ -40,7 +40,7 @@ interface CachedUnitSprite {
   worldH: number;
 }
 
-const UNIT_CACHE_MAX_ENTRIES = 192;
+const UNIT_CACHE_MAX_ENTRIES = 240;
 const UNIT_CACHE_SCALE = 1.5;
 const MAX_BAKES_PER_FRAME = 4;
 const unitSpriteCache = new Map<string, CachedUnitSprite>();
@@ -93,16 +93,22 @@ function getSpriteBounds(kind: UnitVisualKind): { left: number; right: number; t
 
 function getOrBakeUnitSprite(p: UnitPoseParams): CachedUnitSprite | null {
   if (typeof document === 'undefined') return null;
-  // Transient death/hurt poses render directly (rare & smooth)
-  if (p.deathProgress > 0.001 || p.hitFlash > 0.28) return null;
+  // Transient death poses render directly (rare & brief)
+  if (p.deathProgress > 0.001) return null;
 
-  let mode: 'w' | 'a' | 'i';
+  let mode: 'w' | 'a' | 'i' | 'h';
   let bucket: number;
   let quantWalkPhase: number;
   let quantAttackAnim = 0;
+  let quantHitFlash = 0;
   let quantIsWalking = false;
 
-  if (p.attackAnim > 0.02) {
+  if (p.hitFlash > 0.28) {
+    mode = 'h';
+    bucket = 0;
+    quantWalkPhase = 0;
+    quantHitFlash = 0.78;
+  } else if (p.attackAnim > 0.02) {
     mode = 'a';
     bucket = Math.min(7, Math.floor(p.attackAnim * 8));
     quantAttackAnim = (bucket + 0.5) / 8;
@@ -155,7 +161,7 @@ function getOrBakeUnitSprite(p: UnitPoseParams): CachedUnitSprite | null {
     team: p.team,
     walkPhase: quantWalkPhase,
     attackAnim: quantAttackAnim,
-    hitFlash: 0,
+    hitFlash: quantHitFlash,
     deathProgress: 0,
     isWalking: quantIsWalking,
     isAttacking: mode === 'a',
@@ -260,14 +266,35 @@ export function renderUnitEntity(
   ctx.save();
 
   // 1. Soft Cartoon Oval Contact Shadow on Battlefield Road
+  const unitScale = unit.scaleMult ?? 1;
   const hoverShrink = hoverLift > 0 ? Math.max(0.62, 1 - hoverLift * 0.015) : 1;
-  const shadowRx = Math.max(12, Math.min(46, unit.def.width * 0.62) * hoverShrink);
-  const shadowRy = Math.max(3.8, Math.min(8, shadowRx * 0.24));
+  const shadowRx = Math.max(12, Math.min(58, unit.def.width * 0.62 * unitScale) * hoverShrink);
+  const shadowRy = Math.max(3.8, Math.min(9.5, shadowRx * 0.24));
   const shadowAlpha = (1 - deathProgress * 0.85) * (hoverLift > 0 ? 0.28 : 0.38);
   ctx.fillStyle = `rgba(10, 14, 24, ${shadowAlpha.toFixed(2)})`;
   ctx.beginPath();
   ctx.ellipse(drawX, groundY + 1, shadowRx, shadowRy, 0, 0, Math.PI * 2);
   ctx.fill();
+
+  // 1a. Elite / Boss Menacing Underfoot Command Ring
+  if (unit.state !== 'dead' && unit.eliteKind) {
+    const ePulse = 0.72 + Math.sin(wallTime * 6.5 + unit.uid) * 0.24;
+    const isBoss = unit.eliteKind === 'boss';
+    ctx.strokeStyle = isBoss
+      ? `rgba(244, 63, 94, ${(0.88 * ePulse).toFixed(2)})`
+      : `rgba(192, 132, 252, ${(0.76 * ePulse).toFixed(2)})`;
+    ctx.lineWidth = isBoss ? 3.2 : 2.3;
+    ctx.beginPath();
+    ctx.ellipse(drawX, groundY + 1, shadowRx * (1.32 + ePulse * 0.12), shadowRy * 1.48, 0, 0, Math.PI * 2);
+    ctx.stroke();
+    if (isBoss) {
+      ctx.strokeStyle = `rgba(250, 204, 21, ${(0.72 * ePulse).toFixed(2)})`;
+      ctx.lineWidth = 1.8;
+      ctx.beginPath();
+      ctx.ellipse(drawX, groundY + 1, shadowRx * 1.12, shadowRy * 1.18, 0, 0, Math.PI * 2);
+      ctx.stroke();
+    }
+  }
 
   // 1b. Chrono Fever OR Veteran Hero (★★ / ★★★) Pulsing Golden Ground Ring!
   if (unit.state !== 'dead' && (feverActive || unit.vetRank >= 2)) {
@@ -282,11 +309,20 @@ export function renderUnitEntity(
     ctx.stroke();
   }
 
+  // 1c. Cryo Shard Frost Ring on Chilled Units
+  if (unit.state !== 'dead' && unit.slowTimer && unit.slowTimer > 0.05) {
+    ctx.strokeStyle = 'rgba(125, 211, 252, 0.82)';
+    ctx.lineWidth = 2.1;
+    ctx.beginPath();
+    ctx.ellipse(drawX, groundY - 2, shadowRx * 1.08, shadowRy * 1.12, 0, 0, Math.PI * 2);
+    ctx.stroke();
+  }
+
   // 2. Golden Upgrade Power-Up Aura (zero-gradient crisp double-tier column & expanding ring)
   if (unit.state !== 'dead' && unit.upgradeFlash > 0.04) {
     const f = unit.upgradeFlash;
     const auraW = shadowRx * 1.48;
-    const auraH = unit.def.height * 1.15 + 10;
+    const auraH = unit.def.height * unitScale * 1.15 + 10;
     ctx.fillStyle = `rgba(250, 204, 21, ${(f * 0.22).toFixed(2)})`;
     ctx.beginPath();
     ctx.roundRect(drawX - auraW / 2, spriteY - auraH, auraW, auraH, 10);
@@ -305,26 +341,26 @@ export function renderUnitEntity(
 
   // 3. Cartoon Squash-and-Stretch Impact Recoil & Dynamic Attack Lunge (zero camera shake!)
   let recoilDx = 0;
-  let scaleX = 1;
-  let scaleY = 1;
+  let scaleX = unitScale;
+  let scaleY = unitScale;
 
   if (unit.state !== 'dead' && unit.hitFlash > 0.24) {
     const punch = (unit.hitFlash - 0.24) / 0.76;
     const isBig = unit.lastHitCrit;
     recoilDx = -dir * (isBig ? 9.5 : 5.4) * punch;
-    scaleX = 1 - (isBig ? 0.17 : 0.10) * punch;
-    scaleY = 1 + (isBig ? 0.15 : 0.09) * punch;
+    scaleX = unitScale * (1 - (isBig ? 0.17 : 0.10) * punch);
+    scaleY = unitScale * (1 + (isBig ? 0.15 : 0.09) * punch);
   } else if (unit.state !== 'dead' && unit.attackAnim > 0.72) {
     // Wind-up compression crouch before explosive lunge
     const coil = (1 - unit.attackAnim) / 0.28;
     recoilDx = -dir * 2.4 * coil;
-    scaleX = 1 - 0.05 * coil;
-    scaleY = 1 + 0.05 * coil;
+    scaleX = unitScale * (1 - 0.05 * coil);
+    scaleY = unitScale * (1 + 0.05 * coil);
   } else if (unit.state !== 'dead' && unit.attackAnim > 0.26 && unit.attackAnim <= 0.72) {
     const strikePeak = Math.sin(((unit.attackAnim - 0.26) / 0.46) * Math.PI);
     recoilDx = dir * 5.8 * strikePeak;
-    scaleX = 1 + 0.11 * strikePeak;
-    scaleY = 1 - 0.08 * strikePeak;
+    scaleX = unitScale * (1 + 0.11 * strikePeak);
+    scaleY = unitScale * (1 - 0.08 * strikePeak);
   }
 
   ctx.save();
@@ -349,8 +385,8 @@ export function renderUnitEntity(
   // 3b. Subtle Cyan Vanguard Energy Barrier front arc on actively shielded units!
   if (unit.state !== 'dead' && unit.shield > 0.5 && unit.maxShield > 0) {
     const shPulse = 0.42 + Math.sin(wallTime * 6.5 + unit.uid) * 0.16;
-    const shRadius = Math.max(20, unit.def.height * 0.54);
-    const shCenterY = spriteY - unit.def.height * 0.56;
+    const shRadius = Math.max(20, unit.def.height * unitScale * 0.54);
+    const shCenterY = spriteY - unit.def.height * unitScale * 0.56;
     ctx.strokeStyle = `rgba(56, 189, 248, ${shPulse.toFixed(2)})`;
     ctx.lineWidth = unit.hitFlash > 0.35 ? 3.2 : 2.0;
     ctx.beginPath();
@@ -365,7 +401,7 @@ export function renderUnitEntity(
   // 4. Crisp Comic Starburst + Directional Manga Speed-Lines on fresh hit!
   if (unit.state !== 'dead' && unit.hitFlash > 0.54) {
     const f = (unit.hitFlash - 0.54) / 0.46;
-    const iy = spriteY - unit.def.height * 0.58;
+    const iy = spriteY - unit.def.height * unitScale * 0.58;
     const ix = drawX + recoilDx;
     const rOuter = (unit.lastHitCrit ? 22 : 13.5) * (0.48 + f * 0.75);
     const rInner = rOuter * 0.34;
@@ -410,14 +446,23 @@ export function renderUnitEntity(
     ctx.restore();
   }
 
-  const topOffset = getUnitHpBarOffset(unit.def.id, unit.def.height);
+  const topOffset = getUnitHpBarOffset(unit.def.id, unit.def.height) * unitScale;
   const showHpBar =
-    unit.state !== 'dead' && (unit.hp < unit.maxHp || unit.displayHp > unit.hp + 0.5 || unit.shield > 0.5);
+    unit.state !== 'dead' &&
+    (unit.eliteKind !== undefined ||
+      unit.hp < unit.maxHp ||
+      unit.displayHp > unit.hp + 0.5 ||
+      unit.shield > 0.5);
 
   // 5. Crisp Cel-Framed Overhead HP Bar with Delayed White/Gold Trail (zero per-unit gradient!)
   if (showHpBar) {
-    const barW = Math.max(34, Math.min(78, unit.def.width * 1.18));
-    const barH = 6.5;
+    const isBoss = unit.eliteKind === 'boss';
+    const isElite = unit.eliteKind === 'elite';
+    const barW = Math.max(
+      isBoss ? 68 : isElite ? 48 : 34,
+      Math.min(isBoss ? 104 : 82, unit.def.width * 1.18 * unitScale),
+    );
+    const barH = isBoss ? 8.5 : isElite ? 7.2 : 6.5;
     const barY = spriteY - topOffset - 10;
     const ratio = Math.max(0, Math.min(1, unit.hp / unit.maxHp));
     const trailRatio = Math.max(ratio, Math.min(1, unit.displayHp / unit.maxHp));
@@ -441,17 +486,37 @@ export function renderUnitEntity(
 
     // Live HP fill with crisp 2-tone cel top sheen (zero createLinearGradient!)
     if (fillW > 0.5) {
-      ctx.fillStyle = unit.team === 'player' ? '#2563eb' : '#ef4444';
+      ctx.fillStyle = isBoss
+        ? '#e11d48'
+        : isElite && unit.team === 'enemy'
+          ? '#a855f7'
+          : unit.team === 'player'
+            ? '#2563eb'
+            : '#ef4444';
       ctx.beginPath();
       ctx.roundRect(barLeft, barY, fillW, barH, 2.5);
       ctx.fill();
       if (fillW > 3) {
-        ctx.fillStyle = unit.team === 'player' ? '#60a5fa' : '#fb7185';
+        ctx.fillStyle = isBoss
+          ? '#fda4af'
+          : isElite && unit.team === 'enemy'
+            ? '#d8b4fe'
+            : unit.team === 'player'
+              ? '#60a5fa'
+              : '#fb7185';
         ctx.fillRect(barLeft + 1.5, barY + 0.8, fillW - 3, 2.0);
       }
     }
 
-    setInkStyle(ctx, 1.8, unit.hitFlash > 0.55 ? (unit.lastHitCrit ? '#fde047' : '#ffffff') : INK);
+    const frameColor =
+      unit.hitFlash > 0.55
+        ? unit.lastHitCrit
+          ? '#fde047'
+          : '#ffffff'
+        : isBoss
+          ? '#facc15'
+          : INK;
+    setInkStyle(ctx, isBoss ? 2.2 : 1.8, frameColor);
     ctx.beginPath();
     ctx.roundRect(barLeft, barY, barW, barH, 3);
     ctx.stroke();
@@ -474,19 +539,35 @@ export function renderUnitEntity(
     }
   }
 
-  // 6. Gleaming Golden Veteran Promotion Stars (★ / ★★ / ★★★) above promoted fighters!
-  if (unit.state !== 'dead' && unit.vetRank > 0) {
+  // 6. Boss / Elite Crown Emblem OR Veteran Promotion Stars (★ / ★★ / ★★★)
+  if (unit.state !== 'dead' && (unit.eliteKind || unit.vetRank > 0)) {
     const hasShieldBar = showHpBar && unit.shield > 0.5 && unit.maxShield > 0;
-    const starY = spriteY - topOffset - (hasShieldBar ? 23 : showHpBar ? 19 : 9);
-    const stars = unit.vetRank === 3 ? '★★★' : unit.vetRank === 2 ? '★★' : '★';
-    ctx.font = '900 10.5px system-ui, sans-serif';
+    const badgeY = spriteY - topOffset - (hasShieldBar ? 24 : showHpBar ? 20 : 9);
+    const label =
+      unit.eliteKind === 'boss'
+        ? '♛ BOSS'
+        : unit.eliteKind === 'elite'
+          ? '◆ ELITE'
+          : unit.vetRank === 3
+            ? '★★★'
+            : unit.vetRank === 2
+              ? '★★'
+              : '★';
+    ctx.font = unit.eliteKind === 'boss' ? '900 11px system-ui, sans-serif' : '900 10.5px system-ui, sans-serif';
     ctx.textAlign = 'center';
     ctx.textBaseline = 'middle';
-    ctx.lineWidth = 3.0;
+    ctx.lineWidth = 3.2;
     ctx.strokeStyle = INK;
-    ctx.strokeText(stars, drawX, starY);
-    ctx.fillStyle = unit.vetRank === 3 ? '#fef08a' : '#facc15';
-    ctx.fillText(stars, drawX, starY);
+    ctx.strokeText(label, drawX, badgeY);
+    ctx.fillStyle =
+      unit.eliteKind === 'boss'
+        ? '#fde047'
+        : unit.eliteKind === 'elite'
+          ? '#e9d5ff'
+          : unit.vetRank === 3
+            ? '#fef08a'
+            : '#facc15';
+    ctx.fillText(label, drawX, badgeY);
   }
 
   ctx.restore();

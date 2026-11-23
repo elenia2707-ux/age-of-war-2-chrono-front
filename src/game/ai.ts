@@ -83,6 +83,17 @@ export class EnemyAI {
       return;
     }
 
+    // 2b. AI Commander Tactical Skill (Hard+ when enemy has an assigned commander)
+    if (
+      enemy.commanderId !== null &&
+      engine.elapsed > 12 &&
+      engine.canUseTacticalSkill('enemy') &&
+      (underThreat || (enemyCount >= 2 && playerCount >= 2))
+    ) {
+      engine.triggerTacticalSkill('enemy');
+      return;
+    }
+
     // 3. Difficulty-scaled Gold Spec Upgrades (all 24 upgrades)
     if (!criticalThreat && this.tryPurchaseUpgrade(engine, underThreat, enemyCount)) {
       return;

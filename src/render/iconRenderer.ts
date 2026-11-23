@@ -1,4 +1,11 @@
-import type { TurretVisualKind, UnitVisualKind, UpgradeId } from '../data/types';
+import type {
+  CommanderId,
+  RelicId,
+  SanctuaryUpgradeId,
+  TurretVisualKind,
+  UnitVisualKind,
+  UpgradeId,
+} from '../data/types';
 import { drawTurretArt } from './baseRenderer';
 import {
   drawCelEllipse,
@@ -12,11 +19,17 @@ import { renderUnitPose } from './unitRenderer';
 const unitIconCache = new Map<UnitVisualKind, string>();
 const turretIconCache = new Map<TurretVisualKind, string>();
 const upgradeIconCache = new Map<UpgradeId, string>();
+const relicIconCache = new Map<RelicId, string>();
+const commanderIconCache = new Map<CommanderId, string>();
+const sanctuaryIconCache = new Map<SanctuaryUpgradeId, string>();
 
 export function clearIconCache(): void {
   unitIconCache.clear();
   turretIconCache.clear();
   upgradeIconCache.clear();
+  relicIconCache.clear();
+  commanderIconCache.clear();
+  sanctuaryIconCache.clear();
 }
 
 function getUnitIconFraming(unitId: UnitVisualKind): { scale: number; x: number; y: number } {
@@ -723,3 +736,510 @@ export function drawCartoonUpgradeIcon(ctx: CanvasRenderingContext2D, id: Upgrad
     }
   }
 }
+
+export function getRelicIconUrl(relicId: RelicId): string {
+  const existing = relicIconCache.get(relicId);
+  if (existing) return existing;
+  if (typeof document === 'undefined') return '';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 88;
+  canvas.height = 88;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(44, 44);
+  ctx.scale(1.22, 1.22);
+  drawCartoonRelicIcon(ctx, relicId);
+  ctx.restore();
+
+  const url = canvas.toDataURL('image/png');
+  relicIconCache.set(relicId, url);
+  return url;
+}
+
+export function getCommanderIconUrl(commanderId: CommanderId): string {
+  const existing = commanderIconCache.get(commanderId);
+  if (existing) return existing;
+  if (typeof document === 'undefined') return '';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 88;
+  canvas.height = 88;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(44, 44);
+  ctx.scale(1.24, 1.24);
+  drawCartoonCommanderIcon(ctx, commanderId);
+  ctx.restore();
+
+  const url = canvas.toDataURL('image/png');
+  commanderIconCache.set(commanderId, url);
+  return url;
+}
+
+export function getSanctuaryIconUrl(upgradeId: SanctuaryUpgradeId): string {
+  const existing = sanctuaryIconCache.get(upgradeId);
+  if (existing) return existing;
+  if (typeof document === 'undefined') return '';
+
+  const canvas = document.createElement('canvas');
+  canvas.width = 80;
+  canvas.height = 72;
+  const ctx = canvas.getContext('2d');
+  if (!ctx) return '';
+
+  ctx.save();
+  ctx.imageSmoothingEnabled = true;
+  ctx.translate(40, 36);
+  ctx.scale(1.16, 1.16);
+  drawCartoonSanctuaryIcon(ctx, upgradeId);
+  ctx.restore();
+
+  const url = canvas.toDataURL('image/png');
+  sanctuaryIconCache.set(upgradeId, url);
+  return url;
+}
+
+export function drawCartoonCommanderIcon(ctx: CanvasRenderingContext2D, id: CommanderId): void {
+  switch (id) {
+    case 'vanguard': {
+      // Winged Azure Crest Shield + Golden Spearhead
+      drawCelPoly(
+        ctx,
+        [
+          [0, -24],
+          [20, -14],
+          [16, 10],
+          [0, 24],
+          [-16, 10],
+          [-20, -14],
+        ],
+        '#0284c7',
+        { highlight: '#7dd3fc', shadow: '#0c4a6e', lineWidth: 2.5 },
+      );
+      drawCelPoly(
+        ctx,
+        [
+          [0, -18],
+          [7, 4],
+          [0, 16],
+          [-7, 4],
+        ],
+        '#facc15',
+        { highlight: '#fef9c3', shadow: '#a16207', lineWidth: 2 },
+      );
+      drawEnergyOrb(ctx, 0, -2, 5.5, '#38bdf8', '#ffffff');
+      break;
+    }
+    case 'ordnance': {
+      // Twin Crossed Heavy Howitzer Barrels + Explosive Star
+      for (const dir of [-1, 1] as const) {
+        ctx.save();
+        ctx.scale(dir, 1);
+        ctx.rotate(0.65);
+        drawCelRoundRect(ctx, -6, -22, 12, 38, 4, '#475569', {
+          highlight: '#94a3b8',
+          shadow: '#1e293b',
+          lineWidth: 2.2,
+        });
+        drawCelRoundRect(ctx, -8, -24, 16, 7, 2, '#f97316', { highlight: '#fdba74', lineWidth: 1.8 });
+        ctx.restore();
+      }
+      drawEnergyOrb(ctx, 0, -2, 8.5, '#fb923c', '#fef08a');
+      break;
+    }
+    case 'archon': {
+      // Imperial Sun Crown + Golden Gem Scepter
+      drawCelPoly(
+        ctx,
+        [
+          [-22, 12],
+          [-18, -10],
+          [-8, 0],
+          [0, -20],
+          [8, 0],
+          [18, -10],
+          [22, 12],
+        ],
+        '#eab308',
+        { highlight: '#fef08a', shadow: '#854d0e', lineWidth: 2.5 },
+      );
+      drawCelRoundRect(ctx, -22, 10, 44, 8, 3, '#ca8a04', { highlight: '#fde047', lineWidth: 2 });
+      drawEnergyOrb(ctx, 0, 2, 6, '#38bdf8', '#ffffff');
+      break;
+    }
+    case 'aegis': {
+      // Celestial Emerald Halo Wings + Sacred Ankh Cross
+      drawCelEllipse(ctx, 0, 0, 22, 22, '#059669', { highlight: '#6ee7b7', shadow: '#064e3b', lineWidth: 2.4 });
+      drawCelRoundRect(ctx, -4, -15, 8, 30, 3, '#fef08a', { highlight: '#ffffff', lineWidth: 1.8 });
+      drawCelRoundRect(ctx, -15, -4, 30, 8, 3, '#fef08a', { highlight: '#ffffff', lineWidth: 1.8 });
+      drawEnergyOrb(ctx, 0, 0, 5.5, '#4ade80', '#ffffff');
+      break;
+    }
+  }
+}
+
+export function drawCartoonSanctuaryIcon(ctx: CanvasRenderingContext2D, id: SanctuaryUpgradeId): void {
+  switch (id) {
+    case 'starting_gold':
+      drawCartoonUpgradeIcon(ctx, 'economy');
+      drawEnergyOrb(ctx, 0, -14, 5, '#fef08a', '#ffffff');
+      break;
+    case 'combat_doctrine':
+      drawCartoonUpgradeIcon(ctx, 'weapons');
+      break;
+    case 'eternal_masonry':
+      drawCartoonUpgradeIcon(ctx, 'fortress');
+      break;
+    case 'chrono_blessing':
+      drawCartoonUpgradeIcon(ctx, 'xp_mastery');
+      break;
+    case 'royal_mint':
+      drawCartoonUpgradeIcon(ctx, 'bounty');
+      break;
+    case 'starter_relic':
+      drawCelPoly(
+        ctx,
+        [
+          [0, -24],
+          [18, -4],
+          [10, 20],
+          [-10, 20],
+          [-18, -4],
+        ],
+        '#14b8a6',
+        { highlight: '#99f6e4', shadow: '#0f766e', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, 0, -2, 7.5, '#fef08a', '#ffffff');
+      break;
+    case 'command_mastery':
+      drawCartoonCommanderIcon(ctx, 'vanguard');
+      break;
+    case 'turret_legacy':
+      drawCartoonUpgradeIcon(ctx, 'turret_rapid');
+      break;
+  }
+}
+
+export function drawCartoonRelicIcon(ctx: CanvasRenderingContext2D, id: RelicId): void {
+  switch (id) {
+    case 'chrono_overclock': {
+      // Golden Chrono Gear + Cyan Clock Hands
+      drawCelEllipse(ctx, 0, 0, 22, 22, '#0284c7', { highlight: '#7dd3fc', shadow: '#0c4a6e', lineWidth: 2.5 });
+      drawCelEllipse(ctx, 0, 0, 14, 14, '#eab308', { highlight: '#fef08a', shadow: '#854d0e', lineWidth: 2 });
+      setInkStyle(ctx, 3, '#ffffff');
+      ctx.beginPath();
+      ctx.moveTo(0, 0);
+      ctx.lineTo(0, -10);
+      ctx.moveTo(0, 0);
+      ctx.lineTo(8, 4);
+      ctx.stroke();
+      drawEnergyOrb(ctx, 0, 0, 4.5, '#38bdf8', '#ffffff');
+      break;
+    }
+    case 'golden_chalice': {
+      // Radiant Alchemical Chalice overflowing with gold light
+      drawCelPoly(
+        ctx,
+        [
+          [-16, -16],
+          [16, -16],
+          [10, 4],
+          [-10, 4],
+        ],
+        '#eab308',
+        { highlight: '#fef08a', shadow: '#a16207', lineWidth: 2.4 },
+      );
+      drawCelRoundRect(ctx, -4, 4, 8, 12, 2, '#ca8a04', { highlight: '#fde047', lineWidth: 2 });
+      drawCelRoundRect(ctx, -13, 15, 26, 6, 3, '#eab308', { highlight: '#fef08a', lineWidth: 2 });
+      drawEnergyOrb(ctx, 0, -16, 7.5, '#fde047', '#ffffff');
+      break;
+    }
+    case 'blood_oath': {
+      // Crimson Double-Bladed Berserker War-Axe
+      drawCelRoundRect(ctx, -3, -22, 6, 44, 2, '#78350f', { highlight: '#b45309', lineWidth: 2 });
+      for (const dir of [-1, 1] as const) {
+        ctx.save();
+        ctx.scale(dir, 1);
+        drawCelPoly(
+          ctx,
+          [
+            [3, -14],
+            [21, -22],
+            [24, -4],
+            [18, 10],
+            [3, 4],
+          ],
+          '#e11d48',
+          { highlight: '#fda4af', shadow: '#881337', lineWidth: 2.3 },
+        );
+        ctx.restore();
+      }
+      drawEnergyOrb(ctx, 0, -5, 5.5, '#fb7185', '#ffffff');
+      break;
+    }
+    case 'thunder_core': {
+      // High-voltage Tesla Sphere + Twin Lightning Forks
+      drawCelEllipse(ctx, 0, 0, 19, 19, '#0e7490', { highlight: '#67e8f9', shadow: '#164e63', lineWidth: 2.4 });
+      drawCelPoly(
+        ctx,
+        [
+          [4, -24],
+          [-10, -2],
+          [1, -2],
+          [-6, 23],
+          [12, -4],
+          [1, -4],
+        ],
+        '#fef08a',
+        { highlight: '#ffffff', shadow: '#ca8a04', lineWidth: 2 },
+      );
+      break;
+    }
+    case 'immortal_bastion': {
+      // Emerald Fortress Bastion Shield
+      drawCelPoly(
+        ctx,
+        [
+          [-18, -18],
+          [-10, -18],
+          [-10, -12],
+          [-3, -12],
+          [-3, -18],
+          [3, -18],
+          [3, -12],
+          [10, -12],
+          [10, -18],
+          [18, -18],
+          [16, 8],
+          [0, 23],
+          [-16, 8],
+        ],
+        '#10b981',
+        { highlight: '#6ee7b7', shadow: '#065f46', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, 0, 2, 6.5, '#38bdf8', '#ffffff');
+      break;
+    }
+    case 'warlord_signet': {
+      // Ruby & Gold Warlord Signet Ring with Triple Hero Star
+      drawCelEllipse(ctx, 0, 2, 20, 20, '#eab308', { highlight: '#fef08a', shadow: '#854d0e', lineWidth: 2.5 });
+      drawCelEllipse(ctx, 0, 2, 12, 12, '#b91c1c', { highlight: '#f87171', shadow: '#7f1d1d', lineWidth: 2 });
+      drawEnergyOrb(ctx, 0, -14, 6.5, '#fef08a', '#ffffff');
+      drawEnergyOrb(ctx, 0, 2, 5, '#fde047', '#ffffff');
+      break;
+    }
+    case 'guillotine_blade': {
+      // Diagonal Executioner Heavy Cleaver + Rose Victory Spark
+      ctx.save();
+      ctx.rotate(-0.45);
+      drawCelPoly(
+        ctx,
+        [
+          [-10, -24],
+          [14, -18],
+          [12, 16],
+          [-10, 12],
+        ],
+        '#e2e8f0',
+        { highlight: '#ffffff', shadow: '#64748b', lineWidth: 2.4 },
+      );
+      drawCelRoundRect(ctx, -5, 12, 8, 14, 2, '#9f1239', { highlight: '#fb7185', lineWidth: 2 });
+      ctx.restore();
+      drawEnergyOrb(ctx, 10, -10, 5.5, '#4ade80', '#ffffff');
+      break;
+    }
+    case 'prism_split': {
+      // Mythic Prismatic Crystal splitting 1 beam into 3
+      drawCelPoly(
+        ctx,
+        [
+          [0, -23],
+          [21, 16],
+          [-21, 16],
+        ],
+        '#2dd4bf',
+        { highlight: '#ccfbf1', shadow: '#0f766e', lineWidth: 2.5 },
+      );
+      drawEnergyOrb(ctx, -12, -8, 4.2, '#38bdf8', '#ffffff');
+      drawEnergyOrb(ctx, 12, -8, 4.2, '#f472b6', '#ffffff');
+      drawEnergyOrb(ctx, 0, 4, 6, '#fef08a', '#ffffff');
+      break;
+    }
+    case 'siegebreaker_ram': {
+      // Bronze Horned Battering Ram Head
+      drawCelRoundRect(ctx, -20, -9, 34, 18, 5, '#9a3412', { highlight: '#fb923c', shadow: '#431407', lineWidth: 2.4 });
+      drawCelPoly(
+        ctx,
+        [
+          [8, -14],
+          [24, 0],
+          [8, 14],
+        ],
+        '#facc15',
+        { highlight: '#fef9c3', shadow: '#a16207', lineWidth: 2.4 },
+      );
+      break;
+    }
+    case 'turret_overcharge': {
+      // Overcharged Reactor Core + Twin Turret Muzzles
+      drawCelRoundRect(ctx, -18, -14, 36, 28, 7, '#1e293b', { highlight: '#64748b', shadow: '#0f172a', lineWidth: 2.4 });
+      drawCelRoundRect(ctx, 12, -10, 12, 7, 2, '#38bdf8', { highlight: '#bae6fd', lineWidth: 1.8 });
+      drawCelRoundRect(ctx, 12, 3, 12, 7, 2, '#38bdf8', { highlight: '#bae6fd', lineWidth: 1.8 });
+      drawEnergyOrb(ctx, -2, 0, 9, '#38bdf8', '#ffffff');
+      break;
+    }
+    case 'rewind_hourglass': {
+      // Mythic Golden Chrono Hourglass
+      drawCelRoundRect(ctx, -16, -22, 32, 6, 2, '#eab308', { highlight: '#fef08a', lineWidth: 2.2 });
+      drawCelRoundRect(ctx, -16, 16, 32, 6, 2, '#eab308', { highlight: '#fef08a', lineWidth: 2.2 });
+      drawCelPoly(
+        ctx,
+        [
+          [-13, -16],
+          [13, -16],
+          [3, 0],
+          [13, 16],
+          [-13, 16],
+          [-3, 0],
+        ],
+        '#2dd4bf',
+        { highlight: '#ccfbf1', shadow: '#0f766e', lineWidth: 2.2 },
+      );
+      drawEnergyOrb(ctx, 0, 0, 5, '#fef08a', '#ffffff');
+      break;
+    }
+    case 'starlight_bounty': {
+      // Golden Bounty Star Seal + Scroll
+      drawCelRoundRect(ctx, -16, -18, 32, 36, 5, '#fef3c7', { highlight: '#ffffff', shadow: '#d97706', lineWidth: 2.3 });
+      drawCelPoly(
+        ctx,
+        [
+          [0, -13],
+          [4, -3],
+          [14, -3],
+          [6, 4],
+          [9, 14],
+          [0, 8],
+          [-9, 14],
+          [-6, 4],
+          [-14, -3],
+          [-4, -3],
+        ],
+        '#eab308',
+        { highlight: '#fef08a', shadow: '#a16207', lineWidth: 2 },
+      );
+      break;
+    }
+    case 'iron_maiden': {
+      // Spiked Steel Pauldron Cuirass
+      drawCelEllipse(ctx, 0, 2, 19, 17, '#64748b', { highlight: '#cbd5e1', shadow: '#334155', lineWidth: 2.4 });
+      for (const ang of [-0.9, -0.45, 0, 0.45, 0.9]) {
+        ctx.save();
+        ctx.rotate(ang);
+        drawCelPoly(
+          ctx,
+          [
+            [-4, -15],
+            [0, -26],
+            [4, -15],
+          ],
+          '#e2e8f0',
+          { highlight: '#ffffff', lineWidth: 1.8 },
+        );
+        ctx.restore();
+      }
+      break;
+    }
+    case 'berserker_horn': {
+      // Blazing Curved War-Horn
+      drawCelPoly(
+        ctx,
+        [
+          [-20, -14],
+          [-8, -18],
+          [8, 4],
+          [22, 8],
+          [18, 18],
+          [-2, 14],
+          [-18, -2],
+        ],
+        '#ea580c',
+        { highlight: '#fdba74', shadow: '#7c2d12', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, 18, 12, 6, '#fde047', '#ffffff');
+      break;
+    }
+    case 'imperial_conscription': {
+      // Mythic Imperial Triple War-Banner
+      drawCelRoundRect(ctx, -18, -20, 36, 5, 2, '#eab308', { highlight: '#fef08a', lineWidth: 2 });
+      drawCelPoly(
+        ctx,
+        [
+          [-14, -15],
+          [14, -15],
+          [14, 16],
+          [0, 24],
+          [-14, 16],
+        ],
+        '#9333ea',
+        { highlight: '#d8b4fe', shadow: '#581c87', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, 0, 1, 7, '#fde047', '#ffffff');
+      break;
+    }
+    case 'supernova_catalyst': {
+      // Mythic Supernova Singularity Core
+      drawCelEllipse(ctx, 0, 0, 22, 10, '#c026d3', { highlight: '#f5d0fe', lineWidth: 2 });
+      ctx.save();
+      ctx.rotate(Math.PI / 2);
+      drawCelEllipse(ctx, 0, 0, 22, 10, '#a855f7', { highlight: '#e9d5ff', lineWidth: 2 });
+      ctx.restore();
+      drawEnergyOrb(ctx, 0, 0, 10, '#e879f9', '#ffffff');
+      break;
+    }
+    case 'cryo_shard': {
+      // Absolute-Zero Faceted Ice Crystal
+      drawCelPoly(
+        ctx,
+        [
+          [0, -24],
+          [15, -8],
+          [11, 16],
+          [0, 24],
+          [-11, 16],
+          [-15, -8],
+        ],
+        '#38bdf8',
+        { highlight: '#e0f2fe', shadow: '#0369a1', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, 0, -2, 6, '#bae6fd', '#ffffff');
+      break;
+    }
+    case 'meteor_incendiary': {
+      // Blazing Magma Meteor Warhead
+      drawCelPoly(
+        ctx,
+        [
+          [-6, -24],
+          [14, -16],
+          [20, 2],
+          [8, 20],
+          [-14, 16],
+          [-20, -4],
+        ],
+        '#dc2626',
+        { highlight: '#fca5a5', shadow: '#7f1d1d', lineWidth: 2.4 },
+      );
+      drawEnergyOrb(ctx, -2, 2, 8, '#facc15', '#ffffff');
+      break;
+    }
+  }
+}
+

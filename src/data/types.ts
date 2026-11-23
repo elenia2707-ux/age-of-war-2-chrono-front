@@ -2,7 +2,57 @@ export type Team = 'player' | 'enemy';
 
 export type DifficultyId = 'easy' | 'normal' | 'hard' | 'brutal' | 'nightmare' | 'mythic';
 
+export type GameMode = 'campaign' | 'endless' | 'daily';
+
 export type GameStatus = 'title' | 'playing' | 'paused' | 'victory' | 'defeat';
+
+export type CommanderId = 'vanguard' | 'ordnance' | 'archon' | 'aegis';
+
+export type RelicRarity = 'rare' | 'epic' | 'mythic';
+
+export type RelicId =
+  | 'chrono_overclock'
+  | 'golden_chalice'
+  | 'blood_oath'
+  | 'thunder_core'
+  | 'immortal_bastion'
+  | 'warlord_signet'
+  | 'guillotine_blade'
+  | 'prism_split'
+  | 'siegebreaker_ram'
+  | 'turret_overcharge'
+  | 'rewind_hourglass'
+  | 'starlight_bounty'
+  | 'iron_maiden'
+  | 'berserker_horn'
+  | 'imperial_conscription'
+  | 'supernova_catalyst'
+  | 'cryo_shard'
+  | 'meteor_incendiary';
+
+export type SanctuaryUpgradeId =
+  | 'starting_gold'
+  | 'combat_doctrine'
+  | 'eternal_masonry'
+  | 'chrono_blessing'
+  | 'royal_mint'
+  | 'starter_relic'
+  | 'command_mastery'
+  | 'turret_legacy';
+
+export type SanctuaryLevels = Record<SanctuaryUpgradeId, number>;
+
+export type DailyMutatorId =
+  | 'turbo_forge'
+  | 'colossus_war'
+  | 'chain_storm'
+  | 'relic_rush'
+  | 'gold_fever'
+  | 'rift_overdrive'
+  | 'vampiric_front'
+  | 'siege_blitz';
+
+export type ChronoRiftKind = 'haste' | 'fury' | 'sanctuary';
 
 export type ProjectileStyle =
   | 'stone'
@@ -193,6 +243,12 @@ export type SoundCue =
   | 'ultimate'
   | 'hit_base'
   | 'ui_tap'
+  | 'combo'
+  | 'relic_pick'
+  | 'tactical'
+  | 'boss_spawn'
+  | 'rift_open'
+  | 'achievement'
   | 'victory'
   | 'defeat';
 
@@ -328,8 +384,121 @@ export interface InstalledTurret {
   recoil: number;
 }
 
+export interface CommanderDef {
+  id: CommanderId;
+  name: string;
+  title: string;
+  accentColor: string;
+  passiveDesc: string;
+  skillName: string;
+  skillShort: string;
+  skillDesc: string;
+  cooldown: number;
+}
+
+export interface RelicDef {
+  id: RelicId;
+  rarity: RelicRarity;
+  name: string;
+  shortName: string;
+  effectText: string;
+  flavorText: string;
+  accentColor: string;
+}
+
+export interface SanctuaryUpgradeDef {
+  id: SanctuaryUpgradeId;
+  name: string;
+  shortName: string;
+  effectText: string;
+  maxLevel: number;
+  baseCost: number;
+  costStep: number;
+  accentColor: string;
+}
+
+export interface AchievementDef {
+  id: string;
+  name: string;
+  description: string;
+  medalReward: number;
+  accentColor: string;
+}
+
+export interface DailyMutatorDef {
+  id: DailyMutatorId;
+  name: string;
+  shortName: string;
+  description: string;
+  accentColor: string;
+}
+
+export interface ChronoRiftZone {
+  uid: number;
+  kind: ChronoRiftKind;
+  name: string;
+  x: number;
+  radius: number;
+  life: number;
+  maxLife: number;
+  accentColor: string;
+}
+
+/** O(1) precomputed combined faction modifiers from Relics + Commander + Sanctuary + Daily Mutators */
+export interface FactionCombatMods {
+  damageMult: number;
+  attackSpeedMult: number;
+  moveSpeedMult: number;
+  maxHpMult: number;
+  baseMaxHpMult: number;
+  passiveGoldMult: number;
+  killGoldMult: number;
+  xpMult: number;
+  trainSpeedMult: number;
+  unitCostMult: number;
+  turretCostMult: number;
+  turretDamageMult: number;
+  turretRateMult: number;
+  siegeDamageMult: number;
+  ultDamageMult: number;
+  ultCooldownMult: number;
+  ultXpCostMult: number;
+  crateRewardMult: number;
+  shieldBonusRatio: number;
+  lifestealBonus: number;
+  regenBonusPerSec: number;
+  armorBonus: number;
+  thornsBonus: number;
+  splashBonusPx: number;
+  vetSpawnBonus: number;
+  vetStatBonusMult: number;
+  chainLightningChance: number;
+  multishotChance: number;
+  cryoSlowChance: number;
+  baseRegenPerSec: number;
+  executeHealRatio: number;
+  feverKillsTarget: number;
+  maxUnitsBonus: number;
+  hasRewindHourglass: boolean;
+  bloodOathLowHpBonus: number;
+  bountyBossMult: number;
+}
+
+export interface StartGameOptions {
+  mode?: GameMode;
+  commanderId?: CommanderId;
+  sanctuary?: Partial<SanctuaryLevels>;
+  mutators?: DailyMutatorId[];
+  dailyDateKey?: string;
+}
+
 export interface FactionState {
   team: Team;
+  commanderId: CommanderId | null;
+  relics: RelicId[];
+  mods: FactionCombatMods;
+  rewindUsed: boolean;
+  lastStandUsed: boolean;
   eraIndex: number;
   gold: number;
   xp: number;
@@ -341,13 +510,23 @@ export interface FactionState {
   turrets: (InstalledTurret | null)[];
   queue: QueuedUnit[];
   upgrades: UpgradeLevels;
+  tacticalCooldown: number;
+  tacticalMaxCooldown: number;
+  tacticalBuffTimer: number;
+  aegisProtectedTimer: number;
   ultimateCooldown: number;
   ultimateMaxCooldown: number;
   baseHitFlash: number;
   evolveFlash: number;
   upgradeFlash: number;
   kills: number;
+  bossKills: number;
+  eliteKills: number;
   unitsSpawned: number;
+  /** Kill combo streak (decays after 4.2s without kills) */
+  comboCount: number;
+  comboTimer: number;
+  maxCombo: number;
   /** Chrono Fever: kill streak gauge (0..10) & active golden frenzy timer */
   feverKills: number;
   feverTimer: number;
@@ -378,6 +557,13 @@ export interface UnitEntity {
   /** Veteran promotion progression: 1 kill -> ★, 3 kills -> ★★, 5 kills -> ★★★ */
   kills: number;
   vetRank: 0 | 1 | 2 | 3;
+  /** Special battlefield champion / boss scaling & cryo slow state */
+  eliteKind?: 'elite' | 'boss';
+  eliteTitle?: string;
+  scaleMult?: number;
+  damageScale?: number;
+  rewardMult?: number;
+  slowTimer?: number;
 }
 
 export interface SupplyCrateEntity {
@@ -532,15 +718,23 @@ export interface ActiveUltimate {
 
 export interface EngineCallbacks {
   onSound?: (cue: SoundCue) => void;
+  onComboSound?: (comboCount: number) => void;
   onUltimateSound?: (kind: UltimateKind) => void;
   onBanner?: (title: string, subtitle: string, accent: string) => void;
+  onRelicDraft?: (choices: RelicId[]) => void;
 }
 
 export interface GameSnapshot {
   status: GameStatus;
+  mode: GameMode;
   difficulty: DifficultyId;
-  speed: 1 | 2;
+  speed: 1 | 2 | 3;
+  autoSpawn: boolean;
   elapsed: number;
+  wave: number;
+  mutators: DailyMutatorId[];
+  pendingRelicDraft: RelicId[];
+  activeRift: ChronoRiftZone | null;
   player: FactionState;
   enemy: FactionState;
   units: UnitEntity[];

@@ -1,5 +1,7 @@
+import { COMMANDERS, COMMANDER_LIST } from '../data/commanders';
 import { DIFFICULTIES } from '../data/difficulty';
 import { ERAS, TURRET_BY_ID, UNIT_BY_ID, getEra } from '../data/eras';
+import { RELIC_BY_ID, computeFactionCombatMods, rollRelicChoices } from '../data/relics';
 import {
   FORTRESS_UPGRADE_REPAIR_RATIO,
   UPGRADE_BY_ID,
@@ -49,16 +51,24 @@ import {
 import type {
   ActiveUltimate,
   BeamEffect,
+  ChronoRiftKind,
+  ChronoRiftZone,
+  CommanderId,
+  DailyMutatorId,
   DamagePopup,
   DifficultyId,
   EngineCallbacks,
   FactionState,
+  GameMode,
   GameSnapshot,
   GameStatus,
   ParticleEntity,
   ProjectileEntity,
+  RelicId,
+  SanctuaryLevels,
   ScorchMark,
   SlashEffect,
+  StartGameOptions,
   SupplyCrateEntity,
   Team,
   TurretVisualKind,
@@ -90,14 +100,20 @@ import {
   WORLD_WIDTH,
 } from './constants';
 
-const FEVER_KILLS_TARGET = 10;
 const FEVER_DURATION_SEC = 10;
 
 export class GameEngine {
   public status: GameStatus = 'title';
+  public mode: GameMode = 'campaign';
   public difficulty: DifficultyId = 'normal';
-  public speed: 1 | 2 = 1;
+  public speed: 1 | 2 | 3 = 1;
+  public autoSpawn = false;
   public elapsed = 0;
+  public wave = 1;
+  public mutators: DailyMutatorId[] = [];
+  public dailyDateKey: string | undefined;
+  public pendingRelicDraft: RelicId[] = [];
+  public activeRift: ChronoRiftZone | null = null;
 
   public player: FactionState;
   public enemy: FactionState;
@@ -122,6 +138,13 @@ export class GameEngine {
   private nextUid = 1;
   private rngState = 1337;
   private nextSupplyCrateAt = 24;
+  private nextRiftAt = 28;
+  private nextEliteAt = 42;
+  private endlessWaveTimer = 0;
+  private autoSpawnThinkTimer = 0;
+  private firstBloodClaimed = false;
+  private enemyHalfBaseBossSpawned = false;
+  private playerSanctuary: Partial<SanctuaryLevels> | undefined;
   private ai = new EnemyAI();
   private callbacks: EngineCallbacks;
   private scratchPlayerLive: UnitEntity[] = [];
@@ -130,25 +153,45 @@ export class GameEngine {
 
   constructor(callbacks: EngineCallbacks = {}) {
     this.callbacks = callbacks;
-    this.player = this.createFaction('player');
-    this.enemy = this.createFaction('enemy');
+    this.player = this.createFaction('player', null);
+    this.enemy = this.createFaction('enemy', null);
   }
 
   public setCallbacks(callbacks: EngineCallbacks): void {
     this.callbacks = callbacks;
   }
 
-  public startNewGame(difficulty: DifficultyId, seed?: number): void {
+  public startNewGame(difficulty: DifficultyId, seed?: number, options?: StartGameOptions): void {
     this.difficulty = difficulty;
+    this.mode = options?.mode ?? 'campaign';
+    this.mutators = options?.mutators ? [...options.mutators] : [];
+    this.dailyDateKey = options?.dailyDateKey;
+    this.playerSanctuary = options?.sanctuary;
     this.status = 'playing';
     this.speed = 1;
+    this.autoSpawn = false;
     this.elapsed = 0;
+    this.wave = 1;
+    this.endlessWaveTimer = 0;
+    this.autoSpawnThinkTimer = 0;
+    this.firstBloodClaimed = false;
+    this.enemyHalfBaseBossSpawned = false;
+    this.pendingRelicDraft = [];
+    this.activeRift = null;
     this.nextUid = 1;
     this.rngState = seed ?? ((Date.now() & 0x7fffffff) || 1337);
     this.nextSupplyCrateAt = 24;
+    this.nextRiftAt = this.mutators.includes('rift_overdrive') ? 14 : 28;
+    this.nextEliteAt = this.mode === 'endless' ? 24 : 42;
 
-    this.player = this.createFaction('player');
-    this.enemy = this.createFaction('enemy');
+    const playerCommander = options?.commanderId ?? null;
+    let enemyCommander: CommanderId | null = null;
+    if (playerCommander !== null && DIFFICULTIES[difficulty].aiCounterSmartness >= 0.65) {
+      enemyCommander = COMMANDER_LIST[Math.floor(this.random() * COMMANDER_LIST.length)].id;
+    }
+
+    this.player = this.createFaction('player', playerCommander);
+    this.enemy = this.createFaction('enemy', enemyCommander);
     this.units = [];
     this.supplyCrates = [];
     this.projectiles = [];
@@ -165,15 +208,28 @@ export class GameEngine {
       progress: 1,
     };
     this.ai.reset();
+
+    if ((this.playerSanctuary?.starter_relic ?? 0) >= 1 || this.mutators.includes('relic_rush')) {
+      this.offerRelicDraft();
+    }
   }
 
-  public setSpeed(speed: 1 | 2): void {
+  public setSpeed(speed: 1 | 2 | 3): void {
     this.speed = speed;
   }
 
-  public toggleSpeed(): 1 | 2 {
-    this.speed = this.speed === 1 ? 2 : 1;
+  public toggleSpeed(): 1 | 2 | 3 {
+    this.speed = this.speed === 1 ? 2 : this.speed === 2 ? 3 : 1;
     return this.speed;
+  }
+
+  public setAutoSpawn(enabled: boolean): void {
+    this.autoSpawn = enabled;
+  }
+
+  public toggleAutoSpawn(): boolean {
+    this.autoSpawn = !this.autoSpawn;
+    return this.autoSpawn;
   }
 
   public setPaused(paused: boolean): void {
@@ -217,6 +273,10 @@ export class GameEngine {
     return count;
   }
 
+  public getMaxUnitCap(team: Team): number {
+    return MAX_UNITS_PER_TEAM + this.getFaction(team).mods.maxUnitsBonus;
+  }
+
   public getNextTurretSlotCost(team: Team): number | null {
     const f = this.getFaction(team);
     if (f.turretSlots >= MAX_TURRET_SLOTS) return null;
@@ -235,12 +295,307 @@ export class GameEngine {
 
   public getEffectiveUnitCost(team: Team, baseCost: number): number {
     const faction = this.getFaction(team);
-    return Math.max(1, Math.round(baseCost * getCostDiscountMult(faction.upgrades)));
+    return Math.max(
+      1,
+      Math.round(baseCost * getCostDiscountMult(faction.upgrades) * faction.mods.unitCostMult),
+    );
   }
 
   public getEffectiveTurretCost(team: Team, baseCost: number): number {
     const faction = this.getFaction(team);
-    return Math.max(1, Math.round(baseCost * getCostDiscountMult(faction.upgrades)));
+    return Math.max(
+      1,
+      Math.round(baseCost * getCostDiscountMult(faction.upgrades) * faction.mods.turretCostMult),
+    );
+  }
+
+  public offerRelicDraft(): RelicId[] {
+    if (this.pendingRelicDraft.length > 0) return this.pendingRelicDraft;
+    const luck = this.playerSanctuary?.starter_relic ?? 0;
+    const choices = rollRelicChoices(this.player.relics, () => this.random(), luck, 3);
+    if (choices.length > 0) {
+      this.pendingRelicDraft = choices;
+      this.callbacks.onRelicDraft?.(choices);
+    }
+    return choices;
+  }
+
+  public selectRelic(relicId: RelicId, team: Team = 'player'): boolean {
+    const def = RELIC_BY_ID[relicId];
+    if (!def) return false;
+    const faction = this.getFaction(team);
+    if (faction.relics.includes(relicId)) return false;
+
+    if (team === 'player') {
+      this.pendingRelicDraft = [];
+    }
+
+    const prevMods = faction.mods;
+    faction.relics.push(relicId);
+    faction.mods = computeFactionCombatMods({
+      commanderId: faction.commanderId,
+      relics: faction.relics,
+      sanctuary: team === 'player' ? this.playerSanctuary : undefined,
+      mutators: this.mutators,
+      isPlayer: team === 'player',
+    });
+
+    const era = getEra(faction.eraIndex);
+    const nextMods = faction.mods;
+
+    // Immediately sync base max HP if relic increases baseMaxHpMult
+    if (nextMods.baseMaxHpMult > prevMods.baseMaxHpMult) {
+      const prevMax = faction.baseMaxHp;
+      const nextMax = Math.round(
+        era.baseMaxHp * getBaseMaxHpMult(faction.upgrades) * nextMods.baseMaxHpMult,
+      );
+      const gain = Math.max(0, nextMax - prevMax);
+      faction.baseMaxHp = nextMax;
+      faction.baseHp = Math.min(nextMax, faction.baseHp + gain);
+      faction.displayBaseHp = Math.max(faction.displayBaseHp, faction.baseHp);
+    }
+
+    // Sync ultimate cooldown cap if chrono_overclock was picked
+    const nextUltMax = Math.max(
+      10,
+      Math.round(
+        era.ultimate.cooldown *
+          getUltimateCooldownMult(faction.upgrades) *
+          nextMods.ultCooldownMult *
+          10,
+      ) / 10,
+    );
+    if (faction.ultimateMaxCooldown > 0 && faction.ultimateCooldown > 0) {
+      faction.ultimateCooldown = Math.min(
+        nextUltMax,
+        faction.ultimateCooldown * (nextUltMax / faction.ultimateMaxCooldown),
+      );
+    }
+    faction.ultimateMaxCooldown = nextUltMax;
+
+    // Update live allied units' maxHp & shields
+    const armorMult = getArmorHpMult(faction.upgrades);
+    const shieldRatio = getVanguardShieldRatio(faction.upgrades) + nextMods.shieldBonusRatio;
+    const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
+    for (const u of this.units) {
+      if (u.team === team && u.state !== 'dead') {
+        const oldMax = u.maxHp;
+        const baseVet = getVeteranStatMult(u.vetRank, faction.upgrades);
+        const vetMult = 1 + (baseVet - 1) * nextMods.vetStatBonusMult;
+        const eliteHpMult = u.eliteKind === 'boss' ? 4.2 : u.eliteKind === 'elite' ? 2.2 : 1;
+        u.maxHp = Math.round(
+          u.def.maxHp * armorMult * nextMods.maxHpMult * vetMult * statMult * eliteHpMult,
+        );
+        if (u.maxHp > oldMax) {
+          u.hp = Math.min(u.maxHp, u.hp + (u.maxHp - oldMax));
+          u.displayHp = Math.max(u.displayHp, u.hp);
+        }
+        if (shieldRatio > 0) {
+          const nextMaxShield = Math.round(u.maxHp * shieldRatio);
+          const sGain = Math.max(0, nextMaxShield - u.maxShield);
+          u.maxShield = Math.max(u.maxShield, nextMaxShield);
+          u.shield = Math.min(u.maxShield, u.shield + sGain);
+        }
+        u.upgradeFlash = 1;
+      }
+    }
+
+    const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
+    faction.upgradeFlash = 1;
+    this.spawnRing(baseX, GROUND_Y - 78, def.accentColor, 96);
+    this.spawnFlashStar(baseX, GROUND_Y - 86, '#fef08a', 28);
+    if (team === 'player') {
+      this.callbacks.onSound?.('relic_pick');
+      this.addPopup(baseX + 20, GROUND_Y - 152, `유물: ${def.shortName}!`, def.accentColor, 1.24, 'crit');
+      this.callbacks.onBanner?.(`크로노 유물 공명: ${def.name}`, def.effectText, def.accentColor);
+    }
+    return true;
+  }
+
+  public canUseTacticalSkill(team: Team): boolean {
+    const faction = this.getFaction(team);
+    return (
+      this.status === 'playing' &&
+      faction.commanderId !== null &&
+      faction.tacticalCooldown <= 0
+    );
+  }
+
+  public triggerTacticalSkill(team: Team): boolean {
+    if (!this.canUseTacticalSkill(team)) return false;
+    const faction = this.getFaction(team);
+    const cmd = COMMANDERS[faction.commanderId!];
+    const era = getEra(faction.eraIndex);
+    const dir: 1 | -1 = team === 'player' ? 1 : -1;
+    const baseX = team === 'player' ? PLAYER_BASE_X : ENEMY_BASE_X;
+
+    faction.tacticalCooldown = faction.tacticalMaxCooldown;
+    faction.upgradeFlash = 1;
+
+    if (cmd.id === 'vanguard') {
+      faction.tacticalBuffTimer = 6.0;
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          const bonusShield = Math.max(8, Math.round(u.maxHp * 0.15));
+          u.maxShield = Math.max(u.maxShield, u.shield + bonusShield);
+          u.shield = Math.min(u.maxShield, u.shield + bonusShield);
+          u.upgradeFlash = 1;
+          this.spawnRing(u.x, GROUND_Y - u.def.height * 0.6, '#38bdf8', 32);
+        }
+      }
+      this.spawnRing(baseX + dir * 40, GROUND_Y - 64, '#38bdf8', 95);
+    } else if (cmd.id === 'ordnance') {
+      const enemyTeam: Team = team === 'player' ? 'enemy' : 'player';
+      let centerTargetX = team === 'player' ? WORLD_WIDTH * 0.62 : WORLD_WIDTH * 0.38;
+      let bestFrontX = team === 'player' ? WORLD_WIDTH : 0;
+      let foundEnemy = false;
+      for (const u of this.units) {
+        if (u.team === enemyTeam && u.state !== 'dead') {
+          if (!foundEnemy || (team === 'player' ? u.x < bestFrontX : u.x > bestFrontX)) {
+            bestFrontX = u.x;
+            foundEnemy = true;
+          }
+        }
+      }
+      if (foundEnemy) centerTargetX = bestFrontX + dir * 35;
+      centerTargetX = Math.max(PLAYER_BASE_FRONT_X + 70, Math.min(ENEMY_BASE_FRONT_X - 70, centerTargetX));
+
+      const shellDmg = Math.max(
+        26,
+        Math.round(era.ultimate.damagePerStrike * 0.44 * faction.mods.turretDamageMult),
+      );
+      const projStyle =
+        faction.eraIndex >= 9 ? 'plasma' : faction.eraIndex >= 5 ? 'mortar_shell' : 'boulder';
+      for (let s = 0; s < 5; s++) {
+        const tx = Math.max(
+          PLAYER_BASE_FRONT_X + 55,
+          Math.min(ENEMY_BASE_FRONT_X - 55, centerTargetX + (s - 2) * 52 + (this.random() - 0.5) * 20),
+        );
+        const startX = baseX + dir * 45;
+        const startY = GROUND_Y - 125;
+        const flightTime = 0.42 + s * 0.07;
+        const gravity = 460;
+        const vx = (tx - startX) / flightTime;
+        const vy = (GROUND_Y - startY - 0.5 * gravity * flightTime * flightTime) / flightTime;
+        this.projectiles.push({
+          uid: this.nextUid++,
+          team,
+          style: projStyle,
+          x: startX,
+          y: startY,
+          prevX: startX,
+          prevY: startY,
+          vx,
+          vy,
+          gravity,
+          damage: shellDmg,
+          splashRadius: 84 + faction.mods.splashBonusPx,
+          armorPierce: true,
+          isCrit: false,
+          baseDamageMult: 0.75,
+          knockback: 88,
+          pierceRemaining: 1,
+          hitUids: [],
+          life: 0,
+          maxLife: flightTime + 0.6,
+        });
+      }
+      this.spawnMuzzleFlash(baseX + dir * 45, GROUND_Y - 125, dir === 1 ? -0.35 : Math.PI + 0.35, '#fb923c', 24);
+    } else if (cmd.id === 'archon') {
+      const bonusGold = Math.max(45, Math.round((era.units[2]?.cost ?? 45) * 1.45));
+      faction.gold += bonusGold;
+      let speedUp = 3.0;
+      for (const q of faction.queue) {
+        const cut = Math.min(q.remaining, speedUp);
+        q.remaining -= cut;
+        speedUp -= cut;
+        if (speedUp <= 0) break;
+      }
+      if (this.supplyCrates.length < 2) {
+        this.spawnSupplyCrate();
+      }
+      this.addPopup(baseX + dir * 24, GROUND_Y - 150, `+${bonusGold.toLocaleString()}G`, '#facc15', 1.28, 'gold');
+      this.spawnRing(baseX, GROUND_Y - 72, '#facc15', 92);
+    } else if (cmd.id === 'aegis') {
+      faction.aegisProtectedTimer = 5.0;
+      const fortRepair = Math.max(20, Math.round(faction.baseMaxHp * 0.08));
+      faction.baseHp = Math.min(faction.baseMaxHp, faction.baseHp + fortRepair);
+      faction.displayBaseHp = Math.max(faction.displayBaseHp, faction.baseHp);
+      this.addPopup(baseX, GROUND_Y - 150, `+${fortRepair} HP`, '#4ade80', 1.24, 'heal');
+
+      for (const u of this.units) {
+        if (u.team === team && u.state !== 'dead') {
+          const missing = Math.max(0, u.maxHp - u.hp);
+          const heal = Math.round(missing * 0.42 + u.maxHp * 0.08);
+          if (heal > 0) {
+            u.hp = Math.min(u.maxHp, u.hp + heal);
+            u.displayHp = Math.max(u.displayHp, u.hp);
+          }
+          u.upgradeFlash = 1;
+          this.spawnRing(u.x, GROUND_Y - u.def.height * 0.55, '#4ade80', 30);
+        }
+      }
+      this.spawnRing(baseX, GROUND_Y - 70, '#4ade80', 96);
+    }
+
+    if (team === 'player') {
+      this.callbacks.onSound?.('tactical');
+      this.callbacks.onBanner?.(`전술 발동: ${cmd.skillName}`, cmd.skillDesc, cmd.accentColor);
+    }
+    return true;
+  }
+
+  public spawnChronoRift(customKind?: ChronoRiftKind, customX?: number): ChronoRiftZone {
+    const kinds: ChronoRiftKind[] = ['haste', 'fury', 'sanctuary'];
+    const kind = customKind ?? kinds[Math.floor(this.random() * kinds.length)];
+    const meta =
+      kind === 'haste'
+        ? { name: '시공 가속 균열', sub: '구역 내 양군 공속·이속 대폭 상승!', color: '#38bdf8' }
+        : kind === 'fury'
+          ? { name: '광전 화력 균열', sub: '구역 내 양군 공격력 +28% · 치명타율 급증!', color: '#fb923c' }
+          : { name: '성운 치유 균열', sub: '구역 점령군 초당 5.5% 치유 · 추가 군자금 획득!', color: '#4ade80' };
+
+    const x = customX ?? Math.round(WORLD_WIDTH * (0.4 + this.random() * 0.2));
+    const rift: ChronoRiftZone = {
+      uid: this.nextUid++,
+      kind,
+      name: meta.name,
+      x,
+      radius: 135,
+      life: 18,
+      maxLife: 18,
+      accentColor: meta.color,
+    };
+    this.activeRift = rift;
+    this.spawnRing(x, GROUND_Y - 12, meta.color, 95);
+    this.spawnGroundShockwave(x, GROUND_Y + 2, meta.color, 110);
+    this.callbacks.onSound?.('rift_open');
+    this.callbacks.onBanner?.(`${meta.name} 개방!`, meta.sub, meta.color);
+    return rift;
+  }
+
+  public spawnSpecialUnit(team: Team, kind: 'elite' | 'boss'): UnitEntity {
+    const faction = this.getFaction(team);
+    const era = getEra(faction.eraIndex);
+    const unitDef =
+      kind === 'boss'
+        ? era.units[era.units.length - 1]
+        : era.units[this.random() < 0.5 ? Math.max(0, era.units.length - 2) : era.units.length - 1];
+    const unit = this.spawnUnit(team, unitDef, kind);
+    const spawnX = unit.x;
+    const accent = kind === 'boss' ? '#f43f5e' : '#facc15';
+    this.spawnRing(spawnX, GROUND_Y - 50, accent, kind === 'boss' ? 85 : 54);
+    this.spawnGroundShockwave(spawnX, GROUND_Y + 1, accent, kind === 'boss' ? 88 : 52);
+
+    if (kind === 'boss' && team === 'enemy') {
+      this.callbacks.onSound?.('boss_spawn');
+      this.callbacks.onBanner?.(
+        `경고: ${unit.eliteTitle ?? '시대 수호군주'} 강림!`,
+        `강력한 적 보스 [${unitDef.name}] 처치 시 대량의 골드·XP·메달 획득!`,
+        '#f43f5e',
+      );
+    }
+    return unit;
   }
 
   public enqueueUnit(team: Team, unitId: UnitVisualKind): boolean {
@@ -253,7 +608,8 @@ export class GameEngine {
     const effCost = this.getEffectiveUnitCost(team, def.cost);
     if (faction.gold < effCost) return false;
 
-    const effectiveTrainTime = def.trainTime / getTrainSpeedMult(faction.upgrades);
+    const effectiveTrainTime =
+      def.trainTime / (getTrainSpeedMult(faction.upgrades) * faction.mods.trainSpeedMult);
     faction.gold -= effCost;
     faction.queue.push({
       unitId: def.id,
@@ -299,7 +655,12 @@ export class GameEngine {
     const syncUltCooldown = () => {
       const nextUltMax = Math.max(
         10,
-        Math.round(era.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+        Math.round(
+          era.ultimate.cooldown *
+            getUltimateCooldownMult(faction.upgrades) *
+            faction.mods.ultCooldownMult *
+            10,
+        ) / 10,
       );
       if (faction.ultimateMaxCooldown > 0 && faction.ultimateCooldown > 0) {
         faction.ultimateCooldown = Math.min(
@@ -311,22 +672,29 @@ export class GameEngine {
     };
 
     if (id === 'armor') {
-      // Scale existing live allied units immediately while preserving Veteran promotion HP multipliers!
+      // Scale existing live allied units immediately while preserving Veteran/Relic/Elite HP multipliers!
       const newArmorMult = getArmorHpMult(faction.upgrades);
       const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
       const ratio = newArmorMult / prevArmorMult;
+      const shieldRatio = getVanguardShieldRatio(faction.upgrades) + faction.mods.shieldBonusRatio;
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           const oldMax = u.maxHp;
-          const vetMult = getVeteranStatMult(u.vetRank, faction.upgrades);
-          u.maxHp = Math.round(u.def.maxHp * newArmorMult * vetMult * statMult);
+          const baseVet = getVeteranStatMult(u.vetRank, faction.upgrades);
+          const vetMult = 1 + (baseVet - 1) * faction.mods.vetStatBonusMult;
+          const eliteHpMult = u.eliteKind === 'boss' ? 4.2 : u.eliteKind === 'elite' ? 2.2 : 1;
+          u.maxHp = Math.round(
+            u.def.maxHp * newArmorMult * faction.mods.maxHpMult * vetMult * statMult * eliteHpMult,
+          );
           u.hp = Math.min(u.maxHp, Math.round(u.hp * ratio + Math.max(0, u.maxHp - oldMax) * 0.5));
           u.displayHp = Math.max(u.displayHp, u.hp);
-          if (u.maxShield > 0) {
-            const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+          if (u.maxShield > 0 || shieldRatio > 0) {
             const nextMaxShield = Math.round(u.maxHp * shieldRatio);
-            u.shield = Math.min(nextMaxShield, u.shield + Math.max(0, nextMaxShield - u.maxShield));
-            u.maxShield = nextMaxShield;
+            u.shield = Math.min(
+              Math.max(u.maxShield, nextMaxShield),
+              u.shield + Math.max(0, nextMaxShield - u.maxShield),
+            );
+            u.maxShield = Math.max(u.maxShield, nextMaxShield);
           }
           u.upgradeFlash = 1;
         }
@@ -335,21 +703,28 @@ export class GameEngine {
     } else if (id === 'veteran_drill') {
       // Immediately amplify live promoted veterans' max HP & shield ceiling to match the new drill level!
       const armorMult = getArmorHpMult(faction.upgrades);
-      const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+      const shieldRatio = getVanguardShieldRatio(faction.upgrades) + faction.mods.shieldBonusRatio;
       const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           if (u.vetRank > 0) {
             const oldMax = u.maxHp;
-            const vetMult = getVeteranStatMult(u.vetRank, faction.upgrades);
-            u.maxHp = Math.round(u.def.maxHp * armorMult * vetMult * statMult);
+            const baseVet = getVeteranStatMult(u.vetRank, faction.upgrades);
+            const vetMult = 1 + (baseVet - 1) * faction.mods.vetStatBonusMult;
+            const eliteHpMult = u.eliteKind === 'boss' ? 4.2 : u.eliteKind === 'elite' ? 2.2 : 1;
+            u.maxHp = Math.round(
+              u.def.maxHp * armorMult * faction.mods.maxHpMult * vetMult * statMult * eliteHpMult,
+            );
             const gain = Math.max(0, u.maxHp - oldMax);
             u.hp = Math.min(u.maxHp, u.hp + gain);
             u.displayHp = Math.max(u.displayHp, u.hp);
             if (shieldRatio > 0) {
               const nextMaxShield = Math.round(u.maxHp * shieldRatio);
-              u.shield = Math.min(nextMaxShield, u.shield + Math.max(0, nextMaxShield - u.maxShield));
-              u.maxShield = nextMaxShield;
+              u.shield = Math.min(
+                Math.max(u.maxShield, nextMaxShield),
+                u.shield + Math.max(0, nextMaxShield - u.maxShield),
+              );
+              u.maxShield = Math.max(u.maxShield, nextMaxShield);
             }
           }
           u.upgradeFlash = 1;
@@ -357,7 +732,9 @@ export class GameEngine {
       }
       this.addPopup(baseX, GROUND_Y - 146, `${def.shortName} Lv.${newLevel}`, '#f43f5e', 1.2, 'crit');
     } else if (id === 'fortress') {
-      const nextBaseMaxHp = Math.round(era.baseMaxHp * getBaseMaxHpMult(faction.upgrades));
+      const nextBaseMaxHp = Math.round(
+        era.baseMaxHp * getBaseMaxHpMult(faction.upgrades) * faction.mods.baseMaxHpMult,
+      );
       const maxGain = Math.max(0, nextBaseMaxHp - prevBaseMaxHp);
       const repair = Math.round(nextBaseMaxHp * FORTRESS_UPGRADE_REPAIR_RATIO);
       faction.baseMaxHp = nextBaseMaxHp;
@@ -368,12 +745,12 @@ export class GameEngine {
       const healed = Math.max(1, Math.round(faction.baseHp - beforeHp));
       this.addPopup(baseX, GROUND_Y - 148, `+${healed} HP`, '#4ade80', 1.26, 'heal');
     } else if (id === 'vanguard_shield') {
-      const shieldRatio = getVanguardShieldRatio(faction.upgrades);
+      const shieldRatio = getVanguardShieldRatio(faction.upgrades) + faction.mods.shieldBonusRatio;
       for (const u of this.units) {
         if (u.team === team && u.state !== 'dead') {
           const nextMaxShield = Math.round(u.maxHp * shieldRatio);
           const gain = Math.max(0, nextMaxShield - u.maxShield);
-          u.maxShield = nextMaxShield;
+          u.maxShield = Math.max(u.maxShield, nextMaxShield);
           u.shield = Math.min(u.maxShield, u.shield + gain);
           u.upgradeFlash = 1;
         }
@@ -541,7 +918,7 @@ export class GameEngine {
     faction.xp -= prevEra.evolveXp;
     faction.eraIndex = nextEra.index;
 
-    const baseMult = getBaseMaxHpMult(faction.upgrades);
+    const baseMult = getBaseMaxHpMult(faction.upgrades) * faction.mods.baseMaxHpMult;
     const prevScaledMax = Math.round(prevEra.baseMaxHp * baseMult);
     const nextScaledMax = Math.round(nextEra.baseMaxHp * baseMult);
     const hpBonus = nextScaledMax - prevScaledMax;
@@ -550,7 +927,12 @@ export class GameEngine {
     faction.displayBaseHp = faction.baseHp;
     faction.ultimateMaxCooldown = Math.max(
       10,
-      Math.round(nextEra.ultimate.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+      Math.round(
+        nextEra.ultimate.cooldown *
+          getUltimateCooldownMult(faction.upgrades) *
+          faction.mods.ultCooldownMult *
+          10,
+      ) / 10,
     );
     // Reset ultimate cooldown on evolution so the player can unleash the new era's power right away
     faction.ultimateCooldown = 0;
@@ -575,6 +957,32 @@ export class GameEngine {
         `신규 병력 · 포탑 · 필살기 [${nextEra.ultimate.name}] 해금`,
         nextEra.palette.accent,
       );
+      if (
+        nextEra.index === 1 ||
+        nextEra.index === 4 ||
+        nextEra.index === 7 ||
+        nextEra.index === 10
+      ) {
+        this.offerRelicDraft();
+      }
+    } else {
+      if (
+        DIFFICULTIES[this.difficulty].aiCounterSmartness >= 0.65 &&
+        (nextEra.index === 2 || nextEra.index === 5 || nextEra.index === 8 || nextEra.index === 11)
+      ) {
+        const aiPick = rollRelicChoices(faction.relics, () => this.random(), 0, 1);
+        if (aiPick.length > 0) {
+          this.selectRelic(aiPick[0], 'enemy');
+        }
+      }
+      if (
+        nextEra.index === 3 ||
+        nextEra.index === 6 ||
+        nextEra.index === 9 ||
+        nextEra.index === 11
+      ) {
+        this.spawnSpecialUnit('enemy', 'boss');
+      }
     }
     return true;
   }
@@ -582,7 +990,12 @@ export class GameEngine {
   public getUltimateXpCost(team: Team): number {
     const faction = this.getFaction(team);
     const era = getEra(faction.eraIndex);
-    return Math.max(50, Math.round(era.ultimate.xpCost * getUltimateXpCostMult(faction.upgrades)));
+    return Math.max(
+      50,
+      Math.round(
+        era.ultimate.xpCost * getUltimateXpCostMult(faction.upgrades) * faction.mods.ultXpCostMult,
+      ),
+    );
   }
 
   public canUseUltimate(team: Team): boolean {
@@ -608,7 +1021,12 @@ export class GameEngine {
 
     const scaledCd = Math.max(
       10,
-      Math.round(def.cooldown * getUltimateCooldownMult(faction.upgrades) * 10) / 10,
+      Math.round(
+        def.cooldown *
+          getUltimateCooldownMult(faction.upgrades) *
+          faction.mods.ultCooldownMult *
+          10,
+      ) / 10,
     );
     faction.ultimateCooldown = scaledCd;
     faction.ultimateMaxCooldown = scaledCd;
@@ -658,8 +1076,8 @@ export class GameEngine {
 
     const clampedDt = Math.min(0.05, Math.max(0, rawDt));
     const totalDt = clampedDt * this.speed;
-    // Sub-step when running at 2x to preserve crisp physics and hit detection
-    const steps = this.speed === 2 ? 2 : 1;
+    // Sub-step when running at 2x or 3x to preserve crisp physics and hit detection
+    const steps = this.speed;
     const dt = totalDt / steps;
 
     for (let i = 0; i < steps; i++) {
@@ -671,9 +1089,15 @@ export class GameEngine {
   public getSnapshot(): GameSnapshot {
     return {
       status: this.status,
+      mode: this.mode,
       difficulty: this.difficulty,
       speed: this.speed,
+      autoSpawn: this.autoSpawn,
       elapsed: this.elapsed,
+      wave: this.wave,
+      mutators: this.mutators,
+      pendingRelicDraft: this.pendingRelicDraft,
+      activeRift: this.activeRift,
       player: this.player,
       enemy: this.enemy,
       units: this.units,
@@ -730,10 +1154,16 @@ export class GameEngine {
 
     if (crate.hp <= 0) {
       const winner = this.getFaction(attackerTeam);
-      const crateRewardMult = getSupplyCrateRewardMult(winner.upgrades);
+      const crateRewardMult =
+        getSupplyCrateRewardMult(winner.upgrades) * winner.mods.crateRewardMult;
       const feverGoldBonus = winner.feverTimer > 0 ? 1.25 + getFeverPowerBonus(winner.upgrades) : 1;
       const rewardGold = Math.round(crate.goldReward * crateRewardMult * feverGoldBonus);
-      const rewardXp = Math.round(crate.xpReward * crateRewardMult * getXpMasteryMult(winner.upgrades));
+      const rewardXp = Math.round(
+        crate.xpReward *
+          crateRewardMult *
+          getXpMasteryMult(winner.upgrades) *
+          winner.mods.xpMult,
+      );
       winner.gold += rewardGold;
       winner.xp += rewardXp;
       winner.totalXp += rewardXp;
@@ -798,51 +1228,261 @@ export class GameEngine {
     }
   }
 
-  private createFaction(team: Team): FactionState {
+  private createFaction(team: Team, commanderId: CommanderId | null): FactionState {
     const era = ERAS[0];
-    const startBonus = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiStartingGoldBonus : 0;
+    const isPlayer = team === 'player';
+    const mods = computeFactionCombatMods({
+      commanderId,
+      relics: [],
+      sanctuary: isPlayer ? this.playerSanctuary : undefined,
+      mutators: this.mutators,
+      isPlayer,
+    });
+    const aiStartBonus = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiStartingGoldBonus : 0;
+    const sanctuaryGoldBonus = isPlayer ? (this.playerSanctuary?.starting_gold ?? 0) * 30 : 0;
+    const turretLegacyLv = isPlayer ? (this.playerSanctuary?.turret_legacy ?? 0) : 0;
+    const cmdMasteryLv = isPlayer ? (this.playerSanctuary?.command_mastery ?? 0) : 0;
+    const cmdCdMult = Math.max(0.5, 1 - cmdMasteryLv * 0.035);
+    const tacticalMax = commanderId
+      ? Math.max(8, Math.round(COMMANDERS[commanderId].cooldown * cmdCdMult * 10) / 10)
+      : 18;
+    const scaledBaseHp = Math.round(era.baseMaxHp * mods.baseMaxHpMult);
+
     return {
       team,
+      commanderId,
+      relics: [],
+      mods,
+      rewindUsed: false,
+      lastStandUsed: false,
       eraIndex: 0,
-      gold: STARTING_GOLD + startBonus,
+      gold: STARTING_GOLD + aiStartBonus + sanctuaryGoldBonus,
       xp: 0,
       totalXp: 0,
-      baseHp: era.baseMaxHp,
-      baseMaxHp: era.baseMaxHp,
-      displayBaseHp: era.baseMaxHp,
-      turretSlots: 1,
+      baseHp: scaledBaseHp,
+      baseMaxHp: scaledBaseHp,
+      displayBaseHp: scaledBaseHp,
+      turretSlots: turretLegacyLv >= 3 ? 2 : 1,
       turrets: [null, null, null, null],
       queue: [],
       upgrades: createInitialUpgrades(),
+      tacticalCooldown: 0,
+      tacticalMaxCooldown: tacticalMax,
+      tacticalBuffTimer: 0,
+      aegisProtectedTimer: 0,
       ultimateCooldown: 8, // brief opening cooldown so ultimate isn't wasted at 0:00
-      ultimateMaxCooldown: era.ultimate.cooldown,
+      ultimateMaxCooldown: Math.max(10, Math.round(era.ultimate.cooldown * mods.ultCooldownMult * 10) / 10),
       baseHitFlash: 0,
       evolveFlash: 0,
       upgradeFlash: 0,
       kills: 0,
+      bossKills: 0,
+      eliteKills: 0,
       unitsSpawned: 0,
+      comboCount: 0,
+      comboTimer: 0,
+      maxCombo: 0,
       feverKills: 0,
       feverTimer: 0,
       feverDuration: FEVER_DURATION_SEC,
     };
   }
 
+  private advanceEndlessWave(gateBroken: boolean): void {
+    this.wave += 1;
+    this.endlessWaveTimer = 0;
+
+    const targetEnemyEra = Math.min(ERAS.length - 1, Math.floor((this.wave - 1) / 1.5));
+    if (targetEnemyEra > this.enemy.eraIndex) {
+      this.enemy.eraIndex = targetEnemyEra;
+      this.enemy.evolveFlash = 1;
+    }
+
+    const eEra = getEra(this.enemy.eraIndex);
+    const waveBaseScale = 1 + (this.wave - 1) * 0.16;
+    const nextEnemyMax = Math.round(
+      eEra.baseMaxHp * getBaseMaxHpMult(this.enemy.upgrades) * this.enemy.mods.baseMaxHpMult * waveBaseScale,
+    );
+    this.enemy.baseMaxHp = nextEnemyMax;
+    if (gateBroken) {
+      this.enemy.baseHp = nextEnemyMax;
+      this.enemy.displayBaseHp = nextEnemyMax;
+      this.enemy.lastStandUsed = false;
+
+      const pEra = getEra(this.player.eraIndex);
+      const breakGold = Math.round((pEra.units[2]?.cost ?? 50) * 2.2 * this.player.mods.killGoldMult);
+      const breakXp = Math.round(
+        (pEra.evolveXp > 0 ? pEra.evolveXp * 0.34 : 6500) * this.player.mods.xpMult,
+      );
+      const fortHeal = Math.round(this.player.baseMaxHp * 0.12);
+      this.player.gold += breakGold;
+      this.player.xp += breakXp;
+      this.player.totalXp += breakXp;
+      this.player.baseHp = Math.min(this.player.baseMaxHp, this.player.baseHp + fortHeal);
+      this.player.displayBaseHp = Math.max(this.player.displayBaseHp, this.player.baseHp);
+
+      this.spawnBaseDestruction(ENEMY_BASE_X);
+      this.callbacks.onSound?.('fever');
+      this.addPopup(ENEMY_BASE_X - 60, GROUND_Y - 148, `WAVE BREAK! +${breakGold}G`, '#facc15', 1.35, 'gold');
+      this.callbacks.onBanner?.(
+        `차원문 돌파 성공! WAVE ${this.wave}`,
+        `돌파 보너스 +${breakGold.toLocaleString()}G · +${breakXp.toLocaleString()} XP · 아군 성채 수리!`,
+        '#2dd4bf',
+      );
+    } else {
+      this.enemy.baseHp = Math.min(nextEnemyMax, this.enemy.baseHp + Math.round(nextEnemyMax * 0.2));
+      this.enemy.displayBaseHp = Math.max(this.enemy.displayBaseHp, this.enemy.baseHp);
+      this.callbacks.onBanner?.(
+        `무한 웨이브 WAVE ${this.wave}`,
+        `적 차원문 공세 강화 · 시대 ${eEra.eraNumber} 병력 투입!`,
+        '#a855f7',
+      );
+    }
+
+    // Grant enemy surge gold for the new wave
+    this.enemy.gold += (eEra.units[1]?.cost ?? 35) * (1.6 + this.wave * 0.12);
+
+    if (this.wave % 5 === 0) {
+      this.spawnSpecialUnit('enemy', 'boss');
+    } else if (this.wave >= 2) {
+      this.spawnSpecialUnit('enemy', 'elite');
+    }
+
+    if (this.wave % 3 === 0) {
+      this.offerRelicDraft();
+    }
+  }
+
+  private updateChronoRifts(dt: number): void {
+    if (this.activeRift) {
+      this.activeRift.life -= dt;
+      if (this.activeRift.life <= 0) {
+        this.activeRift = null;
+        const baseGap = this.mutators.includes('rift_overdrive') ? 13 : 26;
+        this.nextRiftAt = this.elapsed + baseGap + this.random() * 6;
+      }
+    } else if (this.elapsed >= this.nextRiftAt) {
+      this.spawnChronoRift();
+    }
+  }
+
+  private updateAutoSpawn(dt: number): void {
+    if (!this.autoSpawn || this.player.queue.length > 0) return;
+    this.autoSpawnThinkTimer -= dt;
+    if (this.autoSpawnThinkTimer > 0) return;
+    this.autoSpawnThinkTimer = 0.25;
+
+    if (this.getActiveUnitCount('player') >= this.getMaxUnitCap('player')) return;
+
+    const era = getEra(this.player.eraIndex);
+    const units = era.units;
+    let frontline = 0;
+    let backline = 0;
+    for (let i = 0; i < this.units.length; i++) {
+      const u = this.units[i];
+      if (u.team !== 'player' || u.state === 'dead') continue;
+      if (u.def.role === 'melee' || u.def.role === 'heavy') frontline++;
+      else backline++;
+    }
+
+    const costOf = (u: UnitDef) => this.getEffectiveUnitCost('player', u.cost);
+    const topUnit = units[units.length - 1];
+    const tier3Unit = units[Math.min(units.length - 1, 2)];
+
+    // Save briefly for heavy/siege powerhouses once frontline is established
+    if (
+      frontline >= 2 &&
+      this.player.gold < costOf(topUnit) &&
+      this.player.gold >= costOf(topUnit) * 0.65
+    ) {
+      return;
+    }
+
+    let desired: UnitDef | null = null;
+    if (frontline === 0) {
+      desired = this.player.gold >= costOf(tier3Unit) && (tier3Unit.role === 'heavy' || tier3Unit.role === 'melee')
+        ? tier3Unit
+        : units[0];
+    } else if (this.player.gold >= costOf(topUnit) && (frontline + backline >= 2 || this.random() < 0.5)) {
+      desired = topUnit;
+    } else if (backline < frontline && this.player.gold >= costOf(units[1])) {
+      desired = units[1];
+    } else if (this.player.gold >= costOf(tier3Unit)) {
+      desired = tier3Unit;
+    } else if (this.player.gold >= costOf(units[0])) {
+      desired = units[0];
+    }
+
+    if (desired && this.player.gold >= costOf(desired)) {
+      this.enqueueUnit('player', desired.id);
+    }
+  }
+
   private stepInternal(dt: number): void {
     this.elapsed += dt;
 
-    // 1. Passive income (scaled by Economy upgrade + Chrono Fever +25%), cooldowns, flash decay
+    // Sanctuary rift bonus gold if controlling midfield sanctuary zone
+    let playerInSanctuary = false;
+    let enemyInSanctuary = false;
+    if (this.activeRift && this.activeRift.kind === 'sanctuary') {
+      const rx = this.activeRift.x;
+      const rr = this.activeRift.radius;
+      for (let i = 0; i < this.units.length; i++) {
+        const u = this.units[i];
+        if (u.state === 'dead') continue;
+        if (Math.abs(u.x - rx) <= rr) {
+          if (u.team === 'player') playerInSanctuary = true;
+          else enemyInSanctuary = true;
+        }
+      }
+    }
+
+    // 1. Passive income (scaled by Economy + Relics/Commander/Sanctuary + Chrono Fever), cooldowns, flash decay
     const diff = DIFFICULTIES[this.difficulty];
     const pEra = getEra(this.player.eraIndex);
     const eEra = getEra(this.enemy.eraIndex);
 
     const pFeverGold = this.player.feverTimer > 0 ? 1.25 + getFeverPowerBonus(this.player.upgrades) : 1;
     const eFeverGold = this.enemy.feverTimer > 0 ? 1.25 + getFeverPowerBonus(this.enemy.upgrades) : 1;
-    this.player.gold += pEra.passiveGoldPerSec * getGoldIncomeMult(this.player.upgrades) * pFeverGold * dt;
+    const pRiftGold = playerInSanctuary ? 1.25 : 1;
+    const eRiftGold = enemyInSanctuary ? 1.25 : 1;
+
+    this.player.gold +=
+      pEra.passiveGoldPerSec *
+      getGoldIncomeMult(this.player.upgrades) *
+      this.player.mods.passiveGoldMult *
+      pFeverGold *
+      pRiftGold *
+      dt;
     this.enemy.gold +=
-      eEra.passiveGoldPerSec * diff.aiGoldMultiplier * getGoldIncomeMult(this.enemy.upgrades) * eFeverGold * dt;
+      eEra.passiveGoldPerSec *
+      diff.aiGoldMultiplier *
+      getGoldIncomeMult(this.enemy.upgrades) *
+      this.enemy.mods.passiveGoldMult *
+      eFeverGold *
+      eRiftGold *
+      dt;
 
     this.updateFactionTimers(this.player, dt);
     this.updateFactionTimers(this.enemy, dt);
+    this.updateChronoRifts(dt);
+
+    // Periodic Elite Champion spawns to keep midfield rewards exciting
+    if (this.elapsed >= this.nextEliteAt) {
+      if (this.getActiveUnitCount('enemy') < this.getMaxUnitCap('enemy')) {
+        this.spawnSpecialUnit('enemy', 'elite');
+      }
+      const gap = this.mode === 'endless' ? 24 : 42;
+      this.nextEliteAt = this.elapsed + gap + this.random() * 8;
+    }
+
+    // Endless mode wave progression timer
+    if (this.mode === 'endless') {
+      this.endlessWaveTimer += dt;
+      if (this.endlessWaveTimer >= 28) {
+        this.advanceEndlessWave(false);
+      }
+    }
 
     if (this.eraTransition.active) {
       this.eraTransition.progress = Math.min(1, this.eraTransition.progress + dt * 1.1);
@@ -851,7 +1491,8 @@ export class GameEngine {
       }
     }
 
-    // 2. Production queues & Midfield Supply Crates
+    // 2. Auto-Spawn assist, Production queues & Midfield Supply Crates
+    this.updateAutoSpawn(dt);
     this.updateQueue(this.player, dt);
     this.updateQueue(this.enemy, dt);
     this.updateSupplyCrates(dt);
@@ -871,12 +1512,16 @@ export class GameEngine {
     this.updateUltimates(dt);
     this.updateEffects(dt);
 
-    // 7. Win / Loss resolution
+    // 7. Win / Loss / Endless Wave Break resolution
     if (this.enemy.baseHp <= 0) {
-      this.enemy.baseHp = 0;
-      this.status = 'victory';
-      this.spawnBaseDestruction(ENEMY_BASE_X);
-      this.callbacks.onSound?.('victory');
+      if (this.mode === 'endless') {
+        this.advanceEndlessWave(true);
+      } else {
+        this.enemy.baseHp = 0;
+        this.status = 'victory';
+        this.spawnBaseDestruction(ENEMY_BASE_X);
+        this.callbacks.onSound?.('victory');
+      }
     } else if (this.player.baseHp <= 0) {
       this.player.baseHp = 0;
       this.status = 'defeat';
@@ -889,8 +1534,26 @@ export class GameEngine {
     if (f.ultimateCooldown > 0) {
       f.ultimateCooldown = Math.max(0, f.ultimateCooldown - dt);
     }
+    if (f.tacticalCooldown > 0) {
+      f.tacticalCooldown = Math.max(0, f.tacticalCooldown - dt);
+    }
+    if (f.tacticalBuffTimer > 0) {
+      f.tacticalBuffTimer = Math.max(0, f.tacticalBuffTimer - dt);
+    }
+    if (f.aegisProtectedTimer > 0) {
+      f.aegisProtectedTimer = Math.max(0, f.aegisProtectedTimer - dt);
+    }
     if (f.feverTimer > 0) {
       f.feverTimer = Math.max(0, f.feverTimer - dt);
+    }
+    if (f.comboTimer > 0) {
+      f.comboTimer = Math.max(0, f.comboTimer - dt);
+      if (f.comboTimer <= 0) {
+        f.comboCount = 0;
+      }
+    }
+    if (f.mods.baseRegenPerSec > 0 && f.baseHp > 0 && f.baseHp < f.baseMaxHp) {
+      f.baseHp = Math.min(f.baseMaxHp, f.baseHp + f.baseMaxHp * f.mods.baseRegenPerSec * dt);
     }
     if (f.baseHitFlash > 0) {
       f.baseHitFlash = Math.max(0, f.baseHitFlash - dt * 5);
@@ -914,22 +1577,47 @@ export class GameEngine {
     if (f.queue.length === 0) return;
     const head = f.queue[0];
     head.remaining = Math.max(0, head.remaining - dt);
-    if (head.remaining <= 0 && this.getActiveUnitCount(f.team) < MAX_UNITS_PER_TEAM) {
+    if (head.remaining <= 0 && this.getActiveUnitCount(f.team) < this.getMaxUnitCap(f.team)) {
       f.queue.shift();
       this.spawnUnit(f.team, UNIT_BY_ID[head.unitId]);
     }
   }
 
-  public spawnUnit(team: Team, def: UnitDef): UnitEntity {
+  public spawnUnit(team: Team, def: UnitDef, specialKind?: 'elite' | 'boss'): UnitEntity {
     const faction = this.getFaction(team);
     const spawnX = team === 'player' ? PLAYER_SPAWN_X : ENEMY_SPAWN_X;
     const jitter = (this.random() - 0.5) * 6;
     const statMult = team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
-    const vetSpawnChance = getVeteranSpawnChance(faction.upgrades);
-    const initialVetRank: 0 | 1 | 2 | 3 = vetSpawnChance > 0 && this.random() < vetSpawnChance ? 1 : 0;
-    const vetHpMult = getVeteranStatMult(initialVetRank, faction.upgrades);
-    const scaledMaxHp = Math.round(def.maxHp * getArmorHpMult(faction.upgrades) * vetHpMult * statMult);
-    const maxShield = Math.round(scaledMaxHp * getVanguardShieldRatio(faction.upgrades));
+    const endlessEnemyScale =
+      this.mode === 'endless' && team === 'enemy'
+        ? 1 + Math.max(0, this.wave - 1) * 0.08 + Math.max(0, this.wave - 12) * 0.12
+        : 1;
+    const vetSpawnChance = getVeteranSpawnChance(faction.upgrades) + faction.mods.vetSpawnBonus;
+    const initialVetRank: 0 | 1 | 2 | 3 =
+      specialKind === 'boss'
+        ? 2
+        : specialKind === 'elite'
+          ? 1
+          : vetSpawnChance > 0 && this.random() < vetSpawnChance
+            ? 1
+            : 0;
+    const baseVetMult = getVeteranStatMult(initialVetRank, faction.upgrades);
+    const vetHpMult = 1 + (baseVetMult - 1) * faction.mods.vetStatBonusMult;
+    const eliteHpMult = specialKind === 'boss' ? 4.2 : specialKind === 'elite' ? 2.2 : 1;
+    const scaledMaxHp = Math.round(
+      def.maxHp *
+        getArmorHpMult(faction.upgrades) *
+        faction.mods.maxHpMult *
+        vetHpMult *
+        statMult *
+        eliteHpMult *
+        endlessEnemyScale,
+    );
+    const baseShieldRatio = getVanguardShieldRatio(faction.upgrades) + faction.mods.shieldBonusRatio;
+    const specialShieldRatio = specialKind === 'boss' ? 0.25 : specialKind === 'elite' ? 0.14 : 0;
+    const maxShield = Math.round(scaledMaxHp * Math.max(baseShieldRatio, specialShieldRatio));
+    const era = getEra(def.eraIndex);
+
     const unit: UnitEntity = {
       uid: this.nextUid++,
       team,
@@ -948,11 +1636,23 @@ export class GameEngine {
       walkPhase: this.random() * Math.PI * 2,
       hitFlash: 0,
       lastHitCrit: false,
-      upgradeFlash: initialVetRank > 0 ? 0.85 : 0,
+      upgradeFlash: initialVetRank > 0 || specialKind !== undefined ? 0.9 : 0,
       knockbackVel: 0,
       deathTimer: 0,
-      kills: initialVetRank > 0 ? 1 : 0,
+      kills: initialVetRank === 2 ? 3 : initialVetRank === 1 ? 1 : 0,
       vetRank: initialVetRank,
+      eliteKind: specialKind,
+      eliteTitle:
+        specialKind === 'boss'
+          ? `시대 ${era.roman} 수호군주`
+          : specialKind === 'elite'
+            ? '시공 정예병'
+            : undefined,
+      scaleMult: specialKind === 'boss' ? 1.35 : specialKind === 'elite' ? 1.18 : 1,
+      damageScale:
+        (specialKind === 'boss' ? 1.42 : specialKind === 'elite' ? 1.24 : 1) * endlessEnemyScale,
+      rewardMult: specialKind === 'boss' ? 4.5 : specialKind === 'elite' ? 2.4 : 1,
+      slowTimer: 0,
     };
     this.units.push(unit);
     faction.unitsSpawned += 1;
@@ -974,16 +1674,28 @@ export class GameEngine {
     playerLive.sort((a, b) => b.x - a.x);
     enemyLive.sort((a, b) => a.x - b.x);
 
+    const rift = this.activeRift;
+    const riftBoost = this.mutators.includes('rift_overdrive') ? 1.35 : 1;
+
     const stepTeam = (allies: UnitEntity[], enemies: UnitEntity[], team: Team): void => {
       const dir = team === 'player' ? 1 : -1;
       const enemyBaseFront = team === 'player' ? ENEMY_BASE_FRONT_X : PLAYER_BASE_FRONT_X;
       const teamFaction = this.getFaction(team);
       const feverOn = teamFaction.feverTimer > 0;
       const feverPower = feverOn ? getFeverPowerBonus(teamFaction.upgrades) : 0;
-      const atkSpdMult = getAttackSpeedMult(teamFaction.upgrades) * (feverOn ? 1.25 + feverPower : 1);
-      const moveSpdMult = getMoveSpeedMult(teamFaction.upgrades) * (feverOn ? 1.2 + feverPower * 0.6 : 1);
+      const tacBuffOn = teamFaction.tacticalBuffTimer > 0;
+      const atkSpdMult =
+        getAttackSpeedMult(teamFaction.upgrades) *
+        teamFaction.mods.attackSpeedMult *
+        (feverOn ? 1.25 + feverPower : 1) *
+        (tacBuffOn ? 1.35 : 1);
+      const moveSpdMult =
+        getMoveSpeedMult(teamFaction.upgrades) *
+        teamFaction.mods.moveSpeedMult *
+        (feverOn ? 1.2 + feverPower * 0.6 : 1) *
+        (tacBuffOn ? 1.3 : 1);
       const rangeMult = getRangeMult(teamFaction.upgrades);
-      const regenRate = getRegenRatePerSec(teamFaction.upgrades);
+      const baseRegenRate = getRegenRatePerSec(teamFaction.upgrades) + teamFaction.mods.regenBonusPerSec;
 
       for (let i = 0; i < allies.length; i++) {
         const u = allies[i];
@@ -991,8 +1703,16 @@ export class GameEngine {
         if (u.upgradeFlash > 0) u.upgradeFlash = Math.max(0, u.upgradeFlash - dt * 1.9);
         if (u.attackCooldown > 0) u.attackCooldown = Math.max(0, u.attackCooldown - dt);
         if (u.attackAnim > 0) u.attackAnim = Math.max(0, u.attackAnim - dt * 3.4);
+        if (u.slowTimer && u.slowTimer > 0) u.slowTimer = Math.max(0, u.slowTimer - dt);
 
-        // Battlefield Regeneration upgrade heals wounded allied units steadily
+        const inRift = rift !== null && Math.abs(u.x - rift.x) <= rift.radius;
+        const unitSlowMult = u.slowTimer && u.slowTimer > 0 ? 0.72 : 1;
+        const riftAtkSpd = inRift && rift!.kind === 'haste' ? 1 + 0.35 * riftBoost : 1;
+        const riftMoveSpd = inRift && rift!.kind === 'haste' ? 1 + 0.32 * riftBoost : 1;
+        const regenRate =
+          baseRegenRate + (inRift && rift!.kind === 'sanctuary' ? 0.055 * riftBoost : 0);
+
+        // Battlefield Regeneration / Sanctuary Rift heals wounded allied units steadily
         if (regenRate > 0 && u.hp < u.maxHp) {
           u.hp = Math.min(u.maxHp, u.hp + u.maxHp * regenRate * dt);
           if (this.random() < dt * 1.6) {
@@ -1092,9 +1812,16 @@ export class GameEngine {
             const berserkSpd = getBerserkAttackSpeedMult(teamFaction.upgrades, hpRatio);
             const hitCrateFirst = inRangeOfCrate && (!inRangeOfUnit || minCrateDist <= minEnemyDist + 16);
             if (hitCrateFirst && targetCrate) {
-              const vetMult = getVeteranStatMult(u.vetRank, teamFaction.upgrades);
+              const baseVet = getVeteranStatMult(u.vetRank, teamFaction.upgrades);
+              const vetMult = 1 + (baseVet - 1) * teamFaction.mods.vetStatBonusMult;
               const berserkDmg = getBerserkDamageMult(teamFaction.upgrades, hpRatio);
-              const crateDmg = u.def.damage * getWeaponDamageMult(teamFaction.upgrades) * vetMult * berserkDmg;
+              const crateDmg =
+                u.def.damage *
+                getWeaponDamageMult(teamFaction.upgrades) *
+                teamFaction.mods.damageMult *
+                (u.damageScale ?? 1) *
+                vetMult *
+                berserkDmg;
               this.callbacks.onSound?.(u.def.attackSound);
               if (!u.def.projectile) {
                 this.spawnMeleeSlash(u, u.x + dir * (u.def.width * 0.6), GROUND_Y - u.def.height * 0.72, dir, false);
@@ -1103,7 +1830,8 @@ export class GameEngine {
             } else {
               this.performUnitAttack(u, inRangeOfUnit ? target : null);
             }
-            u.attackCooldown = 1 / (u.def.attackRate * atkSpdMult * berserkSpd);
+            u.attackCooldown =
+              1 / (u.def.attackRate * atkSpdMult * berserkSpd * riftAtkSpd * unitSlowMult);
             u.attackAnim = 1;
           }
         } else {
@@ -1128,7 +1856,7 @@ export class GameEngine {
             u.walkPhase += dt * 2.8;
           } else {
             u.state = 'walk';
-            const effSpeed = u.def.speed * moveSpdMult;
+            const effSpeed = u.def.speed * moveSpdMult * riftMoveSpd * unitSlowMult;
             const moveDist = effSpeed * dt;
             let nextX = u.x + moveDist * dir;
             // Don't walk past closest enemy unit, landed crate, or enemy base
@@ -1177,25 +1905,46 @@ export class GameEngine {
     const dir = attacker.team === 'player' ? 1 : -1;
     const def = attacker.def;
     const attackerFaction = this.getFaction(attacker.team);
-    const critChance = Math.min(0.85, def.critChance + getCritChanceBonus(attackerFaction.upgrades));
+    const hpRatio = attacker.hp / Math.max(1, attacker.maxHp);
+    const inFuryRift =
+      this.activeRift !== null &&
+      this.activeRift.kind === 'fury' &&
+      Math.abs(attacker.x - this.activeRift.x) <= this.activeRift.radius;
+    const riftBoost = this.mutators.includes('rift_overdrive') ? 1.35 : 1;
+    const furyCritBonus = inFuryRift ? 0.22 * riftBoost : 0;
+    const furyDmgMult = inFuryRift ? 1 + 0.28 * riftBoost : 1;
+
+    const critChance = Math.min(
+      0.9,
+      def.critChance + getCritChanceBonus(attackerFaction.upgrades) + furyCritBonus,
+    );
     const critMult = CRIT_MULTIPLIER + getCritDamageBonus(attackerFaction.upgrades);
     const isCrit = this.random() < critChance;
-    const vetDamageMult = getVeteranStatMult(attacker.vetRank, attackerFaction.upgrades);
-    const berserkDamageMult = getBerserkDamageMult(
-      attackerFaction.upgrades,
-      attacker.hp / Math.max(1, attacker.maxHp),
-    );
+    const baseVetMult = getVeteranStatMult(attacker.vetRank, attackerFaction.upgrades);
+    const vetDamageMult = 1 + (baseVetMult - 1) * attackerFaction.mods.vetStatBonusMult;
+    const berserkDamageMult = getBerserkDamageMult(attackerFaction.upgrades, hpRatio);
+    const bloodOathMult =
+      attackerFaction.mods.bloodOathLowHpBonus > 0 && hpRatio <= 0.5
+        ? 1 + attackerFaction.mods.bloodOathLowHpBonus
+        : 1;
     const aiDmgMult = attacker.team === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
     const rawDamage =
       def.damage *
       getWeaponDamageMult(attackerFaction.upgrades) *
+      attackerFaction.mods.damageMult *
+      (attacker.damageScale ?? 1) *
       vetDamageMult *
       berserkDamageMult *
+      bloodOathMult *
+      furyDmgMult *
       aiDmgMult *
       (isCrit ? critMult : 1);
     const rangeMult = getRangeMult(attackerFaction.upgrades);
     const projSpeedMult = getProjectileSpeedMult(attackerFaction.upgrades);
     const splashMult = getSplashRadiusMult(attackerFaction.upgrades);
+    const bonusSplashPx = attackerFaction.mods.splashBonusPx;
+    const effUnitSplash =
+      def.splashRadius > 0 ? (def.splashRadius + bonusSplashPx) * splashMult : 0;
     const isRangedUnit = def.role === 'ranged' || def.role === 'siege' || def.projectile !== undefined;
     const effRange = isRangedUnit ? def.range * rangeMult : def.range;
 
@@ -1225,10 +1974,11 @@ export class GameEngine {
       const isTesla = def.projectile === 'tesla_arc';
       const endX = target && isTesla ? target.x : originX + dir * (effRange + 45);
       const endY = target && isTesla ? targetY : originY;
+      const beamStyle = isChrono ? 'chrono_beam' : isGrav ? 'gravity_beam' : isTesla ? 'tesla_arc' : 'railgun';
       this.beams.push({
         uid: this.nextUid++,
         team: attacker.team,
-        style: isChrono ? 'chrono_beam' : isGrav ? 'gravity_beam' : isTesla ? 'tesla_arc' : 'railgun',
+        style: beamStyle,
         x1: originX,
         y1: originY,
         x2: endX,
@@ -1247,6 +1997,28 @@ export class GameEngine {
         maxLife: isChrono ? 0.32 : isGrav ? 0.28 : isTesla ? 0.26 : 0.24,
         seed: this.random() * 100,
       });
+
+      const procMultishot =
+        attackerFaction.mods.multishotChance > 0 &&
+        this.random() < attackerFaction.mods.multishotChance;
+      if (procMultishot) {
+        this.beams.push({
+          uid: this.nextUid++,
+          team: attacker.team,
+          style: beamStyle,
+          x1: originX,
+          y1: originY - 8,
+          x2: endX,
+          y2: endY - 5,
+          width: 4,
+          color: '#2dd4bf',
+          life: 0.22,
+          maxLife: 0.22,
+          seed: this.random() * 100,
+        });
+      }
+      const beamDmg = procMultishot ? rawDamage * 1.45 : rawDamage;
+
       const beamCol = isChrono ? '#5eead4' : isGrav ? '#e879f9' : '#7dd3fc';
       this.spawnMuzzleFlash(originX, originY, Math.atan2(endY - originY, endX - originX), beamCol, isChrono ? 18 : 14);
       this.spawnBurst(originX, originY, beamCol, 6, 110);
@@ -1289,12 +2061,12 @@ export class GameEngine {
         prevArcX = victim.x;
         prevArcY = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
         this.spawnImpactCross(prevArcX, prevArcY, beamCol, isChrono ? 28 : 22);
-        if (isChrono && def.splashRadius > 0 && hits === 0) {
+        if (isChrono && effUnitSplash > 0 && hits === 0) {
           this.applySplashDamage(
             victim.x,
             attacker.team,
-            rawDamage,
-            def.splashRadius * splashMult,
+            beamDmg,
+            effUnitSplash,
             def.armorPierce,
             isCrit,
             dir * def.knockback,
@@ -1302,7 +2074,7 @@ export class GameEngine {
           );
           this.spawnExplosion(victim.x, prevArcY, def.splashRadius * 0.85, '#2dd4bf');
         } else {
-          this.applyDamageToUnit(victim, rawDamage, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
+          this.applyDamageToUnit(victim, beamDmg, def.armorPierce, isCrit, dir * def.knockback, attacker.team, attacker);
         }
         hits++;
         if (hits >= def.pierceCount) break;
@@ -1310,7 +2082,7 @@ export class GameEngine {
       if (hits === 0 && !target) {
         this.applyDamageToBase(
           attacker.team === 'player' ? 'enemy' : 'player',
-          rawDamage * def.baseDamageMult,
+          beamDmg * def.baseDamageMult,
           isCrit,
           attacker.team,
         );
@@ -1372,7 +2144,7 @@ export class GameEngine {
       return;
     }
 
-    // Ranged Projectile
+    // Ranged Projectile (+ Prism Split multishot relic!)
     if (def.projectile) {
       const speed = (def.projectileSpeed ?? 420) * projSpeedMult;
       const gravity = def.projectileArc ?? 200;
@@ -1394,7 +2166,7 @@ export class GameEngine {
         vy,
         gravity,
         damage: rawDamage,
-        splashRadius: def.splashRadius > 0 ? def.splashRadius * splashMult : 0,
+        splashRadius: effUnitSplash,
         armorPierce: def.armorPierce,
         isCrit,
         baseDamageMult: def.baseDamageMult,
@@ -1406,6 +2178,39 @@ export class GameEngine {
         targetX,
         sourceUnitUid: attacker.uid,
       });
+
+      // Prism Split Relic: fires a parallel-timeline twin projectile!
+      if (
+        attackerFaction.mods.multishotChance > 0 &&
+        this.random() < attackerFaction.mods.multishotChance
+      ) {
+        const twinFlight = flightTime * 1.07;
+        const twinDx = dx + dir * 18;
+        this.projectiles.push({
+          uid: this.nextUid++,
+          team: attacker.team,
+          style: def.projectile,
+          x: originX,
+          y: originY - 6,
+          prevX: originX,
+          prevY: originY - 6,
+          vx: twinDx / twinFlight,
+          vy: (dy - 0.5 * gravity * twinFlight * twinFlight) / twinFlight - 14,
+          gravity,
+          damage: rawDamage * 0.65,
+          splashRadius: effUnitSplash,
+          armorPierce: def.armorPierce,
+          isCrit,
+          baseDamageMult: def.baseDamageMult,
+          knockback: def.knockback * 0.6,
+          pierceRemaining: def.pierceCount,
+          hitUids: [],
+          life: 0,
+          maxLife: Math.min(3.5, twinFlight + 0.8),
+          targetX: targetX + dir * 18,
+          sourceUnitUid: attacker.uid,
+        });
+      }
 
       // Directional weapon-matched muzzle flash & gunsmoke for guns, artillery, rockets & energy weapons!
       const fireAngle = Math.atan2(vy, vx);
@@ -1468,12 +2273,12 @@ export class GameEngine {
       def.id === 'chrono_blade';
 
     if (target) {
-      if (def.splashRadius > 0) {
+      if (effUnitSplash > 0) {
         this.applySplashDamage(
           target.x,
           attacker.team,
           rawDamage,
-          def.splashRadius * splashMult,
+          effUnitSplash,
           def.armorPierce,
           isCrit,
           dir * def.knockback,
@@ -1526,7 +2331,10 @@ export class GameEngine {
     const enemyTeam: Team = faction.team === 'player' ? 'enemy' : 'player';
     const dir = faction.team === 'player' ? 1 : -1;
     const rangeMult = getRangeMult(faction.upgrades) * getTurretRapidRangeMult(faction.upgrades);
-    const turretRateMult = getTurretAttackSpeedMult(faction.upgrades);
+    const turretRateMult =
+      getTurretAttackSpeedMult(faction.upgrades) *
+      faction.mods.turretRateMult *
+      (faction.tacticalBuffTimer > 0 ? 1.35 : 1);
     const projSpeedMult = getProjectileSpeedMult(faction.upgrades);
     const splashMult = getSplashRadiusMult(faction.upgrades);
 
@@ -1567,7 +2375,12 @@ export class GameEngine {
 
       const muzzleX = pos.x + Math.cos(turret.aimAngle) * 18;
       const muzzleY = pos.y + Math.sin(turret.aimAngle) * 18;
-      const scaledTurretDamage = def.damage * getTurretDamageMult(faction.upgrades);
+      const scaledTurretDamage =
+        def.damage * getTurretDamageMult(faction.upgrades) * faction.mods.turretDamageMult;
+      const effTurretSplash =
+        def.splashRadius > 0
+          ? (def.splashRadius + faction.mods.splashBonusPx) * splashMult
+          : 0;
 
       if (
         def.projectile === 'ion_beam' ||
@@ -1600,7 +2413,7 @@ export class GameEngine {
           tx,
           faction.team,
           scaledTurretDamage,
-          def.splashRadius * splashMult,
+          effTurretSplash,
           def.armorPierce,
           false,
           dir * (isChrono ? 115 : isGrav ? 95 : 75),
@@ -1623,7 +2436,7 @@ export class GameEngine {
           vy,
           gravity: def.projectileArc,
           damage: scaledTurretDamage,
-          splashRadius: def.splashRadius > 0 ? def.splashRadius * splashMult : 0,
+          splashRadius: effTurretSplash,
           armorPierce: def.armorPierce,
           isCrit: false,
           baseDamageMult: 1,
@@ -1847,8 +2660,13 @@ export class GameEngine {
         if (ord.y >= ord.targetY) {
           ord.impacted = true;
           const casterFaction = this.getFaction(ult.team);
-          const ultDmg = ult.def.damagePerStrike * getUltimateDamageMult(casterFaction.upgrades);
-          const ultRad = ult.def.radius * getSplashRadiusMult(casterFaction.upgrades);
+          const ultDmg =
+            ult.def.damagePerStrike *
+            getUltimateDamageMult(casterFaction.upgrades) *
+            casterFaction.mods.ultDamageMult;
+          const ultRad =
+            (ult.def.radius + casterFaction.mods.splashBonusPx) *
+            getSplashRadiusMult(casterFaction.upgrades);
           this.applySplashDamage(
             ord.targetX,
             ult.team,
@@ -1899,8 +2717,13 @@ export class GameEngine {
   private launchUltimateStrike(ult: ActiveUltimate, targetX: number, dir: 1 | -1): void {
     const kind = ult.def.kind;
     const casterFaction = this.getFaction(ult.team);
-    const ultDmg = ult.def.damagePerStrike * getUltimateDamageMult(casterFaction.upgrades);
-    const ultRad = ult.def.radius * getSplashRadiusMult(casterFaction.upgrades);
+    const ultDmg =
+      ult.def.damagePerStrike *
+      getUltimateDamageMult(casterFaction.upgrades) *
+      casterFaction.mods.ultDamageMult;
+    const ultRad =
+      (ult.def.radius + casterFaction.mods.splashBonusPx) *
+      getSplashRadiusMult(casterFaction.upgrades);
 
     if (kind === 'lightning') {
       this.beams.push({
@@ -2136,19 +2959,24 @@ export class GameEngine {
     attackerTeam: Team,
     attackerUnit?: UnitEntity,
     isThornsReflect = false,
+    isChainArc = false,
   ): void {
     if (victim.state === 'dead') return;
     const victimFaction = this.getFaction(victim.team);
     const attackerFaction = this.getFaction(attackerTeam);
 
-    const totalArmor = Math.min(0.55, victim.def.armor + getArmorMitigationBonus(victimFaction.upgrades));
+    const totalArmor = Math.min(
+      0.62,
+      victim.def.armor + getArmorMitigationBonus(victimFaction.upgrades) + victimFaction.mods.armorBonus,
+    );
     const pierceFraction = getArmorPierceFraction(attackerFaction.upgrades, armorPierce);
     const effectiveArmor = totalArmor * (1 - pierceFraction);
+    const aegisMitigation = victimFaction.aegisProtectedTimer > 0 ? 0.72 : 1;
 
-    // Siege Craft deals bonus damage against Heavy & Siege juggernauts/vehicles/mechs!
+    // Siege Craft & Siegebreaker Ram deal bonus damage against Heavy/Siege/Boss units!
     const heavyBonus =
-      victim.def.role === 'heavy' || victim.def.role === 'siege'
-        ? getSiegeDamageMult(attackerFaction.upgrades)
+      victim.def.role === 'heavy' || victim.def.role === 'siege' || victim.eliteKind === 'boss'
+        ? getSiegeDamageMult(attackerFaction.upgrades) * attackerFaction.mods.siegeDamageMult
         : 1;
 
     // Executioner Instinct deals massive bonus finisher damage to enemies at or below 40% HP!
@@ -2156,7 +2984,10 @@ export class GameEngine {
       !isThornsReflect && attackerFaction.upgrades.executioner > 0 && victim.hp / victim.maxHp <= 0.4;
     const executeBonus = isExecute ? getExecutionerDamageMult(attackerFaction.upgrades) : 1;
 
-    const finalDamage = Math.max(1, Math.round(rawDamage * heavyBonus * executeBonus * (1 - effectiveArmor)));
+    const finalDamage = Math.max(
+      1,
+      Math.round(rawDamage * heavyBonus * executeBonus * aegisMitigation * (1 - effectiveArmor)),
+    );
     const hadShield = victim.shield > 0;
     const shieldAbsorbed = hadShield ? Math.min(victim.shield, finalDamage) : 0;
     victim.shield -= shieldAbsorbed;
@@ -2167,12 +2998,75 @@ export class GameEngine {
     if (hpDamage > 0) {
       victim.displayHpHold = Math.max(victim.displayHpHold, isCrit || isExecute ? 0.28 : 0.16);
     }
+
+    const kbResistBase =
+      victim.eliteKind === 'boss'
+        ? 0.18
+        : victim.eliteKind === 'elite'
+          ? 0.48
+          : victim.def.isMechanical
+            ? 0.35
+            : 0.88;
     victim.knockbackVel +=
-      knockbackImpulse * (victim.def.isMechanical ? 0.35 : 0.88) * getKnockbackResistMult(victimFaction.upgrades);
+      knockbackImpulse * kbResistBase * getKnockbackResistMult(victimFaction.upgrades);
+
+    // Cryo Shard Relic: chills target movement & attack rate for 2.2s
+    if (
+      !isThornsReflect &&
+      attackerFaction.mods.cryoSlowChance > 0 &&
+      this.random() < attackerFaction.mods.cryoSlowChance
+    ) {
+      victim.slowTimer = Math.max(victim.slowTimer ?? 0, 2.2);
+    }
+
+    // Thunder Core Relic / Chain Storm Mutator: arcs lightning to up to 2 nearby enemies!
+    if (
+      !isThornsReflect &&
+      !isChainArc &&
+      attackerFaction.mods.chainLightningChance > 0 &&
+      (!attackerUnit || attackerUnit.def.projectile !== undefined) &&
+      this.random() < attackerFaction.mods.chainLightningChance
+    ) {
+      const vy0 = GROUND_Y - victim.def.height * 0.72 - (victim.def.hoverHeight ?? 0);
+      let chained = 0;
+      for (let idx = 0; idx < this.units.length && chained < 2; idx++) {
+        const other = this.units[idx];
+        if (other.team !== victim.team || other.state === 'dead' || other.uid === victim.uid) continue;
+        if (Math.abs(other.x - victim.x) <= 155) {
+          chained++;
+          const oy = GROUND_Y - other.def.height * 0.72 - (other.def.hoverHeight ?? 0);
+          this.beams.push({
+            uid: this.nextUid++,
+            team: attackerTeam,
+            style: 'tesla_arc',
+            x1: victim.x,
+            y1: vy0,
+            x2: other.x,
+            y2: oy,
+            width: 5,
+            color: '#67e8f9',
+            life: 0.22,
+            maxLife: 0.22,
+            seed: this.random() * 100,
+          });
+          this.applyDamageToUnit(
+            other,
+            Math.max(2, finalDamage * 0.38),
+            true,
+            false,
+            0,
+            attackerTeam,
+            attackerUnit,
+            false,
+            true,
+          );
+        }
+      }
+    }
 
     // Lifesteal heals the living attacker unit on damage dealt + spawns crimson heal glint!
     if (!isThornsReflect && attackerUnit && attackerUnit.state !== 'dead') {
-      const lsRatio = getLifestealRatio(attackerFaction.upgrades);
+      const lsRatio = getLifestealRatio(attackerFaction.upgrades) + attackerFaction.mods.lifestealBonus;
       if (lsRatio > 0 && attackerUnit.hp < attackerUnit.maxHp) {
         const healAmt = Math.max(1, finalDamage * lsRatio);
         attackerUnit.hp = Math.min(attackerUnit.maxHp, attackerUnit.hp + healAmt);
@@ -2194,7 +3088,7 @@ export class GameEngine {
 
     // Thorns armor reflects melee strike damage back to the melee attacker!
     if (!isThornsReflect && attackerUnit && attackerUnit.state !== 'dead' && !attackerUnit.def.projectile) {
-      const thornsRatio = getThornsReflectRatio(victimFaction.upgrades);
+      const thornsRatio = getThornsReflectRatio(victimFaction.upgrades) + victimFaction.mods.thornsBonus;
       if (thornsRatio > 0) {
         const reflectDmg = Math.max(1, Math.round(finalDamage * thornsRatio));
         this.applyDamageToUnit(attackerUnit, reflectDmg, true, false, 0, victim.team, undefined, true);
@@ -2296,32 +3190,118 @@ export class GameEngine {
       const loser = this.getFaction(victim.team);
       const diff = DIFFICULTIES[this.difficulty];
 
+      // Kill Combo Chain (starts granting +2.5% bonus per combo above 1, up to +50%)
+      killer.comboCount += 1;
+      killer.comboTimer = 4.2;
+      if (killer.comboCount > killer.maxCombo) {
+        killer.maxCombo = killer.comboCount;
+      }
+      const comboMult =
+        killer.comboCount >= 2 ? 1 + Math.min(0.5, (killer.comboCount - 1) * 0.025) : 1;
+
+      const isSpecialVictim = victim.eliteKind === 'elite' || victim.eliteKind === 'boss';
+      const specialRewardMult =
+        (victim.rewardMult ?? 1) * (isSpecialVictim ? killer.mods.bountyBossMult : 1);
+
       const feverGoldMult = killer.feverTimer > 0 ? 1.25 + getFeverPowerBonus(killer.upgrades) : 1;
       const goldMult =
-        (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) * getKillGoldMult(killer.upgrades) * feverGoldMult;
+        (attackerTeam === 'enemy' ? diff.aiGoldMultiplier : 1) *
+        getKillGoldMult(killer.upgrades) *
+        killer.mods.killGoldMult *
+        feverGoldMult *
+        comboMult *
+        specialRewardMult;
       const xpMult =
         (attackerTeam === 'enemy' ? diff.aiXpMultiplier : 1) *
         getKillXpMult(killer.upgrades) *
-        getXpMasteryMult(killer.upgrades);
+        getXpMasteryMult(killer.upgrades) *
+        killer.mods.xpMult *
+        comboMult *
+        specialRewardMult;
 
-      const rewardGold = Math.round(victim.def.killGold * goldMult);
-      const rewardXp = Math.round(victim.def.killXp * xpMult);
+      let rewardGold = Math.round(victim.def.killGold * goldMult);
+      let rewardXp = Math.round(victim.def.killXp * xpMult);
+
+      // First Blood opening bonus!
+      if (!this.firstBloodClaimed) {
+        this.firstBloodClaimed = true;
+        rewardGold += 45;
+        rewardXp += 75;
+        if (attackerTeam === 'player') {
+          this.addPopup(victim.x, GROUND_Y - 126, '선취점! +45G', '#fde047', 1.26, 'crit');
+        }
+      }
 
       killer.gold += rewardGold;
       killer.xp += rewardXp;
       killer.totalXp += rewardXp;
       killer.kills += 1;
+      if (victim.eliteKind === 'boss') {
+        killer.bossKills += 1;
+        if (attackerTeam === 'player') {
+          this.callbacks.onSound?.('fever');
+          this.callbacks.onBanner?.(
+            `${victim.eliteTitle ?? '수호군주'} 토벌 성공!`,
+            `현상금 +${rewardGold.toLocaleString()}G · +${rewardXp.toLocaleString()} XP 획득!`,
+            '#fde047',
+          );
+        }
+      } else if (victim.eliteKind === 'elite') {
+        killer.eliteKills += 1;
+      }
 
-      // Unit Veteran Promotion (accelerated & amplified by veteran_drill upgrade)!
+      // Combo audio & milestone popups for player
+      if (attackerTeam === 'player' && killer.comboCount >= 3) {
+        this.callbacks.onComboSound?.(killer.comboCount);
+        if (
+          killer.comboCount === 5 ||
+          killer.comboCount === 10 ||
+          killer.comboCount === 15 ||
+          killer.comboCount === 20 ||
+          killer.comboCount % 10 === 0
+        ) {
+          const comboLabel =
+            killer.comboCount >= 20
+              ? `${killer.comboCount} ULTRA!`
+              : killer.comboCount >= 10
+                ? `${killer.comboCount} RAMPAGE!`
+                : `${killer.comboCount} COMBO!`;
+          this.addPopup(victim.x, GROUND_Y - 132, comboLabel, '#f97316', 1.28, 'crit');
+        }
+      }
+
+      // Guillotine Blade Relic: kill triggers an AOE victory heal pulse for nearby allies!
+      if (killer.mods.executeHealRatio > 0) {
+        for (let idx = 0; idx < this.units.length; idx++) {
+          const ally = this.units[idx];
+          if (ally.team !== attackerTeam || ally.state === 'dead') continue;
+          if (Math.abs(ally.x - victim.x) <= 170 && ally.hp < ally.maxHp) {
+            const heal = Math.max(2, Math.round(ally.maxHp * killer.mods.executeHealRatio));
+            ally.hp = Math.min(ally.maxHp, ally.hp + heal);
+            ally.displayHp = Math.max(ally.displayHp, ally.hp);
+          }
+        }
+        this.spawnRing(victim.x, GROUND_Y - 24, '#4ade80', 46);
+      }
+
+      // Unit Veteran Promotion (accelerated & amplified by veteran_drill & warlord_signet)!
       if (attackerUnit && attackerUnit.state !== 'dead') {
         attackerUnit.kills += 1;
         const nextRank = getVeteranRankForKills(attackerUnit.kills, killer.upgrades);
         if (nextRank > attackerUnit.vetRank) {
           attackerUnit.vetRank = nextRank;
-          const vetHpMult = getVeteranStatMult(nextRank, killer.upgrades);
+          const baseVet = getVeteranStatMult(nextRank, killer.upgrades);
+          const vetHpMult = 1 + (baseVet - 1) * killer.mods.vetStatBonusMult;
           const statMult = attackerTeam === 'enemy' ? DIFFICULTIES[this.difficulty].aiUnitStatMult : 1;
+          const eliteHpMult =
+            attackerUnit.eliteKind === 'boss' ? 4.2 : attackerUnit.eliteKind === 'elite' ? 2.2 : 1;
           const newMax = Math.round(
-            attackerUnit.def.maxHp * getArmorHpMult(killer.upgrades) * vetHpMult * statMult,
+            attackerUnit.def.maxHp *
+              getArmorHpMult(killer.upgrades) *
+              killer.mods.maxHpMult *
+              vetHpMult *
+              statMult *
+              eliteHpMult,
           );
           const hpDelta = Math.max(0, newMax - attackerUnit.maxHp);
           attackerUnit.maxHp = newMax;
@@ -2346,10 +3326,12 @@ export class GameEngine {
         }
       }
 
-      // Chrono Fever Kill-Streak Charge (duration & power scaled by chrono_fever upgrade!)
+      // Chrono Fever Kill-Streak Charge (shortened by berserker_horn / gold_fever!)
       if (killer.feverTimer <= 0) {
-        killer.feverKills += 1;
-        if (killer.feverKills >= FEVER_KILLS_TARGET) {
+        const feverGain = victim.eliteKind === 'boss' ? 5 : victim.eliteKind === 'elite' ? 3 : 1;
+        killer.feverKills += feverGain;
+        const feverTarget = killer.mods.feverKillsTarget;
+        if (killer.feverKills >= feverTarget) {
           killer.feverKills = 0;
           const feverSec = getFeverDurationSec(FEVER_DURATION_SEC, killer.upgrades);
           const feverBonusPct = Math.round(getFeverPowerBonus(killer.upgrades) * 100);
@@ -2376,17 +3358,30 @@ export class GameEngine {
         victim.def.killXp *
           LOSS_XP_RATIO *
           (victim.team === 'enemy' ? diff.aiXpMultiplier : 1) *
-          getXpMasteryMult(loser.upgrades),
+          getXpMasteryMult(loser.upgrades) *
+          loser.mods.xpMult,
       );
       loser.xp += consolationXp;
       loser.totalXp += consolationXp;
 
       if (attackerTeam === 'player') {
-        this.addPopup(victim.x, GROUND_Y - victim.def.height * 1.48 - 30, `+${rewardGold}G`, '#facc15', 0.98, 'gold');
+        this.addPopup(
+          victim.x,
+          GROUND_Y - victim.def.height * 1.48 - 30,
+          `+${rewardGold}G`,
+          '#facc15',
+          victim.eliteKind ? 1.18 : 0.98,
+          'gold',
+        );
       }
 
-      if (victim.def.isMechanical) {
-        this.spawnExplosion(victim.x, GROUND_Y - victim.def.height * 0.65, 68, '#f97316');
+      if (victim.def.isMechanical || victim.eliteKind === 'boss') {
+        this.spawnExplosion(
+          victim.x,
+          GROUND_Y - victim.def.height * 0.65,
+          victim.eliteKind === 'boss' ? 92 : 68,
+          victim.eliteKind === 'boss' ? '#facc15' : '#f97316',
+        );
         this.callbacks.onSound?.('explosion');
       } else {
         const deathCol = victim.team === 'player' ? '#93c5fd' : '#fca5a5';
@@ -2405,13 +3400,22 @@ export class GameEngine {
   private applyDamageToBase(targetTeam: Team, rawDamage: number, isCrit: boolean, attackerTeam: Team): void {
     const defender = this.getFaction(targetTeam);
     const attacker = this.getFaction(attackerTeam);
-    const dmg = Math.max(1, Math.round(rawDamage * getSiegeDamageMult(attacker.upgrades)));
+    const dmg = Math.max(
+      1,
+      Math.round(rawDamage * getSiegeDamageMult(attacker.upgrades) * attacker.mods.siegeDamageMult),
+    );
+    const hpBefore = defender.baseHp;
     defender.baseHp = Math.max(0, defender.baseHp - dmg);
     defender.baseHitFlash = 1;
 
     const xpGain = Math.max(
       1,
-      Math.round((dmg / 100) * BASE_HIT_XP_PER_100_DMG * getXpMasteryMult(attacker.upgrades)),
+      Math.round(
+        (dmg / 100) *
+          BASE_HIT_XP_PER_100_DMG *
+          getXpMasteryMult(attacker.upgrades) *
+          attacker.mods.xpMult,
+      ),
     );
     attacker.xp += xpGain;
     attacker.totalXp += xpGain;
@@ -2432,6 +3436,78 @@ export class GameEngine {
     this.spawnDebris(baseX, GROUND_Y - 64, '#78716c', isCrit ? 8 : 5, 175);
     this.spawnDustWave(baseX, GROUND_Y, bounceDir * 60, 18, '#a8a29e');
     this.callbacks.onSound?.('hit_base');
+
+    // Campaign/Daily mid-siege climax: Enemy Warlord Boss emerges when enemy base first drops <= 50% HP!
+    if (
+      targetTeam === 'enemy' &&
+      this.mode !== 'endless' &&
+      !this.enemyHalfBaseBossSpawned &&
+      defender.baseHp > 0 &&
+      defender.baseHp <= defender.baseMaxHp * 0.5
+    ) {
+      this.enemyHalfBaseBossSpawned = true;
+      this.spawnSpecialUnit('enemy', 'boss');
+    }
+
+    // Rewind Hourglass Mythic Relic: saves fortress once even from a lethal blow when crossing <= 25% HP!
+    if (
+      hpBefore > 0 &&
+      defender.mods.hasRewindHourglass &&
+      !defender.rewindUsed &&
+      defender.baseHp <= defender.baseMaxHp * 0.25
+    ) {
+      defender.rewindUsed = true;
+      defender.lastStandUsed = true;
+      const rewindHeal = Math.round(defender.baseMaxHp * 0.45);
+      defender.baseHp = Math.min(defender.baseMaxHp, defender.baseHp + rewindHeal);
+      defender.displayBaseHp = defender.baseHp;
+      defender.feverTimer = Math.max(defender.feverTimer, 10);
+      defender.feverDuration = 10;
+      defender.tacticalBuffTimer = Math.max(defender.tacticalBuffTimer, 5);
+
+      const pushDir: 1 | -1 = targetTeam === 'player' ? 1 : -1;
+      for (const u of this.units) {
+        if (u.team !== targetTeam && u.state !== 'dead') {
+          u.knockbackVel += pushDir * 320;
+        }
+      }
+      this.spawnRing(baseX, GROUND_Y - 68, '#fef08a', 140);
+      this.spawnGroundShockwave(baseX, GROUND_Y + 2, '#2dd4bf', 150);
+      if (targetTeam === 'player') {
+        this.callbacks.onSound?.('fever');
+        this.addPopup(baseX, GROUND_Y - 155, `시간 역행! +${rewindHeal} HP`, '#fef08a', 1.38, 'heal');
+        this.callbacks.onBanner?.(
+          '시간 역행 모래시계 발동!',
+          '성채 체력 45% 역행 복구 + 적군 충격파 넉백 + 크로노 피버 즉시 발동!',
+          '#fef08a',
+        );
+      }
+    } else if (
+      defender.baseHp > 0 &&
+      !defender.lastStandUsed &&
+      defender.baseHp <= defender.baseMaxHp * 0.25
+    ) {
+      // Standard 1-time Fortress Emergency Shockwave at <= 25% HP (while still alive)
+      defender.lastStandUsed = true;
+      defender.tacticalBuffTimer = Math.max(defender.tacticalBuffTimer, 4.0);
+      const pushDir: 1 | -1 = targetTeam === 'player' ? 1 : -1;
+      const fortFront = targetTeam === 'player' ? PLAYER_BASE_FRONT_X : ENEMY_BASE_FRONT_X;
+      for (const u of this.units) {
+        if (u.team !== targetTeam && u.state !== 'dead' && Math.abs(u.x - fortFront) <= 420) {
+          u.knockbackVel += pushDir * 240;
+        }
+      }
+      this.spawnRing(baseX, GROUND_Y - 68, '#38bdf8', 120);
+      this.spawnGroundShockwave(baseX, GROUND_Y + 2, '#38bdf8', 130);
+      if (targetTeam === 'player') {
+        this.callbacks.onSound?.('tactical');
+        this.callbacks.onBanner?.(
+          '성채 비상 방어 충격파!',
+          '침입한 적군 후퇴 충격파 + 4초간 포탑·수비군 긴급 과충전!',
+          '#38bdf8',
+        );
+      }
+    }
   }
 
   private updateEffects(dt: number): void {
